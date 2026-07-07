@@ -1,0 +1,356 @@
+{% extends "game/base.html" %}
+{% block title %}MaxQuiz — Partie{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<div id="hud" style="display:flex;justify-content:space-between;align-items:center">
+  <span style="font-weight:800;font-size:15px" id="progress"></span>
+  <span style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px">
+    <span id="diffBadge" class="diff"></span>
+    <span id="jokerBadge" title="Jokers restants">🃏 <span id="jokersLeft"></span></span>
+  </span>
+</div>
+<div id="progressBar" style="height:6px;background:var(--sable);border-radius:99px;margin-top:8px;overflow:hidden">
+  <div id="progressFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--vert),var(--or));border-radius:99px;transition:width .5s cubic-bezier(.34,1.56,.64,1)"></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+  <svg id="ring" width="54" height="54" viewBox="0 0 54 54" aria-hidden="true">
+    <circle cx="27" cy="27" r="23" fill="none" stroke="var(--sable)" stroke-width="6"/>
+    <circle id="ringArc" cx="27" cy="27" r="23" fill="none" stroke="var(--vert)" stroke-width="6"
+            stroke-linecap="round" transform="rotate(-90 27 27)"/>
+    <text id="ringTxt" x="27" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="var(--encre)"></text>
+  </svg>
+  <span class="small" id="cat"></span>
+</div>
+
+<div class="card" id="qcard" style="margin-top:12px">
+  <p id="qtext" style="margin:0;font-size:19px;font-weight:700;line-height:1.35"></p>
+</div>
+<div id="options" style="display:flex;flex-direction:column;gap:10px;margin-top:14px"></div>
+<div id="feedback" style="margin-top:14px" hidden>
+  <p id="verdict" style="margin:0 0 8px;font-weight:800;font-size:18px"></p>
+  <p id="explain" class="small" style="margin:0 0 10px" hidden></p>
+  <button class="btn encre" id="nextBtn"></button>
+</div>
+
+<!-- Offre de joker après élimination -->
+<div id="jokerScreen" class="overlay" hidden>
+  <p style="text-align:center;font-size:52px;margin:0" class="heartbeat">💔</p>
+  <h2 style="text-align:center;margin:8px 0 2px;font-size:26px">Mauvaise réponse !</h2>
+  <p style="text-align:center;opacity:.85;margin:0" id="jokerSub"></p>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+    <button class="btn" id="jokerPaid" hidden></button>
+    <button class="btn vert" id="jokerAd" hidden>🎬 Regarder une pub vidéo pour continuer</button>
+    <button class="btn" id="giveUp" style="background:#4A4038">Abandonner pour aujourd'hui</button>
+  </div>
+  <p class="small" style="text-align:center;margin-top:12px;opacity:.7" id="jokerNote"></p>
+</div>
+
+<!-- Pub vidéo joker (simulée) -->
+<div id="videoScreen" class="overlay" hidden>
+  <p style="text-align:center;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.7">
+    Pub vidéo partenaire (démo)</p>
+  <div class="card pop-in" style="text-align:center;padding:24px;background:#000;color:#fff;border:2px solid #333">
+    <div id="vidEmoji" style="font-size:64px;animation:adfloat 2s ease-in-out infinite"></div>
+    <h2 id="vidBrand" style="margin:8px 0 2px;font-size:26px;font-weight:800"></h2>
+    <p id="vidTag" style="margin:0;font-weight:700;font-size:14px"></p>
+    <p id="vidPitch" style="margin-top:10px;font-size:13px;opacity:.85"></p>
+  </div>
+  <div style="height:6px;background:#4A4038;border-radius:99px;margin-top:18px;overflow:hidden">
+    <div id="vidBar" style="height:100%;width:0%;background:var(--vert);transition:width 1s linear"></div>
+  </div>
+  <p style="text-align:center;margin-top:10px;font-weight:700" id="vidCount"></p>
+</div>
+
+<!-- Interstitiel pub classique -->
+<div id="adScreen" class="overlay" hidden>
+  <p style="text-align:center;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.7">
+    Publicité partenaire (démo)</p>
+  <div class="card pop-in" style="text-align:center;padding:24px">
+    <div id="adEmoji" style="font-size:56px;animation:adfloat 2.4s ease-in-out infinite"></div>
+    <h2 id="adBrand" style="margin:8px 0 2px;font-size:26px;font-weight:800"></h2>
+    <p id="adTag" style="margin:0;font-weight:700;font-size:14px;color:#221A12"></p>
+    <p id="adPitch" class="small" style="margin-top:10px"></p>
+  </div>
+  <div style="height:6px;background:#4A4038;border-radius:99px;margin-top:18px;overflow:hidden">
+    <div id="adBar" style="height:100%;width:0%;background:var(--orange);transition:width 1s linear"></div>
+  </div>
+  <button class="btn" id="adBtn" disabled style="margin-top:12px"></button>
+</div>
+
+<!-- Fin : finaliste ou éliminé -->
+<div id="endScreen" class="overlay ivoire" hidden>
+  <p id="endEmoji" style="text-align:center;font-size:64px;margin:0"></p>
+  <h1 style="text-align:center" id="endTitle"></h1>
+  <div class="card pop-in" style="text-align:center;margin-top:14px" id="endCard">
+    <p class="small" style="margin:0" id="endLabel"></p>
+    <p id="endBig" style="font-size:48px;font-weight:800;margin:4px 0"></p>
+    <p class="small" id="endStats" style="margin:0"></p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+    <a class="btn vert" href="/classement/">Voir le classement 🏅</a>
+    <a class="btn encre" href="/">Retour à l'accueil</a>
+  </div>
+</div>
+
+<div id="confetti" aria-hidden="true"></div>
+<div id="comboPop" class="combo" hidden></div>
+{% endblock %}
+
+{% block css %}
+.overlay{position:fixed;inset:0;max-width:430px;margin-inline:auto;background:var(--encre);
+  color:var(--ivoire);padding:22px 18px;display:flex;flex-direction:column;justify-content:center;z-index:20}
+.overlay.ivoire{background:var(--ivoire);color:var(--encre)}
+.diff{padding:3px 10px;border-radius:99px;font-size:12px;font-weight:800;color:#fff;background:var(--vert)}
+.opt{background:#fff;border:1.5px solid var(--sable);border-radius:12px;padding:14px;font-size:16px;
+  font-weight:600;text-align:left;cursor:pointer;font-family:inherit;color:var(--encre);
+  transition:transform .12s ease,border-color .15s,background .15s}
+.opt:not(:disabled):hover{transform:translateX(4px);border-color:var(--orange)}
+.opt:not(:disabled):active{transform:scale(.97)}
+.opt.good{background:#DFF5E9;border:2px solid var(--vert);animation:goodpop .4s cubic-bezier(.34,1.56,.64,1)}
+.opt.bad{background:#FBE3DE;border:2px solid var(--rouge);animation:shake .4s}
+@keyframes goodpop{45%{transform:scale(1.05)}}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}
+  60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.pulse-danger{animation:pulsed .8s ease-in-out infinite}
+@keyframes pulsed{50%{transform:scale(1.12)}}
+.heartbeat{animation:heart 1s ease-in-out infinite}
+@keyframes heart{0%,100%{transform:scale(1)}25%{transform:scale(1.15)}40%{transform:scale(1)}}
+.combo{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);z-index:30;
+  font-size:34px;font-weight:800;color:var(--or);text-shadow:0 2px 0 rgba(0,0,0,.15);
+  animation:comboAnim 1s cubic-bezier(.34,1.56,.64,1) both;pointer-events:none}
+@keyframes comboAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-8deg)}
+  30%{opacity:1;transform:translate(-50%,-50%) scale(1.25) rotate(3deg)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-80%) scale(.9)}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
+.cf{position:absolute;width:10px;height:14px;top:-20px;border-radius:2px;animation:cfall linear both}
+@keyframes cfall{to{transform:translateY(110vh) rotate(720deg)}}
+@keyframes adfloat{50%{transform:translateY(-8px)}}
+{% endblock %}
+
+{% block js %}
+{{ payload|json_script:"game-data" }}
+<script>
+const G = JSON.parse(document.getElementById('game-data').textContent);
+const csrftoken = document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DIFF_NAMES = {1:'Facile',2:'Moyen',3:'Difficile',4:'EXPERT'};
+const DIFF_COLORS = {1:'var(--vert)',2:'var(--orange)',3:'#C7541F',4:'var(--rouge)'};
+
+let idx = 0, streak = 0, best = 0, adUsed = 0, jokersLeft = G.joker.max;
+let timeLeft = 0, tick = null, qStart = 0, timerS = 15, balance = G.balance;
+
+const $ = id => document.getElementById(id);
+const CIRC = 2 * Math.PI * 23;
+$('ringArc').style.strokeDasharray = CIRC;
+$('jokersLeft').textContent = jokersLeft;
+
+function api(url, body) {
+  return fetch(url, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+    body: JSON.stringify(body) }).then(r => r.json());
+}
+function confetti(n = 34) {
+  if (reduced) return;
+  const colors = ['#F2790F','#0B9A5C','#E9A820','#fff','#D6452C'];
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('div'); c.className = 'cf';
+    c.style.left = Math.random()*100+'vw'; c.style.background = colors[i%colors.length];
+    c.style.animationDuration = (1.4+Math.random()*1.4)+'s';
+    c.style.animationDelay = (Math.random()*.25)+'s';
+    $('confetti').appendChild(c); setTimeout(()=>c.remove(), 3200);
+  }
+}
+function comboPop(t){const el=$('comboPop');el.hidden=false;el.textContent=t;
+  el.style.animation='none';void el.offsetWidth;el.style.animation='';setTimeout(()=>el.hidden=true,1000)}
+function countUp(el,to,ms=800){if(reduced){el.textContent=to;return}
+  const from=parseInt(el.textContent)||0,t0=performance.now();
+  (function s(t){const p=Math.min(1,(t-t0)/ms);
+    el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-p,3)));
+    if(p<1)requestAnimationFrame(s)})(t0)}
+
+function startTimer() {
+  const q = G.questions[idx];
+  timerS = parseInt(G.timers[String(q.difficulty)] || 15);
+  timeLeft = timerS; qStart = performance.now(); drawRing();
+  tick = setInterval(() => { timeLeft--; drawRing();
+    if (timeLeft <= 0) { clearInterval(tick); answer(-1, null); } }, 1000);
+}
+function drawRing() {
+  const p = timeLeft/timerS;
+  $('ringArc').style.strokeDashoffset = CIRC*(1-p);
+  $('ringArc').style.stroke = p > .35 ? 'var(--vert)' : 'var(--rouge)';
+  $('ringTxt').textContent = timeLeft;
+  $('ring').classList.toggle('pulse-danger', timeLeft <= 4 && timeLeft > 0);
+}
+
+function show() {
+  const q = G.questions[idx];
+  $('progress').textContent = (G.mode==='daily'?'Défi':'Entraînement')+' · Q'+(idx+1)+'/'+G.total;
+  $('progressFill').style.width = (idx/G.total*100)+'%';
+  $('diffBadge').textContent = DIFF_NAMES[q.difficulty];
+  $('diffBadge').style.background = DIFF_COLORS[q.difficulty];
+  $('cat').textContent = q.cat + ' · ' + (G.timers[String(q.difficulty)]||15) + ' s';
+  $('qtext').textContent = q.text;
+  $('qcard').classList.remove('pop-in'); void $('qcard').offsetWidth; $('qcard').classList.add('pop-in');
+  $('feedback').hidden = true; $('explain').hidden = true;
+  const box = $('options'); box.innerHTML = ''; box.classList.remove('stagger');
+  void box.offsetWidth; box.classList.add('stagger');
+  const order = [0,1,2,3].sort(() => Math.random()-.5);
+  order.forEach(i => {
+    const b = document.createElement('button');
+    b.className='opt'; b.textContent=q.options[i]; b.dataset.i=i;
+    b.onclick = e => answer(i, e.currentTarget);
+    box.appendChild(b);
+  });
+  startTimer();
+}
+
+async function answer(choice, btn) {
+  clearInterval(tick);
+  document.querySelectorAll('.opt').forEach(b => b.disabled = true);
+  const time_ms = Math.min(Math.round(performance.now()-qStart), timerS*1000);
+  const q = G.questions[idx];
+  let r;
+  try {
+    r = await api('/api/answer/', {session_id:G.session_id, question_id:q.id, choice, time_ms});
+  } catch(e) {
+    $('verdict').textContent='Connexion perdue… réessaie.';
+    $('verdict').style.color='var(--rouge)';
+    $('feedback').hidden=false; $('nextBtn').textContent='Réessayer';
+    $('nextBtn').onclick=()=>answer(choice,btn); return;
+  }
+  document.querySelectorAll('.opt').forEach(b => {
+    if (+b.dataset.i === r.correct_index) b.classList.add('good');
+    else if (+b.dataset.i === choice && !r.correct) b.classList.add('bad');
+  });
+
+  if (r.correct) {
+    streak++; best = Math.max(best, streak);
+    confetti(streak >= 5 ? 40 : 14);
+    if (streak >= 5 && streak % 5 === 0) comboPop('SÉRIE x'+streak+' 🔥');
+    if (navigator.vibrate && !reduced) navigator.vibrate(40);
+    $('verdict').textContent='Bonne réponse !'; $('verdict').style.color='var(--vert)';
+    if (G.mode==='training' && r.explanation){$('explain').textContent='💡 '+r.explanation;$('explain').hidden=false}
+    $('feedback').hidden=false;
+    $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
+    $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();
+  } else if (r.status === 'eliminated_pending') {
+    streak = 0;
+    if (navigator.vibrate && !reduced) navigator.vibrate([80,50,80]);
+    setTimeout(() => offerJoker(r.joker_offer, q), 900);
+  } else {
+    // entraînement : pas d'élimination
+    streak = 0;
+    $('verdict').textContent = choice === -1 ? '⏱ Temps écoulé !' : 'Raté !';
+    $('verdict').style.color='var(--rouge)';
+    if (r.explanation){$('explain').textContent='💡 '+r.explanation;$('explain').hidden=false}
+    $('feedback').hidden=false;
+    $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
+    $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();
+  }
+}
+
+function offerJoker(offer, q) {
+  $('jokerSub').textContent = 'Éliminé à la question '+(idx+1)+' sur '+G.total+'.';
+  if (!offer.available) {
+    $('jokerNote').textContent = 'Plus de joker disponible.';
+    $('jokerPaid').hidden = true; $('jokerAd').hidden = true;
+  } else {
+    $('jokerNote').textContent = offer.remaining+' joker(s) restant(s) · Ton solde : '+offer.balance+' F';
+    $('jokerPaid').hidden = !offer.paid;
+    $('jokerPaid').textContent = '🃏 Continuer pour '+offer.price+' F';
+    $('jokerPaid').disabled = offer.balance < offer.price;
+    if (offer.balance < offer.price) $('jokerPaid').textContent += ' (solde insuffisant)';
+    $('jokerAd').hidden = !offer.ad;
+  }
+  $('jokerScreen').hidden = false;
+  $('jokerPaid').onclick = () => useJoker('paid', null);
+  $('jokerAd').onclick = () => playVideoAd();
+  $('giveUp').onclick = async () => {
+    const r = await api('/api/abandon/', {session_id: G.session_id});
+    $('jokerScreen').hidden = true; endScreen('eliminated', r.reached);
+  };
+}
+
+function playVideoAd() {
+  $('jokerScreen').hidden = true;
+  const ad = G.video_ads[Math.floor(Math.random()*G.video_ads.length)];
+  $('vidEmoji').textContent = ad.emoji;
+  $('vidBrand').textContent = ad.brand; $('vidBrand').style.color = ad.color;
+  $('vidTag').textContent = ad.tagline; $('vidPitch').textContent = ad.pitch;
+  $('videoScreen').hidden = false;
+  let s = 15;
+  $('vidCount').textContent = s+' s'; $('vidBar').style.width='0%';
+  const t = setInterval(async () => {
+    s--; $('vidBar').style.width=((15-s)/15*100)+'%'; $('vidCount').textContent=s+' s';
+    if (s <= 0) { clearInterval(t); $('videoScreen').hidden = true; useJoker('ad', ad.aid); }
+  }, 1000);
+}
+
+async function useJoker(kind, ad_id) {
+  const r = await api('/api/joker/', {session_id: G.session_id, kind, ad_id});
+  if (r.error) {
+    $('jokerNote').textContent = '⚠️ '+r.error;
+    $('jokerScreen').hidden = false; return;
+  }
+  jokersLeft = r.jokers_left; balance = r.balance;
+  $('jokersLeft').textContent = jokersLeft;
+  $('jokerScreen').hidden = true;
+  comboPop('JOKER ! 🃏');
+  if (r.done) { endScreen(r.status); return; }
+  next();
+}
+
+function next() {
+  idx++;
+  const due = idx % G.ad_every === 0 && Math.floor(idx/G.ad_every) > adUsed;
+  if (due) { adUsed++; showAd(); } else { show(); }
+}
+
+function showAd() {
+  const ad = G.ads[(adUsed-1) % G.ads.length];
+  $('adEmoji').textContent = ad.emoji;
+  $('adBrand').textContent = ad.brand; $('adBrand').style.color = ad.color;
+  $('adTag').textContent = ad.tagline; $('adPitch').textContent = ad.pitch;
+  $('adScreen').hidden = false;
+  let s = 5; $('adBtn').disabled = true; $('adBar').style.width='0%';
+  $('adBtn').textContent = 'Reprise dans 5 s…';
+  const t = setInterval(() => {
+    s--; $('adBar').style.width=((5-s)/5*100)+'%';
+    $('adBtn').textContent = s>0 ? 'Reprise dans '+s+' s…' : 'Continuer →';
+    if (s<=0){clearInterval(t);$('adBtn').disabled=false}
+  }, 1000);
+  $('adBtn').onclick = () => { $('adScreen').hidden = true; show(); };
+}
+
+function endScreen(status, reachedOverride) {
+  const reached = reachedOverride !== undefined ? reachedOverride : idx + (status==='finished'?1:0);
+  if (status === 'finished') {
+    $('endEmoji').textContent = '🏆';
+    $('endTitle').textContent = 'FINALISTE DU JOUR !';
+    $('endLabel').textContent = 'Tu as survécu aux '+G.total+' questions. Ta part de la cagnotte :';
+    $('endCard').style.borderTop = '6px solid var(--or)';
+    $('endBig').style.color = 'var(--or)';
+    $('endScreen').hidden = false;
+    countUp($('endBig'), G.pot, 1400);
+    $('endBig').textContent = '';
+    setTimeout(()=>{ $('endBig').textContent = 'jusqu\u2019à '+G.pot+' F'; }, 100);
+    $('endStats').textContent = 'Partagée entre les finalistes du jour · créditée sur ton portefeuille';
+    confetti(120); setTimeout(()=>confetti(80), 800);
+  } else {
+    $('endEmoji').textContent = '💪';
+    $('endTitle').textContent = G.mode==='training' ? 'Entraînement terminé' : 'Éliminé… pour aujourd\u2019hui !';
+    $('endLabel').textContent = 'Question atteinte';
+    $('endCard').style.borderTop = '6px solid var(--orange)';
+    $('endBig').style.color = 'var(--orange)';
+    $('endBig').textContent = 'Q'+reached+'/'+G.total;
+    $('endStats').textContent = 'Meilleure série : '+best+' 🔥 · Reviens demain pour ta revanche !';
+    $('endScreen').hidden = false;
+  }
+}
+
+show();
+</script>
+{% endblock %}

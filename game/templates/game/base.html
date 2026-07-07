@@ -1,0 +1,62 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}MaxQuiz{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ivoire:#FDF6EC; --encre:#221A12; --orange:#F2790F; --vert:#0B9A5C;
+  --rouge:#D6452C; --or:#E9A820; --sable:#EADFCE; --brun:#6E6152;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivoire);color:var(--encre);
+  font-family:'Bricolage Grotesque',system-ui,sans-serif;
+  max-width:430px;margin-inline:auto;min-height:100dvh;display:flex;flex-direction:column}
+.band{height:8px;background:repeating-linear-gradient(135deg,
+  var(--orange) 0 14px,var(--ivoire) 14px 18px,var(--vert) 18px 32px,var(--ivoire) 32px 36px);
+  background-size:200% 100%;animation:bandmove 12s linear infinite}
+@keyframes bandmove{to{background-position:-200% 0}}
+main{padding:20px 18px;flex:1;display:flex;flex-direction:column}
+h1{font-size:32px;font-weight:800;letter-spacing:-1px;margin:8px 0 2px}
+.small{font-size:13px;color:var(--brun)}
+.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 1px 4px rgba(34,26,18,.08)}
+.btn{display:block;width:100%;background:var(--orange);color:#fff;border:none;border-radius:14px;
+  padding:16px 18px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;
+  text-decoration:none;transition:transform .12s ease,filter .12s ease}
+.btn:active{transform:scale(.96)}
+.btn:hover{filter:brightness(1.06)}
+.btn.vert{background:var(--vert)} .btn.encre{background:var(--encre)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--sable);
+  font-size:16px;font-family:inherit;background:var(--ivoire)}
+.tabbar{display:flex;border-top:1px solid var(--sable);background:#fff;position:sticky;bottom:0}
+.tab{flex:1;padding:12px 0 14px;text-align:center;font-size:12px;font-weight:700;
+  color:#8B7D6B;text-decoration:none;transition:transform .15s}
+.tab.on{color:var(--orange)} .tab:active{transform:scale(.9)}
+.pop-in{animation:popin .45s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes popin{from{opacity:0;transform:scale(.85) translateY(14px)}to{opacity:1;transform:none}}
+.stagger>*{animation:popin .45s cubic-bezier(.34,1.56,.64,1) both}
+.stagger>*:nth-child(2){animation-delay:.07s}.stagger>*:nth-child(3){animation-delay:.14s}
+.stagger>*:nth-child(4){animation-delay:.21s}.stagger>*:nth-child(5){animation-delay:.28s}
+.stagger>*:nth-child(6){animation-delay:.35s}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+{% block css %}{% endblock %}
+</style>
+</head>
+<body>
+<div class="band"></div>
+<main>{% block content %}{% endblock %}</main>
+{% block tabs %}
+<nav class="tabbar">
+  <a class="tab {% if tab == 'home' %}on{% endif %}" href="/">🎮<br>Jouer</a>
+  <a class="tab {% if tab == 'board' %}on{% endif %}" href="/classement/">🏅<br>Classement</a>
+  <a class="tab {% if tab == 'wallet' %}on{% endif %}" href="/portefeuille/">💰<br>Portefeuille</a>
+</nav>
+{% endblock %}
+{% block js %}{% endblock %}
+</body>
+</html>

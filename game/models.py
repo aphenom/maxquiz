@@ -1,0 +1,169 @@
+from django.db import models
+from django.utils import timezone
+
+
+class GameConfig(models.Model):
+    """Configuration du jeu, modifiable dans l'admin (singleton)."""
+    daily_question_count = models.PositiveSmallIntegerField("Questions du défi", default=50)
+    # Répartition des difficultés en % (1 facile → 4 expert)
+    difficulty_mix = models.JSONField("Répartition difficulté (%)", default=dict)
+    # Chrono en secondes par niveau de difficulté
+    timer_by_difficulty = models.JSONField("Chrono par difficulté (s)", default=dict)
+    ad_every = models.PositiveSmallIntegerField("Pub toutes les N questions", default=3)
+    # Jokers
+    joker_paid_enabled = models.BooleanField("Joker payant activé", default=True)
+    joker_ad_enabled = models.BooleanField("Joker publicité activé", default=True)
+    joker_max_per_game = models.PositiveSmallIntegerField("Jokers max par partie", default=3)
+    joker_price_by_difficulty = models.JSONField("Prix joker par difficulté (F)", default=dict)
+    # Cagnotte du jour, partagée entre tous les finalistes
+    daily_pot = models.PositiveIntegerField("Cagnotte du jour (F CFA)", default=100000)
+    pot_sponsor = models.CharField("Sponsor de la cagnotte", max_length=80, blank=True, default="")
+
+    class Meta:
+        verbose_name = "Configuration du jeu"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        if not self.difficulty_mix:
+            self.difficulty_mix = {"1": 40, "2": 30, "3": 20, "4": 10}
+        if not self.timer_by_difficulty:
+            self.timer_by_difficulty = {"1": 15, "2": 12, "3": 9, "4": 6}
+        if not self.joker_price_by_difficulty:
+            self.joker_price_by_difficulty = {"1": 100, "2": 200, "3": 500, "4": 1000}
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Configuration MaxQuiz"
+
+
+class Player(models.Model):
+    phone = models.CharField("Téléphone", max_length=20, unique=True, null=True, blank=True)
+    pseudo = models.CharField("Pseudo", max_length=30)
+    city = models.CharField("Ville", max_length=50, blank=True, default="")
+    balance = models.PositiveIntegerField("Solde (F CFA)", default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Joueur"
+
+    def __str__(self):
+        return self.pseudo
+
+
+class Question(models.Model):
+    CATEGORIES = [
+        ("ci", "Côte d'Ivoire & Afrique"), ("cg", "Culture générale"),
+        ("ec", "École & savoirs"), ("sp", "Sport & actu"),
+    ]
+    DIFFICULTIES = [(1, "Facile"), (2, "Moyen"), (3, "Difficile"), (4, "Expert")]
+    category = models.CharField("Catégorie", max_length=2, choices=CATEGORIES)
+    difficulty = models.PositiveSmallIntegerField("Difficulté", choices=DIFFICULTIES, default=1)
+    text = models.TextField("Question")
+    option_a = models.CharField(max_length=200)
+    option_b = models.CharField(max_length=200)
+    option_c = models.CharField(max_length=200)
+    option_d = models.CharField(max_length=200)
+    correct = models.PositiveSmallIntegerField("Bonne réponse (0-3)")
+    explanation = models.TextField("Explication", blank=True, default="")
+    active = models.BooleanField("Active", default=True)
+
+    class Meta:
+        verbose_name = "Question"
+
+    def __str__(self):
+        return f"[{self.get_difficulty_display()}] {self.text[:50]}"
+
+    def options(self):
+        return [self.option_a, self.option_b, self.option_c, self.option_d]
+
+
+class AdCampaign(models.Model):
+    brand = models.CharField("Marque", max_length=60)
+    tagline = models.CharField("Slogan", max_length=120)
+    pitch = models.TextField("Message")
+    emoji = models.CharField("Emoji / logo", max_length=10, default="⭐")
+    color = models.CharField("Couleur (hex)", max_length=9, default="#F2790F")
+    url = models.URLField("Lien", blank=True, default="")
+    is_video = models.BooleanField("Format vidéo (joker)", default=False)
+    active = models.BooleanField("Active", default=True)
+    impressions = models.PositiveIntegerField(default=0)
+    clicks = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Campagne publicitaire"
+
+    def __str__(self):
+        return self.brand
+
+
+class GameSession(models.Model):
+    MODES = [("daily", "Défi du jour"), ("training", "Entraînement")]
+    STATUS = [("playing", "En cours"), ("eliminated", "Éliminé"), ("finished", "Finaliste 🏆")]
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="sessions")
+    mode = models.CharField(max_length=10, choices=MODES)
+    status = models.CharField(max_length=10, choices=STATUS, default="playing")
+    day = models.DateField(default=timezone.localdate)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    reached = models.PositiveSmallIntegerField("Question atteinte", default=0)
+    total_time_ms = models.PositiveIntegerField(default=0)
+    jokers_used = models.PositiveSmallIntegerField(default=0)
+    question_ids = models.JSONField(default=list)
+    pot_share = models.PositiveIntegerField("Part de cagnotte (F)", default=0)
+    paid_out = models.BooleanField("Cagnotte créditée", default=False)
+    flagged = models.BooleanField("Suspect (anti-triche)", default=False)
+
+    class Meta:
+        verbose_name = "Partie"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "day"], condition=models.Q(mode="daily"),
+                name="one_daily_per_player_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.player} · {self.day} · Q{self.reached} · {self.get_status_display()}"
+
+
+class Answer(models.Model):
+    session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="answers")
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice = models.SmallIntegerField()  # -1 = temps écoulé
+    time_ms = models.PositiveIntegerField()
+    is_correct = models.BooleanField()
+    saved_by_joker = models.BooleanField(default=False)
+
+
+class JokerUse(models.Model):
+    TYPES = [("paid", "Payant"), ("ad", "Publicité vidéo")]
+    session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="jokers")
+    question_index = models.PositiveSmallIntegerField()
+    kind = models.CharField(max_length=5, choices=TYPES)
+    price = models.PositiveIntegerField(default=0)
+    ad = models.ForeignKey(AdCampaign, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Joker utilisé"
+
+
+class Withdrawal(models.Model):
+    STATUS = [("pending", "À traiter"), ("paid", "Payé"), ("rejected", "Rejeté")]
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="withdrawals")
+    amount = models.PositiveIntegerField("Montant (F)")
+    momo_number = models.CharField("Numéro mobile money", max_length=20)
+    status = models.CharField(max_length=10, choices=STATUS, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "Demande de retrait"
+
+    def __str__(self):
+        return f"{self.player} · {self.amount} F · {self.get_status_display()}"

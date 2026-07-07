@@ -1,0 +1,29 @@
+{% extends "game/base.html" %}
+{% block content %}
+<h1>Portefeuille</h1>
+<div class="card pop-in" style="text-align:center;border-top:6px solid var(--vert);margin-top:10px">
+  <p class="small" style="margin:0">Solde de {{ player.pseudo }}</p>
+  <p style="font-size:42px;font-weight:800;margin:2px 0;color:var(--vert)">{{ player.balance }} F</p>
+  <p class="small" style="margin:0">Gains de cagnotte · utilisable pour les jokers</p>
+</div>
+<form method="post" style="margin-top:14px">
+  {% csrf_token %}
+  <div class="card">
+    <p style="margin:0 0 8px;font-weight:700;font-size:14px">Retirer par mobile money</p>
+    <input type="text" name="momo" placeholder="Numéro mobile money (07 XX XX XX XX)" required>
+    <input type="text" name="amount" inputmode="numeric" pattern="[0-9]+" placeholder="Montant (F CFA)"
+           required style="margin-top:8px">
+    <button class="btn vert" type="submit" style="margin-top:10px">Demander le retrait</button>
+    <p class="small" style="margin:8px 0 0">Traité manuellement par l'équipe MQ Technologies (démo).</p>
+  </div>
+</form>
+{% if withdrawals %}
+<p style="font-weight:700;margin:16px 0 8px">Historique</p>
+{% for w in withdrawals %}
+<div class="card" style="display:flex;justify-content:space-between;margin-bottom:8px;padding:10px 14px">
+  <span>{{ w.amount }} F → {{ w.momo_number }}</span>
+  <span class="small" style="font-weight:700">{{ w.get_status_display }}</span>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

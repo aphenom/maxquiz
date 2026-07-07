@@ -1,0 +1,59 @@
+{% extends "game/base.html" %}
+{% block content %}
+<div class="stagger">
+  <div style="display:flex;align-items:baseline;gap:8px">
+    <span style="font-size:28px;display:inline-block;animation:bounce 2.2s ease-in-out infinite">⚡</span>
+    <h1>MaxQuiz</h1>
+  </div>
+  <p class="small">{{ cfg.daily_question_count }} questions. Une seule erreur et c'est fini.
+  Tiens jusqu'au bout, partage la cagnotte du jour.</p>
+
+  <div class="card" style="margin-top:14px;text-align:center;border-top:6px solid var(--or)">
+    <p class="small" style="margin:0">💰 Cagnotte du jour{% if cfg.pot_sponsor %} — offerte par {{ cfg.pot_sponsor }}{% endif %}</p>
+    <p style="font-size:38px;font-weight:800;margin:2px 0;color:var(--or)">{{ cfg.daily_pot }} F</p>
+    <p class="small" style="margin:0">partagée entre tous les finalistes ·
+      {{ finishers }} finaliste{{ finishers|pluralize }} aujourd'hui</p>
+  </div>
+
+  {% if session %}
+  <div class="card" style="margin-top:12px;text-align:center">
+    {% if session.status == "finished" %}
+      <p style="margin:0;font-weight:800;color:var(--vert)">🏆 FINALISTE DU JOUR !</p>
+      <p class="small" style="margin:4px 0 0">Ta part de la cagnotte sera créditée sur ton portefeuille.</p>
+    {% elif session.status == "eliminated" %}
+      <p style="margin:0;font-weight:800;color:var(--rouge)">Éliminé à la question {{ session.reached|add:1 }} 😤</p>
+      <p class="small" style="margin:4px 0 0">Reviens demain pour ta revanche. En attendant, entraîne-toi !</p>
+    {% else %}
+      <p style="margin:0;font-weight:700">Partie en cours…</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/start/" style="margin-top:14px">
+    {% csrf_token %}
+    <div class="card">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Ton pseudo</label>
+      <input type="text" name="pseudo" maxlength="30" placeholder="Ex. : Djo d'Abidjan"
+             value="{{ player.pseudo|default:'' }}" {% if not player %}required{% endif %}>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+      <button class="btn" type="submit" name="mode" value="daily" {% if session %}disabled{% endif %}>
+        {% if session %}✅ Défi du jour déjà tenté{% else %}🔥 Lancer le défi du jour{% endif %}
+      </button>
+      <button class="btn vert" type="submit" name="mode" value="training">📚 Entraînement libre (sans élimination)</button>
+    </div>
+  </form>
+
+  <div class="card" style="margin-top:16px">
+    <p style="margin:0;font-weight:700;font-size:14px">⚔️ Les règles</p>
+    <p class="small" style="margin:6px 0 0">Les questions deviennent plus dures et le chrono raccourcit.
+    Une erreur = éliminé… sauf si tu utilises un joker ({{ cfg.joker_max_per_game }} max par partie) :
+    paie selon le niveau, ou regarde la pub vidéo d'un partenaire. Questions différentes pour chaque joueur.</p>
+  </div>
+</div>
+<p class="small" style="margin-top:auto;text-align:center;padding-top:20px">
+  MaxQuiz · MQ Technologies — démo, partenaires et montants fictifs.</p>
+{% endblock %}
+{% block css %}
+@keyframes bounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}}
+{% endblock %}
