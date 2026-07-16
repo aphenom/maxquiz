@@ -134,6 +134,11 @@
 {{ payload|json_script:"game-data" }}
 <script>
 const G = JSON.parse(document.getElementById('game-data').textContent);
+if (G.brand) {
+  document.documentElement.style.setProperty('--orange', G.brand.primary);
+  document.documentElement.style.setProperty('--vert', G.brand.accent);
+}
+const ANSWER_URL = G.mode === 'space' ? '/api/space-answer/' : '/api/answer/';
 const csrftoken = document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DIFF_NAMES = {1:'Facile',2:'Moyen',3:'Difficile',4:'EXPERT'};
@@ -146,6 +151,7 @@ const $ = id => document.getElementById(id);
 const CIRC = 2 * Math.PI * 23;
 $('ringArc').style.strokeDasharray = CIRC;
 $('jokersLeft').textContent = jokersLeft;
+if (!G.joker.max) $('jokerBadge').style.display = 'none';
 
 function api(url, body) {
   return fetch(url, { method: 'POST',
@@ -188,10 +194,15 @@ function drawRing() {
 
 function show() {
   const q = G.questions[idx];
-  $('progress').textContent = (G.mode==='daily'?'Défi':'Entraînement')+' · Q'+(idx+1)+'/'+G.total;
+  $('progress').textContent = (G.brand ? G.brand.emoji+' '+G.brand.name : (G.mode==='daily'?'Défi':'Entraînement'))+' · Q'+(idx+1)+'/'+G.total;
   $('progressFill').style.width = (idx/G.total*100)+'%';
-  $('diffBadge').textContent = DIFF_NAMES[q.difficulty];
-  $('diffBadge').style.background = DIFF_COLORS[q.difficulty];
+  if (q.kind === 'survey') {
+    $('diffBadge').textContent = 'SONDAGE';
+    $('diffBadge').style.background = 'var(--or)';
+  } else {
+    $('diffBadge').textContent = DIFF_NAMES[q.difficulty];
+    $('diffBadge').style.background = DIFF_COLORS[q.difficulty];
+  }
   $('cat').textContent = q.cat + ' · ' + (G.timers[String(q.difficulty)]||15) + ' s';
   $('qtext').textContent = q.text;
   $('qcard').classList.remove('pop-in'); void $('qcard').offsetWidth; $('qcard').classList.add('pop-in');
@@ -215,12 +226,23 @@ async function answer(choice, btn) {
   const q = G.questions[idx];
   let r;
   try {
-    r = await api('/api/answer/', {session_id:G.session_id, question_id:q.id, choice, time_ms});
+    r = await api(ANSWER_URL, {session_id:G.session_id, question_id:q.id, choice, time_ms});
   } catch(e) {
     $('verdict').textContent='Connexion perdue… réessaie.';
     $('verdict').style.color='var(--rouge)';
     $('feedback').hidden=false; $('nextBtn').textContent='Réessayer';
     $('nextBtn').onclick=()=>answer(choice,btn); return;
+  }
+  if (r.survey) {
+    document.querySelectorAll('.opt').forEach(b => {
+      if (+b.dataset.i === choice) b.classList.add('good');
+    });
+    $('verdict').textContent = 'Merci pour ton avis ! 🙏';
+    $('verdict').style.color = 'var(--vert)';
+    $('feedback').hidden = false;
+    $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
+    $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();
+    return;
   }
   document.querySelectorAll('.opt').forEach(b => {
     if (+b.dataset.i === r.correct_index) b.classList.add('good');
@@ -237,6 +259,14 @@ async function answer(choice, btn) {
     $('feedback').hidden=false;
     $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
     $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();
+  } else if (r.done && r.status === 'eliminated') {
+    streak = 0;
+    if (navigator.vibrate && !reduced) navigator.vibrate([80,50,80]);
+    $('verdict').textContent = 'Mauvaise réponse !';
+    $('verdict').style.color='var(--rouge)';
+    $('feedback').hidden = false;
+    $('nextBtn').textContent = 'Voir mon résultat';
+    $('nextBtn').onclick = () => endScreen('eliminated', r.reached);
   } else if (r.status === 'eliminated_pending') {
     streak = 0;
     if (navigator.vibrate && !reduced) navigator.vibrate([80,50,80]);
@@ -298,6 +328,7 @@ async function useJoker(kind, ad_id) {
   }
   jokersLeft = r.jokers_left; balance = r.balance;
   $('jokersLeft').textContent = jokersLeft;
+if (!G.joker.max) $('jokerBadge').style.display = 'none';
   $('jokerScreen').hidden = true;
   comboPop('JOKER ! 🃏');
   if (r.done) { endScreen(r.status); return; }
@@ -328,6 +359,18 @@ function showAd() {
 
 function endScreen(status, reachedOverride) {
   const reached = reachedOverride !== undefined ? reachedOverride : idx + (status==='finished'?1:0);
+  if (status === 'finished' && G.brand) {
+    $('endEmoji').textContent = '🎉';
+    $('endTitle').textContent = 'Bravo, quiz terminé !';
+    $('endLabel').textContent = G.brand.reward;
+    $('endCard').style.borderTop = '6px solid var(--or)';
+    $('endBig').style.color = 'var(--or)';
+    $('endBig').textContent = '🎁';
+    $('endStats').textContent = G.brand.name + ' contactera les gagnants. Reviens demain !';
+    $('endScreen').hidden = false;
+    confetti(100);
+    return;
+  }
   if (status === 'finished') {
     $('endEmoji').textContent = '🏆';
     $('endTitle').textContent = 'FINALISTE DU JOUR !';

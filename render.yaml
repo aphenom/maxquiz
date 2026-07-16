@@ -1,0 +1,15 @@
+# Déploiement en un clic sur Render (Blueprint)
+services:
+  - type: web
+    name: maxquiz
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn maxquiz.wsgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: WEB_CONCURRENCY
+        value: 2

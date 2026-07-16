@@ -1,0 +1,53 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} × MaxQuiz{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+<div class="stagger">
+  <div style="text-align:center;margin-top:8px">
+    <span style="font-size:52px;display:inline-block;animation:bounce 2.2s ease-in-out infinite">{{ space.emoji }}</span>
+    <h1 style="margin:6px 0 0">{{ space.name }}</h1>
+    <p class="small" style="margin:2px 0 0">Quiz interactif propulsé par MaxQuiz</p>
+  </div>
+
+  {% if space.welcome %}
+  <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
+  {% endif %}
+
+  <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
+    <p style="margin:0;font-weight:700">🎁 {{ space.reward_text }}</p>
+    <p class="small" style="margin:6px 0 0">Participation gratuite · {{ space.question_count }} questions
+    {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
+  </div>
+
+  {% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:10px">{{ error }}</p>{% endif %}
+
+  <form method="post" action="{% url 'space_start' space.slug %}" style="margin-top:14px">
+    {% csrf_token %}
+    <div class="card">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Ton pseudo</label>
+      <input type="text" name="pseudo" maxlength="30" required
+             value="{{ player.pseudo|default:'' }}" placeholder="Ex. : Aya de Cocody">
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Ton numéro (pour recevoir ton lot)</label>
+      <input type="text" name="phone" maxlength="20" placeholder="07 XX XX XX XX">
+      {% if space.access_code %}
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Code d'accès</label>
+      <input type="text" name="access_code" placeholder="Code fourni par {{ space.name }}">
+      {% endif %}
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--brun)">
+        <input type="checkbox" name="consent" style="margin-top:2px">
+        <span>J'accepte que {{ space.name }} utilise mes réponses et mon contact pour m'informer
+        de ses offres et services.</span>
+      </label>
+    </div>
+    <button class="btn" type="submit" style="margin-top:12px" {% if already %}disabled{% endif %}>
+      {% if already %}✅ Déjà participé aujourd'hui — reviens demain !{% else %}🚀 Commencer le quiz{% endif %}
+    </button>
+  </form>
+</div>
+<p class="small" style="margin-top:auto;text-align:center;padding-top:20px">
+  Propulsé par <strong>MaxQuiz</strong> · MQ Technologies</p>
+{% endblock %}
+{% block css %}
+@keyframes bounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}}
+{% endblock %}

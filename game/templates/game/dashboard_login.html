@@ -1,0 +1,13 @@
+{% extends "game/base.html" %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<div style="margin:auto;width:100%">
+  <h1 style="text-align:center">{{ space.emoji }} {{ space.name }}</h1>
+  <p class="small" style="text-align:center">Tableau de bord — accès réservé</p>
+  <form method="post" class="card" style="margin-top:14px">
+    {% csrf_token %}
+    <input type="password" name="code" placeholder="Code d'accès client" required>
+    <button class="btn" style="margin-top:10px">Accéder</button>
+  </form>
+</div>
+{% endblock %}

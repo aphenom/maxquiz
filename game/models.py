@@ -61,6 +61,11 @@ class Question(models.Model):
         ("ec", "École & savoirs"), ("sp", "Sport & actu"),
     ]
     DIFFICULTIES = [(1, "Facile"), (2, "Moyen"), (3, "Difficile"), (4, "Expert")]
+    KINDS = [("quiz", "Quiz (bonne réponse)"), ("survey", "Sondage (opinion)")]
+    space = models.ForeignKey("Space", null=True, blank=True, on_delete=models.CASCADE,
+                              related_name="questions",
+                              verbose_name="Espace (vide = jeu public MaxQuiz)")
+    kind = models.CharField("Type", max_length=6, choices=KINDS, default="quiz")
     category = models.CharField("Catégorie", max_length=2, choices=CATEGORIES)
     difficulty = models.PositiveSmallIntegerField("Difficulté", choices=DIFFICULTIES, default=1)
     text = models.TextField("Question")
@@ -102,9 +107,12 @@ class AdCampaign(models.Model):
 
 
 class GameSession(models.Model):
-    MODES = [("daily", "Défi du jour"), ("training", "Entraînement")]
+    MODES = [("daily", "Défi du jour"), ("training", "Entraînement"), ("space", "Espace entreprise")]
     STATUS = [("playing", "En cours"), ("eliminated", "Éliminé"), ("finished", "Finaliste 🏆")]
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="sessions")
+    space = models.ForeignKey("Space", null=True, blank=True, on_delete=models.CASCADE,
+                              related_name="sessions")
+    consent = models.BooleanField("Consentement marketing", default=False)
     mode = models.CharField(max_length=10, choices=MODES)
     status = models.CharField(max_length=10, choices=STATUS, default="playing")
     day = models.DateField(default=timezone.localdate)
@@ -167,3 +175,30 @@ class Withdrawal(models.Model):
 
     def __str__(self):
         return f"{self.player} · {self.amount} F · {self.get_status_display()}"
+
+
+class Space(models.Model):
+    """Espace cloisonné d'une entreprise cliente (multi-tenant)."""
+    name = models.CharField("Nom de l'entreprise", max_length=80)
+    slug = models.SlugField("Identifiant d'URL", unique=True)
+    emoji = models.CharField("Logo (emoji/texte)", max_length=10, default="🏢")
+    color_primary = models.CharField("Couleur principale", max_length=9, default="#F2790F")
+    color_accent = models.CharField("Couleur secondaire", max_length=9, default="#0B9A5C")
+    welcome = models.TextField("Message d'accueil", blank=True, default="")
+    reward_text = models.CharField("Récompense annoncée", max_length=200,
+                                   default="Des lots offerts par l'entreprise aux meilleurs participants")
+    access_code = models.CharField("Code d'accès joueurs (vide = lien public)",
+                                   max_length=20, blank=True, default="")
+    dashboard_code = models.CharField("Code d'accès au tableau de bord client", max_length=20)
+    question_count = models.PositiveSmallIntegerField("Questions par partie", default=10)
+    survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
+    elimination = models.BooleanField("Mode survie (élimination)", default=False)
+    one_per_day = models.BooleanField("Une participation par jour", default=True)
+    active = models.BooleanField("Actif", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Espace entreprise"
+
+    def __str__(self):
+        return self.name

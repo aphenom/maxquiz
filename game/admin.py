@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Sum
 from django.utils import timezone
 from .models import (GameConfig, Player, Question, AdCampaign,
-                     GameSession, Answer, JokerUse, Withdrawal)
+                     GameSession, Answer, JokerUse, Withdrawal, Space)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -27,10 +27,16 @@ class PlayerAdmin(admin.ModelAdmin):
     search_fields = ("pseudo", "phone")
 
 
+@admin.register(Space)
+class SpaceAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "active", "question_count", "elimination", "dashboard_code")
+    prepopulated_fields = {"slug": ("name",)}
+
+
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ("text", "category", "difficulty", "active")
-    list_filter = ("category", "difficulty", "active")
+    list_display = ("text", "space", "kind", "category", "difficulty", "active")
+    list_filter = ("space", "kind", "category", "difficulty", "active")
     list_editable = ("difficulty", "active")
     search_fields = ("text",)
 
