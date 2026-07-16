@@ -1,0 +1,940 @@
+From 9671ffc814af7ae37fb0a2b52c30672cd39bac70 Mon Sep 17 00:00:00 2001
+From: MaxQuiz Dev <dev@mqtech.ci>
+Date: Thu, 16 Jul 2026 03:00:19 +0000
+Subject: [PATCH] =?UTF-8?q?Espaces=20entreprises=20multi-tenant=20:=20bran?=
+ =?UTF-8?q?ding,=20sondages,=20consentement,=20tableau=20de=20bord=20clien?=
+ =?UTF-8?q?t,=20d=C3=A9mo=20Banque=20Horizon=20+=20config=20d=C3=A9ploieme?=
+ =?UTF-8?q?nt=20(Render/gunicorn/whitenoise)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ Procfile                                      |   1 +
+ README.md                                     |  25 +++
+ build.sh                                      |   7 +
+ game/admin.py                                 |  12 +-
+ game/management/commands/seed_demo_space.py   | 102 +++++++++
+ ...esession_consent_question_kind_and_more.py |  63 ++++++
+ game/models.py                                |  37 +++-
+ game/templates/game/dashboard.html            |  56 +++++
+ game/templates/game/dashboard_login.html      |  13 ++
+ game/templates/game/play.html                 |  51 ++++-
+ game/templates/game/space_home.html           |  53 +++++
+ game/urls.py                                  |   4 +
+ game/views.py                                 | 203 ++++++++++++++++++
+ maxquiz/settings.py                           |  23 +-
+ render.yaml                                   |  15 ++
+ requirements.txt                              |   9 +-
+ 16 files changed, 655 insertions(+), 19 deletions(-)
+ create mode 100644 Procfile
+ create mode 100755 build.sh
+ create mode 100644 game/management/commands/seed_demo_space.py
+ create mode 100644 game/migrations/0002_space_gamesession_consent_question_kind_and_more.py
+ create mode 100644 game/templates/game/dashboard.html
+ create mode 100644 game/templates/game/dashboard_login.html
+ create mode 100644 game/templates/game/space_home.html
+ create mode 100644 render.yaml
+
+diff --git a/Procfile b/Procfile
+new file mode 100644
+index 0000000..a5bf97f
+--- /dev/null
++++ b/Procfile
+@@ -0,0 +1 @@
++web: gunicorn maxquiz.wsgi:application
+diff --git a/README.md b/README.md
+index f0f268c..c4568be 100644
+--- a/README.md
++++ b/README.md
+@@ -54,6 +54,31 @@ déclarés et durée réelle serveur, verrou « une tentative par jour » en con
+ base, sessions signalées exclues du classement et de la cagnotte, révision humaine dans
+ l'admin avant tout paiement.
+ 
++
++## Espaces entreprises (multi-tenant, offre B2B)
++
++Chaque client dispose d'un espace cloisonné avec son branding (logo, couleurs, message),
++sa banque de questions **quiz** et **sondages** (intercalés toutes les N questions), son
++mode de jeu (engagement sans élimination, ou survie), son accès (lien public `/e/slug/`
++ou code d'accès), et sa récompense annoncée — les lots sont décidés et offerts par
++l'entreprise, la participation reste gratuite.
++
++À l'inscription dans un espace, le participant laisse pseudo + téléphone et coche (ou
++non) une case de **consentement marketing** explicite : l'entreprise est responsable de
++traitement de ses données first-party, MaxQuiz est le sous-traitant technique.
++
++**Tableau de bord client** sur `/e/slug/tableau-de-bord/` (protégé par code) :
++participations, taux de complétion, contacts consentants avec export CSV, taux de bonne
++réponse par question trié des produits **les moins maîtrisés** aux mieux connus (l'outil
++d'étude de marché), et répartition des réponses aux sondages.
++
++**Démo commerciale incluse** : `python manage.py seed_demo_space` crée l'espace
++« Banque Horizon » (`/e/banque-horizon/`, tableau de bord avec le code `HORIZON2026`)
++avec 10 questions produits bancaires, 2 sondages et 40 participations simulées pour un
++tableau de bord immédiatement parlant en rendez-vous.
++
++Le jeu public MaxQuiz (défi du jour, cagnotte, jokers) reste inchangé et coexiste.
++
+ ## ⚠️ Avertissement important
+ 
+ Le **joker payant** peut faire qualifier le jeu de jeu d'argent (paiement + gain en
+diff --git a/build.sh b/build.sh
+new file mode 100755
+index 0000000..99e1830
+--- /dev/null
++++ b/build.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env bash
++# Script de build pour Render
++set -o errexit
++pip install -r requirements.txt
++python manage.py collectstatic --noinput
++python manage.py migrate
++python manage.py seed
+diff --git a/game/admin.py b/game/admin.py
+index 236b05e..6cd205d 100644
+--- a/game/admin.py
++++ b/game/admin.py
+@@ -2,7 +2,7 @@ from django.contrib import admin
+ from django.db.models import Sum
+ from django.utils import timezone
+ from .models import (GameConfig, Player, Question, AdCampaign,
+-                     GameSession, Answer, JokerUse, Withdrawal)
++                     GameSession, Answer, JokerUse, Withdrawal, Space)
+ 
+ admin.site.site_header = "MaxQuiz — MQ Technologies"
+ admin.site.site_title = "MaxQuiz"
+@@ -27,10 +27,16 @@ class PlayerAdmin(admin.ModelAdmin):
+     search_fields = ("pseudo", "phone")
+ 
+ 
++@admin.register(Space)
++class SpaceAdmin(admin.ModelAdmin):
++    list_display = ("name", "slug", "active", "question_count", "elimination", "dashboard_code")
++    prepopulated_fields = {"slug": ("name",)}
++
++
+ @admin.register(Question)
+ class QuestionAdmin(admin.ModelAdmin):
+-    list_display = ("text", "category", "difficulty", "active")
+-    list_filter = ("category", "difficulty", "active")
++    list_display = ("text", "space", "kind", "category", "difficulty", "active")
++    list_filter = ("space", "kind", "category", "difficulty", "active")
+     list_editable = ("difficulty", "active")
+     search_fields = ("text",)
+ 
+diff --git a/game/management/commands/seed_demo_space.py b/game/management/commands/seed_demo_space.py
+new file mode 100644
+index 0000000..2197cc8
+--- /dev/null
++++ b/game/management/commands/seed_demo_space.py
+@@ -0,0 +1,102 @@
++"""Crée l'espace de démonstration « Banque Horizon » avec des questions produits,
++des sondages, et ~40 participations simulées pour un tableau de bord parlant.
++Usage : python manage.py seed_demo_space
++"""
++import random
++from datetime import timedelta
++from django.core.management.base import BaseCommand
++from django.utils import timezone
++from game.models import Space, Question, Player, GameSession, Answer
++
++QUIZ = [
++    (1, "Quel document est indispensable pour ouvrir un compte chez Banque Horizon ?",
++     ["Une pièce d'identité valide", "Un acte de naissance uniquement", "Rien du tout", "Un passeport étranger"], 0),
++    (1, "L'application mobile Horizon Pay permet de…",
++     ["Consulter son solde et faire des virements", "Uniquement voir la météo", "Jouer à des jeux", "Rien de tout ça"], 0),
++    (2, "Quel est le plafond journalier de retrait au GAB avec la carte Horizon Classic ?",
++     ["200 000 F", "500 000 F", "1 000 000 F", "Sans limite"], 1),
++    (2, "Le compte épargne Horizon Avenir est rémunéré à…",
++     ["1 % par an", "3,5 % par an", "10 % par an", "Il n'est pas rémunéré"], 1),
++    (2, "Combien coûte l'ouverture d'un compte Horizon Étudiant ?",
++     ["25 000 F", "10 000 F", "C'est gratuit", "50 000 F"], 2),
++    (3, "Le crédit immobilier Horizon Logis finance jusqu'à…",
++     ["50 % du bien", "70 % du bien", "90 % du bien", "100 % du bien"], 2),
++    (3, "Horizon Pay permet d'envoyer de l'argent vers les portefeuilles mobile money…",
++     ["Non, jamais", "Oui, vers tous les opérateurs", "Uniquement vers un seul opérateur", "Seulement à l'étranger"], 1),
++    (3, "Quel service Horizon protège vos achats en ligne ?",
++     ["La e-carte virtuelle", "Le carnet de chèques", "Le coffre-fort", "Aucun"], 0),
++    (4, "Le programme Horizon Diaspora s'adresse aux…",
++     ["Étudiants d'Abidjan", "Ivoiriens vivant à l'étranger", "Grandes entreprises", "Fonctionnaires uniquement"], 1),
++    (4, "Quelle assurance est incluse avec la carte Horizon Gold ?",
++     ["Assurance voyage et achats", "Assurance auto", "Assurance habitation", "Aucune assurance"], 0),
++]
++SURVEYS = [
++    ("Comment préférez-vous contacter votre banque ?",
++     ["WhatsApp", "Appel téléphonique", "En agence", "E-mail"]),
++    ("Quel nouveau service aimeriez-vous voir chez Banque Horizon ?",
++     ["Épargne automatique", "Crédit express en ligne", "Cashback sur la carte", "Conseiller dédié WhatsApp"]),
++]
++PSEUDOS = ["Aya K.","Koffi D.","Aminata T.","Jean-Marc B.","Fatou C.","Yao S.","Adjoua N.",
++           "Ibrahim F.","Mariam O.","Serge G.","Awa B.","Moussa K.","Clarisse Y.","Didier T.",
++           "Nadia S.","Franck A.","Salimata D.","Eric N.","Bintou C.","Olivier K."]
++
++
++class Command(BaseCommand):
++    help = "Espace démo Banque Horizon + données simulées pour le tableau de bord"
++
++    def handle(self, *args, **options):
++        space, created = Space.objects.get_or_create(slug="banque-horizon", defaults=dict(
++            name="Banque Horizon", emoji="🏦",
++            color_primary="#0A3D7A", color_accent="#E9A820",
++            welcome="Testez vos connaissances sur nos produits et services, "
++                    "donnez votre avis, et tentez de gagner des lots !",
++            reward_text="10 000 F de crédit téléphonique pour les 3 meilleurs de la semaine",
++            dashboard_code="HORIZON2026", question_count=10, survey_every=4,
++            elimination=False))
++        if created:
++            for diff, text, opts, correct in QUIZ:
++                Question.objects.create(space=space, kind="quiz", category="cg",
++                                        difficulty=diff, text=text, option_a=opts[0],
++                                        option_b=opts[1], option_c=opts[2], option_d=opts[3],
++                                        correct=correct)
++            for text, opts in SURVEYS:
++                Question.objects.create(space=space, kind="survey", category="cg",
++                                        difficulty=1, text=text, option_a=opts[0],
++                                        option_b=opts[1], option_c=opts[2], option_d=opts[3],
++                                        correct=0)
++        # Participations simulées (certains produits volontairement mal connus)
++        if not GameSession.objects.filter(space=space).exists():
++            questions = list(space.questions.all())
++            hard_ids = {q.id for q in questions if q.kind == "quiz" and q.difficulty >= 3}
++            for i, pseudo in enumerate(PSEUDOS * 2):
++                p, _ = Player.objects.get_or_create(
++                    phone=f"07{random.randint(10000000, 99999999)}",
++                    defaults=dict(pseudo=pseudo))
++                sess = GameSession.objects.create(
++                    player=p, mode="space", space=space,
++                    consent=random.random() < 0.7,
++                    question_ids=[q.id for q in questions],
++                    day=timezone.localdate() - timedelta(days=random.randint(0, 5)))
++                total_ms = 0
++                for q in questions:
++                    if q.kind == "survey":
++                        choice = random.choices([0, 1, 2, 3], weights=[35, 15, 20, 30])[0]
++                        ok = True
++                    else:
++                        # les produits « difficiles » sont mal maîtrisés : ~35 % de réussite
++                        p_ok = 0.35 if q.id in hard_ids else 0.8
++                        ok = random.random() < p_ok
++                        choice = q.correct if ok else (q.correct + random.randint(1, 3)) % 4
++                    ms = random.randint(2500, 9000)
++                    total_ms += ms
++                    Answer.objects.create(session=sess, question=q, choice=choice,
++                                          time_ms=ms, is_correct=ok)
++                sess.reached = len(questions)
++                sess.total_time_ms = total_ms
++                sess.status = "finished"
++                sess.finished_at = timezone.now()
++                sess.save()
++        self.stdout.write(self.style.SUCCESS(
++            f"Espace « {space.name} » prêt : /e/{space.slug}/ · "
++            f"tableau de bord : /e/{space.slug}/tableau-de-bord/ (code {space.dashboard_code}) · "
++            f"{GameSession.objects.filter(space=space).count()} participations simulées."))
+diff --git a/game/migrations/0002_space_gamesession_consent_question_kind_and_more.py b/game/migrations/0002_space_gamesession_consent_question_kind_and_more.py
+new file mode 100644
+index 0000000..ccb64a4
+--- /dev/null
++++ b/game/migrations/0002_space_gamesession_consent_question_kind_and_more.py
+@@ -0,0 +1,63 @@
++# Generated by Django 6.0.7 on 2026-07-14 16:29
++
++import django.db.models.deletion
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('game', '0001_initial'),
++    ]
++
++    operations = [
++        migrations.CreateModel(
++            name='Space',
++            fields=[
++                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
++                ('name', models.CharField(max_length=80, verbose_name="Nom de l'entreprise")),
++                ('slug', models.SlugField(unique=True, verbose_name="Identifiant d'URL")),
++                ('emoji', models.CharField(default='🏢', max_length=10, verbose_name='Logo (emoji/texte)')),
++                ('color_primary', models.CharField(default='#F2790F', max_length=9, verbose_name='Couleur principale')),
++                ('color_accent', models.CharField(default='#0B9A5C', max_length=9, verbose_name='Couleur secondaire')),
++                ('welcome', models.TextField(blank=True, default='', verbose_name="Message d'accueil")),
++                ('reward_text', models.CharField(default="Des lots offerts par l'entreprise aux meilleurs participants", max_length=200, verbose_name='Récompense annoncée')),
++                ('access_code', models.CharField(blank=True, default='', max_length=20, verbose_name="Code d'accès joueurs (vide = lien public)")),
++                ('dashboard_code', models.CharField(max_length=20, verbose_name="Code d'accès au tableau de bord client")),
++                ('question_count', models.PositiveSmallIntegerField(default=10, verbose_name='Questions par partie')),
++                ('survey_every', models.PositiveSmallIntegerField(default=4, verbose_name='Un sondage toutes les N questions (0 = jamais)')),
++                ('elimination', models.BooleanField(default=False, verbose_name='Mode survie (élimination)')),
++                ('one_per_day', models.BooleanField(default=True, verbose_name='Une participation par jour')),
++                ('active', models.BooleanField(default=True, verbose_name='Actif')),
++                ('created_at', models.DateTimeField(auto_now_add=True)),
++            ],
++            options={
++                'verbose_name': 'Espace entreprise',
++            },
++        ),
++        migrations.AddField(
++            model_name='gamesession',
++            name='consent',
++            field=models.BooleanField(default=False, verbose_name='Consentement marketing'),
++        ),
++        migrations.AddField(
++            model_name='question',
++            name='kind',
++            field=models.CharField(choices=[('quiz', 'Quiz (bonne réponse)'), ('survey', 'Sondage (opinion)')], default='quiz', max_length=6, verbose_name='Type'),
++        ),
++        migrations.AlterField(
++            model_name='gamesession',
++            name='mode',
++            field=models.CharField(choices=[('daily', 'Défi du jour'), ('training', 'Entraînement'), ('space', 'Espace entreprise')], max_length=10),
++        ),
++        migrations.AddField(
++            model_name='gamesession',
++            name='space',
++            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='sessions', to='game.space'),
++        ),
++        migrations.AddField(
++            model_name='question',
++            name='space',
++            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='questions', to='game.space', verbose_name='Espace (vide = jeu public MaxQuiz)'),
++        ),
++    ]
+diff --git a/game/models.py b/game/models.py
+index 4e8510f..b233808 100644
+--- a/game/models.py
++++ b/game/models.py
+@@ -61,6 +61,11 @@ class Question(models.Model):
+         ("ec", "École & savoirs"), ("sp", "Sport & actu"),
+     ]
+     DIFFICULTIES = [(1, "Facile"), (2, "Moyen"), (3, "Difficile"), (4, "Expert")]
++    KINDS = [("quiz", "Quiz (bonne réponse)"), ("survey", "Sondage (opinion)")]
++    space = models.ForeignKey("Space", null=True, blank=True, on_delete=models.CASCADE,
++                              related_name="questions",
++                              verbose_name="Espace (vide = jeu public MaxQuiz)")
++    kind = models.CharField("Type", max_length=6, choices=KINDS, default="quiz")
+     category = models.CharField("Catégorie", max_length=2, choices=CATEGORIES)
+     difficulty = models.PositiveSmallIntegerField("Difficulté", choices=DIFFICULTIES, default=1)
+     text = models.TextField("Question")
+@@ -102,9 +107,12 @@ class AdCampaign(models.Model):
+ 
+ 
+ class GameSession(models.Model):
+-    MODES = [("daily", "Défi du jour"), ("training", "Entraînement")]
++    MODES = [("daily", "Défi du jour"), ("training", "Entraînement"), ("space", "Espace entreprise")]
+     STATUS = [("playing", "En cours"), ("eliminated", "Éliminé"), ("finished", "Finaliste 🏆")]
+     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="sessions")
++    space = models.ForeignKey("Space", null=True, blank=True, on_delete=models.CASCADE,
++                              related_name="sessions")
++    consent = models.BooleanField("Consentement marketing", default=False)
+     mode = models.CharField(max_length=10, choices=MODES)
+     status = models.CharField(max_length=10, choices=STATUS, default="playing")
+     day = models.DateField(default=timezone.localdate)
+@@ -167,3 +175,30 @@ class Withdrawal(models.Model):
+ 
+     def __str__(self):
+         return f"{self.player} · {self.amount} F · {self.get_status_display()}"
++
++
++class Space(models.Model):
++    """Espace cloisonné d'une entreprise cliente (multi-tenant)."""
++    name = models.CharField("Nom de l'entreprise", max_length=80)
++    slug = models.SlugField("Identifiant d'URL", unique=True)
++    emoji = models.CharField("Logo (emoji/texte)", max_length=10, default="🏢")
++    color_primary = models.CharField("Couleur principale", max_length=9, default="#F2790F")
++    color_accent = models.CharField("Couleur secondaire", max_length=9, default="#0B9A5C")
++    welcome = models.TextField("Message d'accueil", blank=True, default="")
++    reward_text = models.CharField("Récompense annoncée", max_length=200,
++                                   default="Des lots offerts par l'entreprise aux meilleurs participants")
++    access_code = models.CharField("Code d'accès joueurs (vide = lien public)",
++                                   max_length=20, blank=True, default="")
++    dashboard_code = models.CharField("Code d'accès au tableau de bord client", max_length=20)
++    question_count = models.PositiveSmallIntegerField("Questions par partie", default=10)
++    survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
++    elimination = models.BooleanField("Mode survie (élimination)", default=False)
++    one_per_day = models.BooleanField("Une participation par jour", default=True)
++    active = models.BooleanField("Actif", default=True)
++    created_at = models.DateTimeField(auto_now_add=True)
++
++    class Meta:
++        verbose_name = "Espace entreprise"
++
++    def __str__(self):
++        return self.name
+diff --git a/game/templates/game/dashboard.html b/game/templates/game/dashboard.html
+new file mode 100644
+index 0000000..44114f1
+--- /dev/null
++++ b/game/templates/game/dashboard.html
+@@ -0,0 +1,56 @@
++{% extends "game/base.html" %}
++{% block title %}{{ space.name }} — Tableau de bord{% endblock %}
++{% block tabs %}{% endblock %}
++{% block content %}
++<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
++.bar{height:22px;border-radius:6px;background:var(--sable);overflow:hidden;position:relative}
++.bar>div{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.34,1.56,.64,1)}
++.kpi{flex:1;text-align:center;background:#fff;border-radius:14px;padding:12px 6px;box-shadow:0 1px 4px rgba(34,26,18,.08)}
++.kpi b{font-size:26px;display:block;color:var(--orange)}
++</style>
++<div style="display:flex;align-items:center;gap:10px">
++  <span style="font-size:30px">{{ space.emoji }}</span>
++  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
++  <p class="small" style="margin:0">Tableau de bord des campagnes · MaxQuiz</p></div>
++</div>
++
++<div style="display:flex;gap:8px;margin-top:14px" class="stagger">
++  <div class="kpi"><b>{{ total }}</b><span class="small">participations</span></div>
++  <div class="kpi"><b>{{ completion }}%</b><span class="small">complétion</span></div>
++  <div class="kpi"><b>{{ consented }}</b><span class="small">contacts consentants</span></div>
++</div>
++<a class="btn vert" href="?export=contacts" style="margin-top:10px">⬇️ Exporter les contacts (CSV)</a>
++
++<h2 style="font-size:18px;margin:22px 0 4px">📉 Connaissance de vos produits</h2>
++<p class="small" style="margin:0 0 10px">Taux de bonne réponse par question — les moins maîtrisées d'abord :
++c'est là que votre communication a le plus d'impact.</p>
++{% for s in quiz_stats %}
++<div class="card" style="margin-bottom:8px;padding:12px 14px">
++  <p style="margin:0 0 6px;font-size:14px;font-weight:600">{{ s.q.text }}</p>
++  <div class="bar"><div style="width:{{ s.pct }}%;background:{% if s.pct < 50 %}var(--rouge){% elif s.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
++  <p class="small" style="margin:4px 0 0">{{ s.pct }} % de bonnes réponses · {{ s.n }} réponse{{ s.n|pluralize }}</p>
++</div>
++{% empty %}<p class="small">Pas encore de données.</p>{% endfor %}
++
++<h2 style="font-size:18px;margin:22px 0 4px">🗳️ Résultats des sondages</h2>
++{% for s in survey_stats %}
++<div class="card" style="margin-bottom:8px;padding:12px 14px">
++  <p style="margin:0 0 8px;font-size:14px;font-weight:600">{{ s.q.text }} <span class="small">({{ s.n }} réponses)</span></p>
++  {% for d in s.dist %}
++  <p class="small" style="margin:6px 0 2px">{{ d.opt }} — {{ d.pct }} %</p>
++  <div class="bar" style="height:14px"><div style="width:{{ d.pct }}%;background:var(--orange)"></div></div>
++  {% endfor %}
++</div>
++{% empty %}<p class="small">Pas encore de sondage actif.</p>{% endfor %}
++
++<h2 style="font-size:18px;margin:22px 0 4px">🏅 Meilleurs participants</h2>
++{% for s in top %}
++<div class="card" style="display:flex;justify-content:space-between;margin-bottom:6px;padding:10px 14px">
++  <span style="font-weight:700">{{ forloop.counter }}. {{ s.player.pseudo }}
++    {% if s.consent %}<span class="small">📞 {{ s.player.phone|default:"—" }}</span>{% endif %}</span>
++  <span style="font-weight:800;color:var(--orange)">Q{{ s.reached }}</span>
++</div>
++{% endfor %}
++<p class="small" style="margin-top:16px;text-align:center">Seuls les contacts ayant coché la case de
++consentement apparaissent avec leur numéro et dans l'export CSV.</p>
++{% endblock %}
+diff --git a/game/templates/game/dashboard_login.html b/game/templates/game/dashboard_login.html
+new file mode 100644
+index 0000000..8dbeae7
+--- /dev/null
++++ b/game/templates/game/dashboard_login.html
+@@ -0,0 +1,13 @@
++{% extends "game/base.html" %}
++{% block tabs %}{% endblock %}
++{% block content %}
++<div style="margin:auto;width:100%">
++  <h1 style="text-align:center">{{ space.emoji }} {{ space.name }}</h1>
++  <p class="small" style="text-align:center">Tableau de bord — accès réservé</p>
++  <form method="post" class="card" style="margin-top:14px">
++    {% csrf_token %}
++    <input type="password" name="code" placeholder="Code d'accès client" required>
++    <button class="btn" style="margin-top:10px">Accéder</button>
++  </form>
++</div>
++{% endblock %}
+diff --git a/game/templates/game/play.html b/game/templates/game/play.html
+index 709a547..8b378cc 100644
+--- a/game/templates/game/play.html
++++ b/game/templates/game/play.html
+@@ -134,6 +134,11 @@
+ {{ payload|json_script:"game-data" }}
+ <script>
+ const G = JSON.parse(document.getElementById('game-data').textContent);
++if (G.brand) {
++  document.documentElement.style.setProperty('--orange', G.brand.primary);
++  document.documentElement.style.setProperty('--vert', G.brand.accent);
++}
++const ANSWER_URL = G.mode === 'space' ? '/api/space-answer/' : '/api/answer/';
+ const csrftoken = document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
+ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const DIFF_NAMES = {1:'Facile',2:'Moyen',3:'Difficile',4:'EXPERT'};
+@@ -146,6 +151,7 @@ const $ = id => document.getElementById(id);
+ const CIRC = 2 * Math.PI * 23;
+ $('ringArc').style.strokeDasharray = CIRC;
+ $('jokersLeft').textContent = jokersLeft;
++if (!G.joker.max) $('jokerBadge').style.display = 'none';
+ 
+ function api(url, body) {
+   return fetch(url, { method: 'POST',
+@@ -188,10 +194,15 @@ function drawRing() {
+ 
+ function show() {
+   const q = G.questions[idx];
+-  $('progress').textContent = (G.mode==='daily'?'Défi':'Entraînement')+' · Q'+(idx+1)+'/'+G.total;
++  $('progress').textContent = (G.brand ? G.brand.emoji+' '+G.brand.name : (G.mode==='daily'?'Défi':'Entraînement'))+' · Q'+(idx+1)+'/'+G.total;
+   $('progressFill').style.width = (idx/G.total*100)+'%';
+-  $('diffBadge').textContent = DIFF_NAMES[q.difficulty];
+-  $('diffBadge').style.background = DIFF_COLORS[q.difficulty];
++  if (q.kind === 'survey') {
++    $('diffBadge').textContent = 'SONDAGE';
++    $('diffBadge').style.background = 'var(--or)';
++  } else {
++    $('diffBadge').textContent = DIFF_NAMES[q.difficulty];
++    $('diffBadge').style.background = DIFF_COLORS[q.difficulty];
++  }
+   $('cat').textContent = q.cat + ' · ' + (G.timers[String(q.difficulty)]||15) + ' s';
+   $('qtext').textContent = q.text;
+   $('qcard').classList.remove('pop-in'); void $('qcard').offsetWidth; $('qcard').classList.add('pop-in');
+@@ -215,13 +226,24 @@ async function answer(choice, btn) {
+   const q = G.questions[idx];
+   let r;
+   try {
+-    r = await api('/api/answer/', {session_id:G.session_id, question_id:q.id, choice, time_ms});
++    r = await api(ANSWER_URL, {session_id:G.session_id, question_id:q.id, choice, time_ms});
+   } catch(e) {
+     $('verdict').textContent='Connexion perdue… réessaie.';
+     $('verdict').style.color='var(--rouge)';
+     $('feedback').hidden=false; $('nextBtn').textContent='Réessayer';
+     $('nextBtn').onclick=()=>answer(choice,btn); return;
+   }
++  if (r.survey) {
++    document.querySelectorAll('.opt').forEach(b => {
++      if (+b.dataset.i === choice) b.classList.add('good');
++    });
++    $('verdict').textContent = 'Merci pour ton avis ! 🙏';
++    $('verdict').style.color = 'var(--vert)';
++    $('feedback').hidden = false;
++    $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
++    $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();
++    return;
++  }
+   document.querySelectorAll('.opt').forEach(b => {
+     if (+b.dataset.i === r.correct_index) b.classList.add('good');
+     else if (+b.dataset.i === choice && !r.correct) b.classList.add('bad');
+@@ -237,6 +259,14 @@ async function answer(choice, btn) {
+     $('feedback').hidden=false;
+     $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
+     $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();
++  } else if (r.done && r.status === 'eliminated') {
++    streak = 0;
++    if (navigator.vibrate && !reduced) navigator.vibrate([80,50,80]);
++    $('verdict').textContent = 'Mauvaise réponse !';
++    $('verdict').style.color='var(--rouge)';
++    $('feedback').hidden = false;
++    $('nextBtn').textContent = 'Voir mon résultat';
++    $('nextBtn').onclick = () => endScreen('eliminated', r.reached);
+   } else if (r.status === 'eliminated_pending') {
+     streak = 0;
+     if (navigator.vibrate && !reduced) navigator.vibrate([80,50,80]);
+@@ -298,6 +328,7 @@ async function useJoker(kind, ad_id) {
+   }
+   jokersLeft = r.jokers_left; balance = r.balance;
+   $('jokersLeft').textContent = jokersLeft;
++if (!G.joker.max) $('jokerBadge').style.display = 'none';
+   $('jokerScreen').hidden = true;
+   comboPop('JOKER ! 🃏');
+   if (r.done) { endScreen(r.status); return; }
+@@ -328,6 +359,18 @@ function showAd() {
+ 
+ function endScreen(status, reachedOverride) {
+   const reached = reachedOverride !== undefined ? reachedOverride : idx + (status==='finished'?1:0);
++  if (status === 'finished' && G.brand) {
++    $('endEmoji').textContent = '🎉';
++    $('endTitle').textContent = 'Bravo, quiz terminé !';
++    $('endLabel').textContent = G.brand.reward;
++    $('endCard').style.borderTop = '6px solid var(--or)';
++    $('endBig').style.color = 'var(--or)';
++    $('endBig').textContent = '🎁';
++    $('endStats').textContent = G.brand.name + ' contactera les gagnants. Reviens demain !';
++    $('endScreen').hidden = false;
++    confetti(100);
++    return;
++  }
+   if (status === 'finished') {
+     $('endEmoji').textContent = '🏆';
+     $('endTitle').textContent = 'FINALISTE DU JOUR !';
+diff --git a/game/templates/game/space_home.html b/game/templates/game/space_home.html
+new file mode 100644
+index 0000000..5168997
+--- /dev/null
++++ b/game/templates/game/space_home.html
+@@ -0,0 +1,53 @@
++{% extends "game/base.html" %}
++{% block title %}{{ space.name }} × MaxQuiz{% endblock %}
++{% block tabs %}{% endblock %}
++{% block content %}
++<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
++<div class="stagger">
++  <div style="text-align:center;margin-top:8px">
++    <span style="font-size:52px;display:inline-block;animation:bounce 2.2s ease-in-out infinite">{{ space.emoji }}</span>
++    <h1 style="margin:6px 0 0">{{ space.name }}</h1>
++    <p class="small" style="margin:2px 0 0">Quiz interactif propulsé par MaxQuiz</p>
++  </div>
++
++  {% if space.welcome %}
++  <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
++  {% endif %}
++
++  <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
++    <p style="margin:0;font-weight:700">🎁 {{ space.reward_text }}</p>
++    <p class="small" style="margin:6px 0 0">Participation gratuite · {{ space.question_count }} questions
++    {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
++  </div>
++
++  {% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:10px">{{ error }}</p>{% endif %}
++
++  <form method="post" action="{% url 'space_start' space.slug %}" style="margin-top:14px">
++    {% csrf_token %}
++    <div class="card">
++      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Ton pseudo</label>
++      <input type="text" name="pseudo" maxlength="30" required
++             value="{{ player.pseudo|default:'' }}" placeholder="Ex. : Aya de Cocody">
++      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Ton numéro (pour recevoir ton lot)</label>
++      <input type="text" name="phone" maxlength="20" placeholder="07 XX XX XX XX">
++      {% if space.access_code %}
++      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Code d'accès</label>
++      <input type="text" name="access_code" placeholder="Code fourni par {{ space.name }}">
++      {% endif %}
++      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--brun)">
++        <input type="checkbox" name="consent" style="margin-top:2px">
++        <span>J'accepte que {{ space.name }} utilise mes réponses et mon contact pour m'informer
++        de ses offres et services.</span>
++      </label>
++    </div>
++    <button class="btn" type="submit" style="margin-top:12px" {% if already %}disabled{% endif %}>
++      {% if already %}✅ Déjà participé aujourd'hui — reviens demain !{% else %}🚀 Commencer le quiz{% endif %}
++    </button>
++  </form>
++</div>
++<p class="small" style="margin-top:auto;text-align:center;padding-top:20px">
++  Propulsé par <strong>MaxQuiz</strong> · MQ Technologies</p>
++{% endblock %}
++{% block css %}
++@keyframes bounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}}
++{% endblock %}
+diff --git a/game/urls.py b/game/urls.py
+index 0cc17b2..6162d2a 100644
+--- a/game/urls.py
++++ b/game/urls.py
+@@ -9,4 +9,8 @@ urlpatterns = [
+     path("api/abandon/", views.give_up, name="give_up"),
+     path("classement/", views.leaderboard, name="leaderboard"),
+     path("portefeuille/", views.wallet, name="wallet"),
++    path("api/space-answer/", views.space_answer, name="space_answer"),
++    path("e/<slug:slug>/", views.space_home, name="space_home"),
++    path("e/<slug:slug>/jouer/", views.space_start, name="space_start"),
++    path("e/<slug:slug>/tableau-de-bord/", views.space_dashboard, name="space_dashboard"),
+ ]
+diff --git a/game/views.py b/game/views.py
+index b7a7b6f..25825c4 100644
+--- a/game/views.py
++++ b/game/views.py
+@@ -319,3 +319,206 @@ def wallet(request):
+     return render(request, "game/wallet.html", {
+         "player": player, "withdrawals": withdrawals, "tab": "wallet",
+     })
++
++
++# ============================================================
++# ESPACES ENTREPRISES (multi-tenant)
++# ============================================================
++import csv
++from django.http import HttpResponse
++from django.db.models import Count, Q
++from .models import Space
++
++
++def _space(slug):
++    return get_object_or_404(Space, slug=slug, active=True)
++
++
++def space_home(request, slug):
++    space = _space(slug)
++    player = _player(request)
++    today = timezone.localdate()
++    already = bool(player and space.one_per_day and GameSession.objects.filter(
++        player=player, space=space, day=today).exists())
++    return render(request, "game/space_home.html", {
++        "space": space, "player": player, "already": already,
++    })
++
++
++@require_POST
++def space_start(request, slug):
++    space = _space(slug)
++    if space.access_code and request.POST.get("access_code", "").strip() != space.access_code:
++        return render(request, "game/space_home.html", {
++            "space": space, "player": _player(request),
++            "error": "Code d'accès incorrect.", "already": False,
++        })
++    pseudo = request.POST.get("pseudo", "").strip()[:30]
++    phone = request.POST.get("phone", "").strip()[:20]
++    consent = request.POST.get("consent") == "on"
++
++    player = _player(request)
++    if not player:
++        if not pseudo:
++            return redirect("space_home", slug=slug)
++        existing = Player.objects.filter(phone=phone).first() if phone else None
++        player = existing or Player.objects.create(pseudo=pseudo, phone=phone or None)
++        request.session["player_id"] = player.id
++    if phone and not player.phone:
++        player.phone = phone
++        player.save(update_fields=["phone"])
++
++    today = timezone.localdate()
++    if space.one_per_day and GameSession.objects.filter(
++            player=player, space=space, day=today).exists():
++        return redirect("space_home", slug=slug)
++
++    # Deck : quiz de l'espace (difficulté croissante) + sondages intercalés
++    quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz"))
++    surveys = list(Question.objects.filter(space=space, active=True, kind="survey"))
++    random.shuffle(quiz_pool)
++    random.shuffle(surveys)
++    quiz_pool.sort(key=lambda q: q.difficulty)
++    quiz_pool = quiz_pool[:space.question_count]
++    deck = []
++    for i, q in enumerate(quiz_pool, 1):
++        deck.append(q)
++        if space.survey_every and i % space.survey_every == 0 and surveys:
++            deck.append(surveys.pop())
++    if not deck:
++        return redirect("space_home", slug=slug)
++
++    cfg = GameConfig.get()
++    session = GameSession.objects.create(
++        player=player, mode="space", space=space, consent=consent,
++        question_ids=[q.id for q in deck])
++
++    payload = {
++        "session_id": session.id,
++        "mode": "space",
++        "elimination": space.elimination,
++        "total": len(deck),
++        "ad_every": 0,  # pas de pub tierce dans l'espace d'une marque
++        "timers": cfg.timer_by_difficulty,
++        "joker": {"paid": False, "ad": False, "max": 0, "prices": {}},
++        "balance": 0, "pot": 0, "pot_sponsor": "",
++        "brand": {"name": space.name, "emoji": space.emoji,
++                  "primary": space.color_primary, "accent": space.color_accent,
++                  "reward": space.reward_text},
++        "questions": [
++            {"id": q.id, "cat": q.get_category_display(), "difficulty": q.difficulty,
++             "kind": q.kind, "text": q.text, "options": q.options(), "explanation": ""}
++            for q in deck
++        ],
++        "ads": [], "video_ads": [],
++    }
++    return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
++
++
++@require_POST
++def space_answer(request):
++    """Réponse dans un espace : sondage toujours accepté, quiz noté,
++    élimination seulement si l'espace l'active."""
++    player = _player(request)
++    data = json.loads(request.body)
++    session = get_object_or_404(GameSession, id=data["session_id"], player=player,
++                                mode="space", status="playing")
++    question = get_object_or_404(Question, id=data["question_id"])
++    if question.id not in session.question_ids:
++        return JsonResponse({"error": "question hors partie"}, status=400)
++    if session.answers.filter(question=question).exists():
++        return JsonResponse({"error": "déjà répondu"}, status=400)
++
++    cfg = GameConfig.get()
++    idx = session.question_ids.index(question.id)
++    timer_s = int(cfg.timer_by_difficulty.get(str(question.difficulty), 15))
++    choice = int(data.get("choice", -1))
++    time_ms = min(int(data.get("time_ms", timer_s * 1000)), timer_s * 1000)
++
++    if question.kind == "survey":
++        is_correct = choice >= 0  # toute opinion exprimée est « valide »
++    else:
++        is_correct = (choice == question.correct)
++        if is_correct and time_ms < MIN_HUMAN_MS:
++            session.flagged = True
++
++    Answer.objects.create(session=session, question=question, choice=choice,
++                          time_ms=time_ms, is_correct=is_correct)
++    session.total_time_ms += time_ms
++
++    eliminated = (question.kind == "quiz" and not is_correct
++                  and session.space.elimination)
++    if not eliminated:
++        session.reached = idx + 1
++    done = eliminated or session.reached >= len(session.question_ids)
++    if done:
++        session.status = "eliminated" if eliminated else "finished"
++        session.finished_at = timezone.now()
++    session.save()
++
++    return JsonResponse({
++        "correct": is_correct, "survey": question.kind == "survey",
++        "correct_index": question.correct if question.kind == "quiz" else choice,
++        "explanation": "", "reached": session.reached,
++        "status": session.status if done else "playing", "done": done,
++    })
++
++
++def space_dashboard(request, slug):
++    """Tableau de bord client, protégé par un code simple (MVP)."""
++    space = _space(slug)
++    code = request.GET.get("code") or request.session.get(f"dash_{space.id}")
++    if code != space.dashboard_code:
++        if request.method == "POST" and request.POST.get("code") == space.dashboard_code:
++            request.session[f"dash_{space.id}"] = space.dashboard_code
++            return redirect("space_dashboard", slug=slug)
++        return render(request, "game/dashboard_login.html", {"space": space})
++    request.session[f"dash_{space.id}"] = space.dashboard_code
++
++    sessions = GameSession.objects.filter(space=space, flagged=False).exclude(status="playing")
++    total = sessions.count()
++    finished = sessions.filter(status="finished").count()
++    consented = sessions.filter(consent=True).values("player").distinct().count()
++
++    # Taux de réussite par question quiz → produits mal maîtrisés en premier
++    quiz_stats = []
++    for q in Question.objects.filter(space=space, kind="quiz", active=True):
++        agg = Answer.objects.filter(question=q, session__in=sessions).aggregate(
++            n=Count("id"), ok=Count("id", filter=Q(is_correct=True)))
++        if agg["n"]:
++            quiz_stats.append({"q": q, "n": agg["n"],
++                               "pct": round(100 * agg["ok"] / agg["n"])})
++    quiz_stats.sort(key=lambda x: x["pct"])
++
++    # Répartition des réponses par sondage
++    survey_stats = []
++    for q in Question.objects.filter(space=space, kind="survey", active=True):
++        answers = Answer.objects.filter(question=q, session__in=sessions, choice__gte=0)
++        n = answers.count()
++        if n:
++            dist = []
++            for i, opt in enumerate(q.options()):
++                c = answers.filter(choice=i).count()
++                dist.append({"opt": opt, "n": c, "pct": round(100 * c / n)})
++            survey_stats.append({"q": q, "n": n, "dist": dist})
++
++    # Export CSV des contacts consentants
++    if request.GET.get("export") == "contacts":
++        resp = HttpResponse(content_type="text/csv")
++        resp["Content-Disposition"] = f'attachment; filename="contacts-{space.slug}.csv"'
++        w = csv.writer(resp)
++        w.writerow(["pseudo", "telephone", "meilleur_score", "parties"])
++        for p in Player.objects.filter(sessions__space=space, sessions__consent=True).distinct():
++            ps = sessions.filter(player=p)
++            best = max((s.reached for s in ps), default=0)
++            w.writerow([p.pseudo, p.phone or "", best, ps.count()])
++        return resp
++
++    top = sorted(sessions.select_related("player"),
++                 key=lambda s: (-s.reached, s.total_time_ms))[:10]
++    return render(request, "game/dashboard.html", {
++        "space": space, "total": total, "finished": finished,
++        "completion": round(100 * finished / total) if total else 0,
++        "consented": consented, "quiz_stats": quiz_stats,
++        "survey_stats": survey_stats, "top": top,
++    })
+diff --git a/maxquiz/settings.py b/maxquiz/settings.py
+index d79647f..d7bc5a4 100644
+--- a/maxquiz/settings.py
++++ b/maxquiz/settings.py
+@@ -10,7 +10,9 @@ For the full list of settings and their values, see
+ https://docs.djangoproject.com/en/6.0/ref/settings/
+ """
+ 
++import os
+ from pathlib import Path
++import dj_database_url
+ 
+ # Build paths inside the project like this: BASE_DIR / 'subdir'.
+ BASE_DIR = Path(__file__).resolve().parent.parent
+@@ -20,12 +22,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
+ # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+ 
+ # SECURITY WARNING: keep the secret key used in production secret!
+-SECRET_KEY = 'django-insecure-5fb1%xc@(+zlpe%s_bpj4y5i$0$y9(1%ry$zgtsiv_nf@t_&uh'
++SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-insecure-key-change-me')
+ 
+ # SECURITY WARNING: don't run with debug turned on in production!
+-DEBUG = True
++DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+ 
+-ALLOWED_HOSTS = []
++ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
++CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
+ 
+ 
+ # Application definition
+@@ -42,6 +45,7 @@ INSTALLED_APPS = [
+ 
+ MIDDLEWARE = [
+     'django.middleware.security.SecurityMiddleware',
++    'whitenoise.middleware.WhiteNoiseMiddleware',
+     'django.contrib.sessions.middleware.SessionMiddleware',
+     'django.middleware.common.CommonMiddleware',
+     'django.middleware.csrf.CsrfViewMiddleware',
+@@ -74,10 +78,10 @@ WSGI_APPLICATION = 'maxquiz.wsgi.application'
+ # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+ 
+ DATABASES = {
+-    'default': {
+-        'ENGINE': 'django.db.backends.sqlite3',
+-        'NAME': BASE_DIR / 'db.sqlite3',
+-    }
++    'default': dj_database_url.config(
++        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
++        conn_max_age=600,
++    )
+ }
+ 
+ 
+@@ -116,3 +120,8 @@ USE_TZ = True
+ # https://docs.djangoproject.com/en/6.0/howto/static-files/
+ 
+ STATIC_URL = 'static/'
++STATIC_ROOT = BASE_DIR / 'staticfiles'
++STORAGES = {
++    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
++    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
++}
+diff --git a/render.yaml b/render.yaml
+new file mode 100644
+index 0000000..04821a2
+--- /dev/null
++++ b/render.yaml
+@@ -0,0 +1,15 @@
++# Déploiement en un clic sur Render (Blueprint)
++services:
++  - type: web
++    name: maxquiz
++    runtime: python
++    plan: free
++    buildCommand: "./build.sh"
++    startCommand: "gunicorn maxquiz.wsgi:application"
++    envVars:
++      - key: SECRET_KEY
++        generateValue: true
++      - key: DEBUG
++        value: "False"
++      - key: WEB_CONCURRENCY
++        value: 2
+diff --git a/requirements.txt b/requirements.txt
+index db3fd4c..f57d956 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,4 +1,5 @@
+-asgiref==3.11.1
+-Django==6.0.7
+-sqlparse==0.5.5
+-tzdata==2026.2
++Django>=6.0,<6.1
++gunicorn>=21.0
++whitenoise>=6.6
++dj-database-url>=2.1
++psycopg2-binary>=2.9; sys_platform != "win32"
+-- 
+2.43.0
+
