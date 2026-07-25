@@ -327,11 +327,67 @@ def wallet(request):
 import csv
 from django.http import HttpResponse
 from django.db.models import Count, Q
-from .models import Space
+from django.utils.text import slugify
+from .models import Space, Category, SubCategory, Quiz
 
 
 def _space(slug):
     return get_object_or_404(Space, slug=slug, active=True)
+
+
+def _post_int(post, key):
+    """Convertit un champ POST en entier pour filter(id=...), sans planter sur
+    une valeur vide (ex. option « Aucune » d'un select) ou absente."""
+    val = post.get(key)
+    return int(val) if val and val.isdigit() else None
+
+
+def _unique_slug(scoped_qs, name):
+    """Slug unique dans le queryset déjà filtré au bon parent (espace ou catégorie)."""
+    base = slugify(name)[:56] or "item"
+    slug, i = base, 2
+    while scoped_qs.filter(slug=slug).exists():
+        slug = f"{base}-{i}"[:60]
+        i += 1
+    return slug
+
+
+def _dashboard_gate(request, space):
+    """Vérifie le code d'accès au tableau de bord client. Renvoie une réponse à
+    retourner directement si l'accès n'est pas encore accordé, sinon None."""
+    code = request.GET.get("code") or request.session.get(f"dash_{space.id}")
+    if code != space.dashboard_code:
+        if request.method == "POST" and request.POST.get("code") == space.dashboard_code:
+            request.session[f"dash_{space.id}"] = space.dashboard_code
+            return redirect(request.path)
+        return render(request, "game/dashboard_login.html", {"space": space})
+    request.session[f"dash_{space.id}"] = space.dashboard_code
+    return None
+
+
+def _quiz_dashboard_stats(space, sessions):
+    """Taux de bonne réponse par question quiz (pires en premier) et répartition
+    des sondages, pour un ensemble de sessions donné."""
+    quiz_stats = []
+    for q in Question.objects.filter(space=space, kind="quiz", active=True):
+        agg = Answer.objects.filter(question=q, session__in=sessions).aggregate(
+            n=Count("id"), ok=Count("id", filter=Q(is_correct=True)))
+        if agg["n"]:
+            quiz_stats.append({"q": q, "n": agg["n"],
+                               "pct": round(100 * agg["ok"] / agg["n"])})
+    quiz_stats.sort(key=lambda x: x["pct"])
+
+    survey_stats = []
+    for q in Question.objects.filter(space=space, kind="survey", active=True):
+        answers = Answer.objects.filter(question=q, session__in=sessions, choice__gte=0)
+        n = answers.count()
+        if n:
+            dist = []
+            for i, opt in enumerate(q.options()):
+                c = answers.filter(choice=i).count()
+                dist.append({"opt": opt, "n": c, "pct": round(100 * c / n)})
+            survey_stats.append({"q": q, "n": n, "dist": dist})
+    return quiz_stats, survey_stats
 
 
 def space_home(request, slug):
@@ -340,8 +396,24 @@ def space_home(request, slug):
     today = timezone.localdate()
     already = bool(player and space.one_per_day and GameSession.objects.filter(
         player=player, space=space, day=today).exists())
+
+    # Arbre de découverte des quiz (facultatif) : catégorie > sous-catégorie > quiz
+    categories, orphan_quizzes = [], []
+    if space.quizzes.filter(active=True).exists():
+        for cat in space.categories.prefetch_related("subcategories"):
+            subs = []
+            for sub in cat.subcategories.all():
+                qs = list(sub.quizzes.filter(active=True))
+                if qs:
+                    subs.append({"sub": sub, "quizzes": qs})
+            direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True))
+            if subs or direct:
+                categories.append({"category": cat, "subs": subs, "direct": direct})
+        orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
+
     return render(request, "game/space_home.html", {
         "space": space, "player": player, "already": already,
+        "categories": categories, "orphan_quizzes": orphan_quizzes,
     })
 
 
@@ -415,6 +487,98 @@ def space_start(request, slug):
     return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
 
 
+def quiz_home(request, slug, quiz_slug):
+    """Page d'accueil d'un quiz précis (lien direct partagé par l'entité)."""
+    space = _space(slug)
+    quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug, active=True)
+    player = _player(request)
+    today = timezone.localdate()
+    already = bool(player and space.one_per_day and GameSession.objects.filter(
+        player=player, quiz=quiz, day=today).exists())
+    return render(request, "game/quiz_home.html", {
+        "space": space, "quiz": quiz, "player": player, "already": already,
+    })
+
+
+@require_POST
+def quiz_start(request, slug, quiz_slug):
+    space = _space(slug)
+    quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug, active=True)
+    if space.access_code and request.POST.get("access_code", "").strip() != space.access_code:
+        return render(request, "game/quiz_home.html", {
+            "space": space, "quiz": quiz, "player": _player(request),
+            "error": "Code d'accès incorrect.", "already": False,
+        })
+    pseudo = request.POST.get("pseudo", "").strip()[:30]
+    phone = request.POST.get("phone", "").strip()[:20]
+    consent = request.POST.get("consent") == "on"
+
+    player = _player(request)
+    if not player:
+        if not pseudo:
+            return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
+        existing = Player.objects.filter(phone=phone).first() if phone else None
+        player = existing or Player.objects.create(pseudo=pseudo, phone=phone or None)
+        request.session["player_id"] = player.id
+    if phone and not player.phone:
+        player.phone = phone
+        player.save(update_fields=["phone"])
+
+    today = timezone.localdate()
+    if space.one_per_day and GameSession.objects.filter(
+            player=player, quiz=quiz, day=today).exists():
+        return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
+
+    # Deck scopé à la sous-catégorie (ou catégorie) du quiz + sondages de l'espace
+    if quiz.sub_category_id:
+        quiz_pool = list(Question.objects.filter(
+            space=space, active=True, kind="quiz", sub_category=quiz.sub_category))
+    elif quiz.category_id:
+        quiz_pool = list(Question.objects.filter(
+            space=space, active=True, kind="quiz", sub_category__category=quiz.category))
+    else:
+        quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz"))
+    surveys = list(Question.objects.filter(space=space, active=True, kind="survey"))
+    random.shuffle(quiz_pool)
+    random.shuffle(surveys)
+    quiz_pool.sort(key=lambda q: q.difficulty)
+    quiz_pool = quiz_pool[:quiz.question_count]
+    deck = []
+    for i, q in enumerate(quiz_pool, 1):
+        deck.append(q)
+        if quiz.survey_every and i % quiz.survey_every == 0 and surveys:
+            deck.append(surveys.pop())
+    if not deck:
+        return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
+
+    cfg = GameConfig.get()
+    session = GameSession.objects.create(
+        player=player, mode="space", space=space, quiz=quiz, consent=consent,
+        question_ids=[q.id for q in deck])
+
+    payload = {
+        "session_id": session.id,
+        "mode": "space",
+        "elimination": quiz.elimination,
+        "total": len(deck),
+        "ad_every": 0,
+        "timers": cfg.timer_by_difficulty,
+        "joker": {"paid": False, "ad": False, "max": 0, "prices": {}},
+        "balance": 0, "pot": 0, "pot_sponsor": "",
+        "brand": {"name": space.name, "emoji": space.emoji,
+                  "primary": space.color_primary, "accent": space.color_accent,
+                  "reward": space.reward_text},
+        "questions": [
+            {"id": q.id, "cat": q.sub_category.name if q.sub_category else q.get_category_display(),
+             "difficulty": q.difficulty, "kind": q.kind, "text": q.text,
+             "options": q.options(), "explanation": ""}
+            for q in deck
+        ],
+        "ads": [], "video_ads": [],
+    }
+    return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
+
+
 @require_POST
 def space_answer(request):
     """Réponse dans un espace : sondage toujours accepté, quiz noté,
@@ -464,43 +628,57 @@ def space_answer(request):
     })
 
 
+def _quiz_row(sessions, quiz):
+    qs = sessions.filter(quiz=quiz)
+    t = qs.count()
+    f = qs.filter(status="finished").count()
+    return {"quiz": quiz, "total": t, "finished": f,
+            "completion": round(100 * f / t) if t else 0}
+
+
+def _build_quiz_tree(space, sessions):
+    """Arbre Catégorie > Sous-catégorie > Quiz avec compteurs de participation,
+    pour la vue d'ensemble du tableau de bord."""
+    quizzes = list(space.quizzes.select_related("category", "sub_category").filter(active=True))
+    rows = [_quiz_row(sessions, qz) for qz in quizzes]
+    tree = []
+    for cat in space.categories.all():
+        cat_rows = [r for r in rows if r["quiz"].category_id == cat.id]
+        if not cat_rows:
+            continue
+        subs, seen = [], set()
+        for r in cat_rows:
+            sub = r["quiz"].sub_category
+            if sub.id in seen:
+                continue
+            seen.add(sub.id)
+            sub_rows = [x for x in cat_rows if x["quiz"].sub_category_id == sub.id]
+            subs.append({"sub": sub, "rows": sub_rows,
+                        "total": sum(x["total"] for x in sub_rows)})
+        direct_rows = [r for r in cat_rows if r["quiz"].sub_category_id is None]
+        tree.append({"category": cat, "subs": subs, "direct_rows": direct_rows,
+                    "total": sum(r["total"] for r in cat_rows)})
+    orphan_rows = [r for r in rows if r["quiz"].category_id is None]
+    return tree, orphan_rows
+
+
 def space_dashboard(request, slug):
     """Tableau de bord client, protégé par un code simple (MVP)."""
     space = _space(slug)
-    code = request.GET.get("code") or request.session.get(f"dash_{space.id}")
-    if code != space.dashboard_code:
-        if request.method == "POST" and request.POST.get("code") == space.dashboard_code:
-            request.session[f"dash_{space.id}"] = space.dashboard_code
-            return redirect("space_dashboard", slug=slug)
-        return render(request, "game/dashboard_login.html", {"space": space})
-    request.session[f"dash_{space.id}"] = space.dashboard_code
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
 
     sessions = GameSession.objects.filter(space=space, flagged=False).exclude(status="playing")
     total = sessions.count()
     finished = sessions.filter(status="finished").count()
     consented = sessions.filter(consent=True).values("player").distinct().count()
+    has_quizzes = space.quizzes.exists()
 
-    # Taux de réussite par question quiz → produits mal maîtrisés en premier
-    quiz_stats = []
-    for q in Question.objects.filter(space=space, kind="quiz", active=True):
-        agg = Answer.objects.filter(question=q, session__in=sessions).aggregate(
-            n=Count("id"), ok=Count("id", filter=Q(is_correct=True)))
-        if agg["n"]:
-            quiz_stats.append({"q": q, "n": agg["n"],
-                               "pct": round(100 * agg["ok"] / agg["n"])})
-    quiz_stats.sort(key=lambda x: x["pct"])
-
-    # Répartition des réponses par sondage
-    survey_stats = []
-    for q in Question.objects.filter(space=space, kind="survey", active=True):
-        answers = Answer.objects.filter(question=q, session__in=sessions, choice__gte=0)
-        n = answers.count()
-        if n:
-            dist = []
-            for i, opt in enumerate(q.options()):
-                c = answers.filter(choice=i).count()
-                dist.append({"opt": opt, "n": c, "pct": round(100 * c / n)})
-            survey_stats.append({"q": q, "n": n, "dist": dist})
+    tree, orphan_rows = _build_quiz_tree(space, sessions)
+    # Bucket « Général » : sessions hors quiz (jeu à plat, ou espaces sans catégorie)
+    general_sessions = sessions.filter(quiz__isnull=True) if has_quizzes else sessions
+    quiz_stats, survey_stats = _quiz_dashboard_stats(space, general_sessions)
 
     # Export CSV des contacts consentants
     if request.GET.get("export") == "contacts":
@@ -519,6 +697,204 @@ def space_dashboard(request, slug):
     return render(request, "game/dashboard.html", {
         "space": space, "total": total, "finished": finished,
         "completion": round(100 * finished / total) if total else 0,
-        "consented": consented, "quiz_stats": quiz_stats,
-        "survey_stats": survey_stats, "top": top,
+        "consented": consented, "has_quizzes": has_quizzes,
+        "tree": tree, "orphan_rows": orphan_rows,
+        "quiz_stats": quiz_stats, "survey_stats": survey_stats, "top": top,
+    })
+
+
+def dashboard_categories(request, slug):
+    """Gestion des catégories / sous-catégories de l'espace."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_category":
+            name = request.POST.get("name", "").strip()[:80]
+            if name:
+                cat_slug = _unique_slug(space.categories, name)
+                Category.objects.create(space=space, name=name, slug=cat_slug,
+                                        order=space.categories.count())
+        elif action == "rename_category":
+            cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
+            name = request.POST.get("name", "").strip()[:80]
+            if cat and name:
+                cat.name = name
+                cat.save(update_fields=["name"])
+        elif action == "delete_category":
+            space.categories.filter(id=_post_int(request.POST, "category_id")).delete()
+        elif action == "add_subcategory":
+            cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
+            name = request.POST.get("name", "").strip()[:80]
+            if cat and name:
+                sub_slug = _unique_slug(cat.subcategories, name)
+                SubCategory.objects.create(category=cat, name=name, slug=sub_slug,
+                                           order=cat.subcategories.count())
+        elif action == "rename_subcategory":
+            sub = SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
+                                             category__space=space).first()
+            name = request.POST.get("name", "").strip()[:80]
+            if sub and name:
+                sub.name = name
+                sub.save(update_fields=["name"])
+        elif action == "delete_subcategory":
+            SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
+                                       category__space=space).delete()
+        return redirect("dashboard_categories", slug=slug)
+
+    categories = space.categories.prefetch_related("subcategories")
+    return render(request, "game/dashboard_categories.html", {
+        "space": space, "categories": categories,
+    })
+
+
+def dashboard_quizzes(request, slug):
+    """Liste + création des quiz (chacun avec son lien direct partageable)."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_quiz":
+            name = request.POST.get("name", "").strip()[:100]
+            cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
+            sub = cat.subcategories.filter(id=_post_int(request.POST, "subcategory_id")).first() if cat else None
+            if name:
+                quiz_slug = _unique_slug(space.quizzes, name)
+                Quiz.objects.create(
+                    space=space, category=cat, sub_category=sub, slug=quiz_slug, name=name,
+                    question_count=int(request.POST.get("question_count") or space.question_count),
+                    survey_every=int(request.POST.get("survey_every") or space.survey_every),
+                    elimination=request.POST.get("elimination") == "on")
+        elif action == "toggle_quiz":
+            qz = space.quizzes.filter(id=_post_int(request.POST, "quiz_id")).first()
+            if qz:
+                qz.active = not qz.active
+                qz.save(update_fields=["active"])
+        elif action == "delete_quiz":
+            space.quizzes.filter(id=_post_int(request.POST, "quiz_id")).delete()
+        return redirect("dashboard_quizzes", slug=slug)
+
+    base_sessions = GameSession.objects.filter(space=space, flagged=False).exclude(status="playing")
+    quizzes = list(space.quizzes.select_related("category", "sub_category"))
+    for qz in quizzes:
+        qz.total = base_sessions.filter(quiz=qz).count()
+    categories = space.categories.prefetch_related("subcategories")
+    return render(request, "game/dashboard_quizzes.html", {
+        "space": space, "quizzes": quizzes, "categories": categories,
+    })
+
+
+def dashboard_quiz_detail(request, slug, quiz_slug):
+    """Détail des stats (questions + sondages) d'un quiz précis."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "edit_quiz":
+            name = request.POST.get("name", "").strip()[:100]
+            cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
+            sub = cat.subcategories.filter(id=_post_int(request.POST, "subcategory_id")).first() if cat else None
+            if name:
+                quiz.name = name
+                quiz.category = cat
+                quiz.sub_category = sub
+                quiz.question_count = int(request.POST.get("question_count") or space.question_count)
+                quiz.survey_every = int(request.POST.get("survey_every") or space.survey_every)
+                quiz.elimination = request.POST.get("elimination") == "on"
+                quiz.save()
+        elif action == "toggle_quiz":
+            quiz.active = not quiz.active
+            quiz.save(update_fields=["active"])
+        elif action == "delete_quiz":
+            quiz.delete()
+            return redirect("dashboard_quizzes", slug=slug)
+        return redirect("dashboard_quiz_detail", slug=slug, quiz_slug=quiz.slug)
+
+    sessions = GameSession.objects.filter(space=space, quiz=quiz, flagged=False).exclude(status="playing")
+    total = sessions.count()
+    finished = sessions.filter(status="finished").count()
+    quiz_stats, survey_stats = _quiz_dashboard_stats(space, sessions)
+    top = sorted(sessions.select_related("player"),
+                 key=lambda s: (-s.reached, s.total_time_ms))[:10]
+    categories = space.categories.prefetch_related("subcategories")
+    return render(request, "game/dashboard_quiz_detail.html", {
+        "space": space, "quiz": quiz, "total": total, "finished": finished,
+        "completion": round(100 * finished / total) if total else 0,
+        "quiz_stats": quiz_stats, "survey_stats": survey_stats, "top": top,
+        "categories": categories,
+    })
+
+
+def _question_fields_from_post(space, post):
+    kind = post.get("kind") if post.get("kind") in ("quiz", "survey") else "quiz"
+    sub = SubCategory.objects.filter(id=_post_int(post, "sub_category_id"), category__space=space).first()
+    return dict(
+        kind=kind,
+        sub_category=sub,
+        difficulty=int(post.get("difficulty") or 1),
+        text=post.get("text", "").strip(),
+        option_a=post.get("option_a", "").strip()[:200],
+        option_b=post.get("option_b", "").strip()[:200],
+        option_c=post.get("option_c", "").strip()[:200],
+        option_d=post.get("option_d", "").strip()[:200],
+        correct=int(post.get("correct") or 0) if kind == "quiz" else 0,
+        explanation=post.get("explanation", "").strip(),
+        active=post.get("active") == "on",
+    )
+
+
+def dashboard_questions(request, slug):
+    """Gestion des questions (quiz + sondages) de l'espace, avec filtres."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        question_id = request.POST.get("question_id") or 0
+        if action in ("add_question", "edit_question"):
+            fields = _question_fields_from_post(space, request.POST)
+            if fields["text"] and fields["option_a"] and fields["option_b"]:
+                if action == "add_question":
+                    Question.objects.create(space=space, category="cg", **fields)
+                else:
+                    Question.objects.filter(id=question_id, space=space).update(**fields)
+        elif action == "toggle_question":
+            q = Question.objects.filter(id=question_id, space=space).first()
+            if q:
+                q.active = not q.active
+                q.save(update_fields=["active"])
+        elif action == "delete_question":
+            Question.objects.filter(id=question_id, space=space).delete()
+        return redirect(f"{request.path}?{request.GET.urlencode()}")
+
+    cat_id = _post_int(request.GET, "category_id")
+    sub_id = _post_int(request.GET, "subcategory_id")
+    kind = request.GET.get("kind") or ""
+
+    questions = Question.objects.filter(space=space).select_related("sub_category", "sub_category__category")
+    if kind in ("quiz", "survey"):
+        questions = questions.filter(kind=kind)
+    if sub_id:
+        questions = questions.filter(sub_category_id=sub_id)
+    elif cat_id:
+        questions = questions.filter(sub_category__category_id=cat_id)
+    questions = questions.order_by("sub_category__category__order", "sub_category__order", "-id")
+
+    categories = space.categories.prefetch_related("subcategories")
+    return render(request, "game/dashboard_questions.html", {
+        "space": space, "questions": questions, "categories": categories,
+        "f_category": cat_id, "f_subcategory": sub_id, "f_kind": kind,
     })

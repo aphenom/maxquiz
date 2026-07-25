@@ -44,10 +44,28 @@ input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px so
 .stagger>*:nth-child(4){animation-delay:.21s}.stagger>*:nth-child(5){animation-delay:.28s}
 .stagger>*:nth-child(6){animation-delay:.35s}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* Tableau de bord client : mise en page large sur grand écran (pages joueur non concernées) */
+body.dash{max-width:1100px}
+@media (min-width:860px){body.dash main{padding:28px 40px}}
+.dash-grid{display:grid;gap:12px}
+@media (min-width:860px){.dash-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
+@media (min-width:860px){.dash-grid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}}
+.dash-split{display:block}
+@media (min-width:860px){.dash-split{display:grid;grid-template-columns:1.3fr .9fr;gap:24px;align-items:start}}
+.chip{display:inline-flex;align-items:center;gap:4px;border:none;border-radius:999px;padding:7px 14px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;
+  background:var(--sable);color:var(--brun);transition:filter .12s ease,transform .12s ease}
+.chip:hover{filter:brightness(.95)} .chip:active{transform:scale(.95)}
+.chip.orange{background:rgba(242,121,15,.14);color:var(--orange)}
+.chip.rouge{background:rgba(214,69,44,.14);color:var(--rouge)}
+.chip.vert{background:rgba(11,154,92,.14);color:var(--vert)}
+select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 14px;border-radius:10px;
+  border:1.5px solid var(--sable);font-size:15px;font-family:inherit;background:var(--ivoire)}
 {% block css %}{% endblock %}
 </style>
 </head>
-<body>
+<body class="{% block bodyclass %}{% endblock %}">
 <div class="band"></div>
 <main>{% block content %}{% endblock %}</main>
 {% block tabs %}

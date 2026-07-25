@@ -67,6 +67,9 @@ class Question(models.Model):
                               verbose_name="Espace (vide = jeu public MaxQuiz)")
     kind = models.CharField("Type", max_length=6, choices=KINDS, default="quiz")
     category = models.CharField("Catégorie", max_length=2, choices=CATEGORIES)
+    sub_category = models.ForeignKey("SubCategory", null=True, blank=True, on_delete=models.SET_NULL,
+                                     related_name="questions",
+                                     verbose_name="Sous-catégorie (espace entreprise)")
     difficulty = models.PositiveSmallIntegerField("Difficulté", choices=DIFFICULTIES, default=1)
     text = models.TextField("Question")
     option_a = models.CharField(max_length=200)
@@ -112,6 +115,9 @@ class GameSession(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="sessions")
     space = models.ForeignKey("Space", null=True, blank=True, on_delete=models.CASCADE,
                               related_name="sessions")
+    quiz = models.ForeignKey("Quiz", null=True, blank=True, on_delete=models.SET_NULL,
+                             related_name="sessions",
+                             verbose_name="Quiz (vide = pool à plat de l'espace)")
     consent = models.BooleanField("Consentement marketing", default=False)
     mode = models.CharField(max_length=10, choices=MODES)
     status = models.CharField(max_length=10, choices=STATUS, default="playing")
@@ -194,6 +200,14 @@ class Space(models.Model):
     survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
     elimination = models.BooleanField("Mode survie (élimination)", default=False)
     one_per_day = models.BooleanField("Une participation par jour", default=True)
+    category_label = models.CharField("Libellé d'une catégorie (singulier)", max_length=30,
+                                      blank=True, default="Catégorie")
+    category_label_plural = models.CharField("Libellé des catégories (pluriel)", max_length=30,
+                                              blank=True, default="Catégories")
+    subcategory_label = models.CharField("Libellé d'une sous-catégorie (singulier)", max_length=30,
+                                         blank=True, default="Sous-catégorie")
+    subcategory_label_plural = models.CharField("Libellé des sous-catégories (pluriel)", max_length=30,
+                                                 blank=True, default="Sous-catégories")
     active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -202,3 +216,62 @@ class Space(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Category(models.Model):
+    """Catégorie de premier niveau d'un espace (ex : niveau scolaire, famille de produits)."""
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="categories")
+    name = models.CharField("Nom", max_length=80)
+    slug = models.SlugField("Identifiant d'URL", max_length=60)
+    order = models.PositiveSmallIntegerField("Ordre", default=0)
+
+    class Meta:
+        verbose_name = "Catégorie"
+        verbose_name_plural = "Catégories"
+        unique_together = [("space", "slug")]
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return f"{self.space} · {self.name}"
+
+
+class SubCategory(models.Model):
+    """Sous-catégorie (ex : matière, sous-famille de produits)."""
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategories")
+    name = models.CharField("Nom", max_length=80)
+    slug = models.SlugField("Identifiant d'URL", max_length=60)
+    order = models.PositiveSmallIntegerField("Ordre", default=0)
+
+    class Meta:
+        verbose_name = "Sous-catégorie"
+        verbose_name_plural = "Sous-catégories"
+        unique_together = [("category", "slug")]
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return f"{self.category.name} · {self.name}"
+
+
+class Quiz(models.Model):
+    """Quiz partageable par lien direct, rattaché à une catégorie/sous-catégorie."""
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="quizzes")
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="quizzes")
+    sub_category = models.ForeignKey(SubCategory, null=True, blank=True, on_delete=models.SET_NULL,
+                                     related_name="quizzes")
+    name = models.CharField("Nom du quiz", max_length=100)
+    slug = models.SlugField("Identifiant d'URL", max_length=60)
+    question_count = models.PositiveSmallIntegerField("Questions par partie", default=10)
+    survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
+    elimination = models.BooleanField("Mode survie (élimination)", default=False)
+    active = models.BooleanField("Actif", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Quiz"
+        verbose_name_plural = "Quiz"
+        unique_together = [("space", "slug")]
+        ordering = ["category__order", "sub_category__order", "name"]
+
+    def __str__(self):
+        return f"{self.space} · {self.name}"

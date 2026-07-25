@@ -1,0 +1,81 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — {{ space.category_label_plural }}{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
+  <p class="small" style="margin:0">{{ space.category_label_plural }} & {{ space.subcategory_label_plural|lower }}</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="categories" %}
+
+<div class="dash-split" style="margin-top:8px">
+  <div class="dash-grid">
+    {% for c in categories %}
+    <div class="card" style="padding:14px">
+      <form method="post" style="display:flex;gap:6px;align-items:center">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="rename_category">
+        <input type="hidden" name="category_id" value="{{ c.id }}">
+        <input type="text" name="name" value="{{ c.name }}" maxlength="80" required style="flex:1;font-weight:800">
+        <button type="submit" class="chip vert">✓ Enregistrer</button>
+      </form>
+      <form method="post" style="margin-top:6px" onsubmit="return confirm('Supprimer « {{ c.name }} » et ses {{ space.subcategory_label_plural|lower }} ?');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_category">
+        <input type="hidden" name="category_id" value="{{ c.id }}">
+        <button type="submit" class="chip rouge">🗑️ Supprimer</button>
+      </form>
+
+      {% for sub in c.subcategories.all %}
+      <div style="display:flex;gap:6px;align-items:center;margin-top:10px;padding-left:10px">
+        <span class="small">↳</span>
+        <form method="post" style="display:flex;gap:6px;flex:1;align-items:center">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="rename_subcategory">
+          <input type="hidden" name="subcategory_id" value="{{ sub.id }}">
+          <input type="text" name="name" value="{{ sub.name }}" maxlength="80" required style="flex:1;font-size:14px">
+          <button type="submit" class="chip vert">✓</button>
+        </form>
+        <form method="post" onsubmit="return confirm('Supprimer « {{ sub.name }} » ?');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_subcategory">
+          <input type="hidden" name="subcategory_id" value="{{ sub.id }}">
+          <button type="submit" class="chip rouge">✕</button>
+        </form>
+      </div>
+      {% empty %}
+      <p class="small" style="margin:10px 0 0;padding-left:10px">Pas encore de {{ space.subcategory_label|lower }}.</p>
+      {% endfor %}
+      <form method="post" style="display:flex;gap:6px;margin-top:10px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_subcategory">
+        <input type="hidden" name="category_id" value="{{ c.id }}">
+        <input type="text" name="name" maxlength="80" required
+               placeholder="{{ space.subcategory_label }}…" style="flex:1">
+        <button class="chip orange" type="submit">+ Ajouter</button>
+      </form>
+    </div>
+    {% empty %}
+    <p class="small">Pas encore de {{ space.category_label|lower }} — utilise le formulaire ci-contre.</p>
+    {% endfor %}
+  </div>
+
+  <div>
+    <h2 style="font-size:16px;margin:0 0 8px">➕ Ajouter : {{ space.category_label|lower }}</h2>
+    <form method="post" class="card" style="display:flex;gap:6px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_category">
+      <input type="text" name="name" maxlength="80" required
+             placeholder="Ex. : 5ème" style="flex:1">
+      <button class="btn" style="width:auto;padding:10px 16px;font-size:14px">Créer</button>
+    </form>
+    <p class="small" style="margin-top:16px">
+      Une fois {{ space.category_label_plural|lower }} et {{ space.subcategory_label_plural|lower }} en place,
+      ajoutez vos questions dans l'onglet « Questions », puis créez vos quiz dans l'onglet « Quiz ».
+    </p>
+  </div>
+</div>
+{% endblock %}

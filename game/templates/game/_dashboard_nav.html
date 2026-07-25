@@ -1,0 +1,6 @@
+<nav style="display:flex;gap:8px;margin:14px 0 10px;flex-wrap:wrap">
+  <a href="{% url 'space_dashboard' space.slug %}" class="chip {% if active == 'overview' %}orange{% endif %}">📊 Vue d'ensemble</a>
+  <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">🗂️ {{ space.category_label_plural }}</a>
+  <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
+  <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
+</nav>

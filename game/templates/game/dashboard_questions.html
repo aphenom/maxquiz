@@ -1,0 +1,165 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Questions{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.qcard label{font-weight:700;display:block;margin:10px 0 4px}
+.qcard .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qcard .correct-group{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.qcard .correct-group label{display:flex;align-items:center;gap:4px;font-weight:400;margin:0;font-size:13px}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
+  <p class="small" style="margin:0">Questions & réponses (quiz et sondages)</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="questions" %}
+
+<form method="get" class="card" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
+  <div style="flex:1;min-width:140px">
+    <label class="small" style="font-weight:700;display:block;margin-bottom:4px">Type</label>
+    <select name="kind" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      <option value="quiz" {% if f_kind == "quiz" %}selected{% endif %}>Quiz</option>
+      <option value="survey" {% if f_kind == "survey" %}selected{% endif %}>Sondage</option>
+    </select>
+  </div>
+  <div style="flex:1;min-width:160px">
+    <label class="small" style="font-weight:700;display:block;margin-bottom:4px">{{ space.category_label }}</label>
+    <select name="category_id" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      {% for c in categories %}<option value="{{ c.id }}" {% if f_category == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div style="flex:1;min-width:160px">
+    <label class="small" style="font-weight:700;display:block;margin-bottom:4px">{{ space.subcategory_label }}</label>
+    <select name="subcategory_id" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      {% for c in categories %}{% for sub in c.subcategories.all %}
+      <option value="{{ sub.id }}" {% if f_subcategory == sub.id %}selected{% endif %}>{{ c.name }} — {{ sub.name }}</option>
+      {% endfor %}{% endfor %}
+    </select>
+  </div>
+  {% if f_kind or f_category or f_subcategory %}
+  <a href="{% url 'dashboard_questions' space.slug %}" class="chip">✕ Réinitialiser</a>
+  {% endif %}
+</form>
+
+<h2 style="font-size:16px;margin:20px 0 8px">➕ Nouvelle question</h2>
+<form method="post" class="card qcard">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="add_question">
+  <label>Type</label>
+  <select name="kind" class="kind-select">
+    <option value="quiz">Quiz (bonne réponse)</option>
+    <option value="survey">Sondage (opinion)</option>
+  </select>
+  <label>{{ space.subcategory_label }} (optionnel)</label>
+  <select name="sub_category_id">
+    <option value="">— Toutes / aucune —</option>
+    {% for c in categories %}<optgroup label="{{ c.name }}">
+      {% for sub in c.subcategories.all %}<option value="{{ sub.id }}">{{ sub.name }}</option>{% endfor %}
+    </optgroup>{% endfor %}
+  </select>
+  <label>Difficulté</label>
+  <select name="difficulty">
+    <option value="1">1 · Facile</option>
+    <option value="2">2 · Moyen</option>
+    <option value="3">3 · Difficile</option>
+    <option value="4">4 · Expert</option>
+  </select>
+  <label>Question</label>
+  <textarea name="text" rows="2" required></textarea>
+  <div class="opts">
+    <div><label>Option A</label><input type="text" name="option_a" maxlength="200" required></div>
+    <div><label>Option B</label><input type="text" name="option_b" maxlength="200" required></div>
+    <div><label>Option C</label><input type="text" name="option_c" maxlength="200"></div>
+    <div><label>Option D</label><input type="text" name="option_d" maxlength="200"></div>
+  </div>
+  <label>Bonne réponse (ignoré pour un sondage)</label>
+  <div class="correct-group">
+    <label><input type="radio" name="correct" value="0" checked> A</label>
+    <label><input type="radio" name="correct" value="1"> B</label>
+    <label><input type="radio" name="correct" value="2"> C</label>
+    <label><input type="radio" name="correct" value="3"> D</label>
+  </div>
+  <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-top:12px">
+    <input type="checkbox" name="active" checked> Active
+  </label>
+  <button class="btn" type="submit" style="margin-top:14px">Créer la question</button>
+</form>
+
+<h2 style="font-size:16px;margin:22px 0 8px">{{ questions|length }} question{{ questions|length|pluralize }}</h2>
+<div class="dash-grid wide">
+{% for q in questions %}
+<div class="card qcard">
+  <p class="small" style="margin:0">
+    {% if q.sub_category %}{{ q.sub_category.category.name }} — {{ q.sub_category.name }}{% else %}Sans {{ space.category_label|lower }}{% endif %}
+    {% if not q.active %} · <span style="color:var(--rouge)">inactive</span>{% endif %}
+  </p>
+  <form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="edit_question">
+  <input type="hidden" name="question_id" value="{{ q.id }}">
+  <label>Type</label>
+  <select name="kind" class="kind-select">
+    <option value="quiz" {% if q.kind == "quiz" %}selected{% endif %}>Quiz (bonne réponse)</option>
+    <option value="survey" {% if q.kind == "survey" %}selected{% endif %}>Sondage (opinion)</option>
+  </select>
+  <label>{{ space.subcategory_label }} (optionnel)</label>
+  <select name="sub_category_id">
+    <option value="">— Toutes / aucune —</option>
+    {% for c in categories %}<optgroup label="{{ c.name }}">
+      {% for sub in c.subcategories.all %}<option value="{{ sub.id }}" {% if q.sub_category_id == sub.id %}selected{% endif %}>{{ sub.name }}</option>{% endfor %}
+    </optgroup>{% endfor %}
+  </select>
+  <label>Difficulté</label>
+  <select name="difficulty">
+    {% for d, dl in q.DIFFICULTIES %}<option value="{{ d }}" {% if q.difficulty == d %}selected{% endif %}>{{ d }} · {{ dl }}</option>{% endfor %}
+  </select>
+  <label>Question</label>
+  <textarea name="text" rows="2" required>{{ q.text }}</textarea>
+  <div class="opts">
+    <div><label>Option A</label><input type="text" name="option_a" maxlength="200" value="{{ q.option_a }}" required></div>
+    <div><label>Option B</label><input type="text" name="option_b" maxlength="200" value="{{ q.option_b }}" required></div>
+    <div><label>Option C</label><input type="text" name="option_c" maxlength="200" value="{{ q.option_c }}"></div>
+    <div><label>Option D</label><input type="text" name="option_d" maxlength="200" value="{{ q.option_d }}"></div>
+  </div>
+  <label>Bonne réponse (ignoré pour un sondage)</label>
+  <div class="correct-group">
+    <label><input type="radio" name="correct" value="0" {% if q.correct == 0 %}checked{% endif %}> A</label>
+    <label><input type="radio" name="correct" value="1" {% if q.correct == 1 %}checked{% endif %}> B</label>
+    <label><input type="radio" name="correct" value="2" {% if q.correct == 2 %}checked{% endif %}> C</label>
+    <label><input type="radio" name="correct" value="3" {% if q.correct == 3 %}checked{% endif %}> D</label>
+  </div>
+  <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-top:12px">
+    <input type="checkbox" name="active" {% if q.active %}checked{% endif %}> Active
+  </label>
+  <button class="chip vert" type="submit" style="margin-top:14px">✓ Enregistrer</button>
+  </form>
+  <form method="post" style="margin-top:8px" onsubmit="return confirm('Supprimer cette question ?');">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="delete_question">
+    <input type="hidden" name="question_id" value="{{ q.id }}">
+    <button class="chip rouge" type="submit">🗑️ Supprimer</button>
+  </form>
+</div>
+{% empty %}
+<p class="small">Aucune question ne correspond à ces filtres.</p>
+{% endfor %}
+</div>
+{% endblock %}
+{% block js %}
+<script>
+document.addEventListener('change', function(e){
+  if (!e.target.classList.contains('kind-select')) return;
+  var card = e.target.closest('.qcard');
+  var group = card.querySelector('.correct-group');
+  group.style.opacity = e.target.value === 'survey' ? '.35' : '1';
+});
+document.querySelectorAll('.kind-select').forEach(function(sel){
+  sel.dispatchEvent(new Event('change'));
+});
+</script>
+{% endblock %}

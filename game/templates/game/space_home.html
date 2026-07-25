@@ -20,6 +20,30 @@
     {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
   </div>
 
+  {% if categories or orphan_quizzes %}
+  <div class="card" style="margin-top:12px">
+    <p style="margin:0 0 10px;font-weight:700">🔎 Choisis ton quiz</p>
+    {% for c in categories %}
+    <p class="small" style="margin:10px 0 4px;font-weight:700;text-transform:uppercase">{{ c.category.name }}</p>
+    {% for s in c.subs %}
+    <p class="small" style="margin:6px 0 2px;color:var(--brun)">{{ s.sub.name }}</p>
+    {% for q in s.quizzes %}
+    <a class="btn" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}</a>
+    {% endfor %}
+    {% endfor %}
+    {% for q in c.direct %}
+    <a class="btn" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}</a>
+    {% endfor %}
+    {% endfor %}
+    {% for q in orphan_quizzes %}
+    <a class="btn" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:10px">{{ error }}</p>{% endif %}
 
   <form method="post" action="{% url 'space_start' space.slug %}" style="margin-top:14px">

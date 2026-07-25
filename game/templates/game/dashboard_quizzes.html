@@ -1,0 +1,108 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Quiz{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
+  <p class="small" style="margin:0">Vos quiz & liens à partager</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="quizzes" %}
+
+<div class="dash-split" style="margin-top:8px">
+  <div class="dash-grid">
+    {% for q in quizzes %}
+    <div class="card" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <p style="margin:0;font-weight:800">{{ q.name }}{% if not q.active %} <span class="small">(désactivé)</span>{% endif %}</p>
+          <p class="small" style="margin:2px 0 0">
+            {% if q.category %}{{ q.category.name }}{% endif %}{% if q.sub_category %} · {{ q.sub_category.name }}{% endif %}
+            {% if not q.category and not q.sub_category %}Sans {{ space.category_label|lower }}{% endif %}
+            · {{ q.total }} participation{{ q.total|pluralize }}
+          </p>
+        </div>
+        <a href="{% url 'dashboard_quiz_detail' space.slug q.slug %}" class="chip orange" style="white-space:nowrap">📈 Stats</a>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;align-items:center">
+        <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'quiz_home' space.slug q.slug %}"
+               style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid var(--sable);font-size:12px;background:var(--ivoire)"
+               onclick="this.select()">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="toggle_quiz">
+          <input type="hidden" name="quiz_id" value="{{ q.id }}">
+          <button type="submit" class="chip">{% if q.active %}désactiver{% else %}réactiver{% endif %}</button>
+        </form>
+        <form method="post" onsubmit="return confirm('Supprimer le quiz « {{ q.name }} » ?');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_quiz">
+          <input type="hidden" name="quiz_id" value="{{ q.id }}">
+          <button type="submit" class="chip rouge">🗑️ Supprimer</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <p class="small">Aucun quiz pour l'instant — crée le premier ci-contre.</p>
+    {% endfor %}
+  </div>
+
+  <div>
+    <h2 style="font-size:16px;margin:0 0 8px">➕ Nouveau quiz</h2>
+    <form method="post" class="card">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_quiz">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Nom du quiz</label>
+      <input type="text" name="name" maxlength="100" required placeholder="Ex. : 5ème · Mathématiques">
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">{{ space.category_label }}</label>
+      <select name="category_id" id="cat-select">
+        <option value="">— Aucune —</option>
+        {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">{{ space.subcategory_label }}</label>
+      <select name="subcategory_id" id="sub-select">
+        <option value="">— Aucune —</option>
+        {% for c in categories %}{% for sub in c.subcategories.all %}
+        <option value="{{ sub.id }}" data-cat="{{ c.id }}" hidden>{{ sub.name }}</option>
+        {% endfor %}{% endfor %}
+      </select>
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Questions par partie</label>
+      <input type="number" name="question_count" min="1" max="50" value="{{ space.question_count }}">
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Un sondage toutes les N questions</label>
+      <input type="number" name="survey_every" min="0" max="20" value="{{ space.survey_every }}">
+
+      <label style="display:flex;gap:10px;align-items:center;margin-top:12px;font-size:13px;color:var(--brun)">
+        <input type="checkbox" name="elimination"> Mode survie (une erreur élimine)
+      </label>
+
+      <button class="btn" type="submit" style="margin-top:14px">Créer le quiz</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  var catSel = document.getElementById('cat-select');
+  var subSel = document.getElementById('sub-select');
+  function sync(){
+    for (var i = 0; i < subSel.options.length; i++) {
+      var opt = subSel.options[i];
+      if (!opt.value) continue;
+      opt.hidden = opt.dataset.cat !== catSel.value;
+    }
+    if (subSel.selectedOptions[0] && subSel.selectedOptions[0].hidden) subSel.value = '';
+  }
+  catSel.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{% endblock %}

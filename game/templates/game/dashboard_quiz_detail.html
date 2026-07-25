@@ -1,0 +1,137 @@
+{% extends "game/base.html" %}
+{% block title %}{{ quiz.name }} — {{ space.name }}{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.bar{height:22px;border-radius:6px;background:var(--sable);overflow:hidden;position:relative}
+.bar>div{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.34,1.56,.64,1)}
+.kpi{flex:1;text-align:center;background:#fff;border-radius:14px;padding:12px 6px;box-shadow:0 1px 4px rgba(34,26,18,.08)}
+.kpi b{font-size:26px;display:block;color:var(--orange)}
+</style>
+<a href="{% url 'dashboard_quizzes' space.slug %}" class="small">← Retour aux quiz</a>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-top:6px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:30px">{{ space.emoji }}</span>
+    <div><h1 style="font-size:22px;margin:0">{{ quiz.name }}</h1>
+    <p class="small" style="margin:0">
+      {% if quiz.category %}{{ quiz.category.name }}{% endif %}{% if quiz.sub_category %} · {{ quiz.sub_category.name }}{% endif %}
+      {% if not quiz.active %} · <span style="color:var(--rouge)">désactivé</span>{% endif %}
+    </p></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="toggle_quiz">
+      <button type="submit" class="chip">{% if quiz.active %}désactiver{% else %}réactiver{% endif %}</button>
+    </form>
+    <form method="post" onsubmit="return confirm('Supprimer le quiz « {{ quiz.name }} » ?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete_quiz">
+      <button type="submit" class="chip rouge">🗑️ Supprimer</button>
+    </form>
+  </div>
+</div>
+
+<div class="dash-split" style="margin-top:14px">
+  <div>
+    <h2 style="font-size:16px;margin:0 0 8px">⚙️ Réglages du quiz</h2>
+    <form method="post" class="card">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit_quiz">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Nom du quiz</label>
+      <input type="text" name="name" maxlength="100" required value="{{ quiz.name }}">
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">{{ space.category_label }}</label>
+      <select name="category_id" id="cat-select">
+        <option value="">— Aucune —</option>
+        {% for c in categories %}<option value="{{ c.id }}" {% if quiz.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">{{ space.subcategory_label }}</label>
+      <select name="subcategory_id" id="sub-select">
+        <option value="">— Aucune —</option>
+        {% for c in categories %}{% for sub in c.subcategories.all %}
+        <option value="{{ sub.id }}" data-cat="{{ c.id }}" {% if quiz.sub_category_id == sub.id %}selected{% else %}hidden{% endif %}>{{ sub.name }}</option>
+        {% endfor %}{% endfor %}
+      </select>
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Questions par partie</label>
+      <input type="number" name="question_count" min="1" max="50" value="{{ quiz.question_count }}">
+
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Un sondage toutes les N questions</label>
+      <input type="number" name="survey_every" min="0" max="20" value="{{ quiz.survey_every }}">
+
+      <label style="display:flex;gap:10px;align-items:center;margin-top:12px;font-size:13px;color:var(--brun)">
+        <input type="checkbox" name="elimination" {% if quiz.elimination %}checked{% endif %}> Mode survie (une erreur élimine)
+      </label>
+
+      <button class="btn" type="submit" style="margin-top:14px">Enregistrer</button>
+    </form>
+  </div>
+
+  <div>
+    <h2 style="font-size:16px;margin:0 0 8px">🔗 Lien à partager</h2>
+    <div class="card" style="padding:12px 14px">
+      <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'quiz_home' space.slug quiz.slug %}"
+             style="font-size:12px;padding:8px 10px" onclick="this.select()">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px" class="stagger">
+      <div class="kpi"><b>{{ total }}</b><span class="small">participations</span></div>
+      <div class="kpi"><b>{{ completion }}%</b><span class="small">complétion</span></div>
+    </div>
+  </div>
+</div>
+
+<h2 style="font-size:18px;margin:22px 0 4px">📉 Taux de bonne réponse</h2>
+<p class="small" style="margin:0 0 10px">Les questions les moins maîtrisées d'abord.</p>
+<div class="dash-grid">
+{% for s in quiz_stats %}
+<div class="card" style="padding:12px 14px">
+  <p style="margin:0 0 6px;font-size:14px;font-weight:600">{{ s.q.text }}</p>
+  <div class="bar"><div style="width:{{ s.pct }}%;background:{% if s.pct < 50 %}var(--rouge){% elif s.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
+  <p class="small" style="margin:4px 0 0">{{ s.pct }} % de bonnes réponses · {{ s.n }} réponse{{ s.n|pluralize }}</p>
+</div>
+{% empty %}<p class="small">Pas encore de données.</p>{% endfor %}
+</div>
+
+<h2 style="font-size:18px;margin:22px 0 4px">🗳️ Résultats des sondages</h2>
+<div class="dash-grid">
+{% for s in survey_stats %}
+<div class="card" style="padding:12px 14px">
+  <p style="margin:0 0 8px;font-size:14px;font-weight:600">{{ s.q.text }} <span class="small">({{ s.n }} réponses)</span></p>
+  {% for d in s.dist %}
+  <p class="small" style="margin:6px 0 2px">{{ d.opt }} — {{ d.pct }} %</p>
+  <div class="bar" style="height:14px"><div style="width:{{ d.pct }}%;background:var(--orange)"></div></div>
+  {% endfor %}
+</div>
+{% empty %}<p class="small">Pas encore de sondage actif.</p>{% endfor %}
+</div>
+
+<h2 style="font-size:18px;margin:22px 0 4px">🏅 Meilleurs participants</h2>
+{% for s in top %}
+<div class="card" style="display:flex;justify-content:space-between;margin-bottom:6px;padding:10px 14px">
+  <span style="font-weight:700">{{ forloop.counter }}. {{ s.player.pseudo }}
+    {% if s.consent %}<span class="small">📞 {{ s.player.phone|default:"—" }}</span>{% endif %}</span>
+  <span style="font-weight:800;color:var(--orange)">Q{{ s.reached }}</span>
+</div>
+{% empty %}<p class="small">Pas encore de participation.</p>{% endfor %}
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  var catSel = document.getElementById('cat-select');
+  var subSel = document.getElementById('sub-select');
+  function sync(){
+    for (var i = 0; i < subSel.options.length; i++) {
+      var opt = subSel.options[i];
+      if (!opt.value) continue;
+      opt.hidden = opt.dataset.cat !== catSel.value;
+    }
+    if (subSel.selectedOptions[0] && subSel.selectedOptions[0].hidden) subSel.value = '';
+  }
+  catSel.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{% endblock %}

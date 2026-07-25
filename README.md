@@ -79,6 +79,38 @@ tableau de bord immédiatement parlant en rendez-vous.
 
 Le jeu public MaxQuiz (défi du jour, cagnotte, jokers) reste inchangé et coexiste.
 
+### Catégories, sous-catégories & quiz (B2C comme B2B, multi-vertical)
+
+Au-delà du pool de questions à plat (toujours disponible via le lien générique
+`/e/slug/`), une entreprise peut structurer ses questions en **catégories** →
+**sous-catégories** → **quiz**, avec un **lien direct par quiz**
+(`/e/slug/q/quiz-slug/`) à distribuer au bon public — par exemple un niveau scolaire
+et une matière pour une école, une famille de produits et une gamme pour une banque.
+Les libellés « Catégorie »/« Sous-catégorie » sont personnalisables par espace
+(`category_label`/`subcategory_label`, ex. « Niveau »/« Matière » pour une école).
+
+Ce système est **entièrement optionnel par espace** : un espace sans quiz créé (ex.
+Banque Horizon aujourd'hui) continue de fonctionner exactement comme avant, avec le
+lien unique et le pool de questions à plat.
+
+**Tableau de bord client étendu**, accessible via les onglets Vue d'ensemble /
+Catégories / Quiz :
+- `/e/slug/tableau-de-bord/categories/` : créer/renommer/supprimer catégories et
+  sous-catégories.
+- `/e/slug/tableau-de-bord/quiz/` : créer un quiz (nom, catégorie, sous-catégorie,
+  nombre de questions, fréquence des sondages, mode survie), récupérer son lien
+  partageable, l'activer/désactiver ou le supprimer.
+- Vue d'ensemble : arbre catégorie → sous-catégorie → quiz avec participations et
+  taux de complétion, jusqu'au détail par quiz (taux de bonne réponse par question,
+  sondages, meilleurs participants) sur `/e/slug/tableau-de-bord/quiz/quiz-slug/`.
+
+**Démo commerciale école incluse** : `python manage.py seed_demo_school_space` crée
+l'espace « Collège La Réussite » (`/e/college-la-reussite/`, tableau de bord avec le
+code `REUSSITE2026`) avec 4 niveaux (6ème à 3ème) × 2 matières (Mathématiques,
+Français) = 8 quiz avec lien direct (ex. `/e/college-la-reussite/q/5eme-mathematiques/`),
+40 questions et des dizaines de participations simulées avec un taux de maîtrise
+différent par quiz, pour un tableau de bord immédiatement parlant en rendez-vous.
+
 ## ⚠️ Avertissement important
 
 Le **joker payant** peut faire qualifier le jeu de jeu d'argent (paiement + gain en

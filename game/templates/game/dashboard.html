@@ -1,6 +1,7 @@
 {% extends "game/base.html" %}
 {% block title %}{{ space.name }} — Tableau de bord{% endblock %}
 {% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
 .bar{height:22px;border-radius:6px;background:var(--sable);overflow:hidden;position:relative}
@@ -13,28 +14,67 @@
   <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
   <p class="small" style="margin:0">Tableau de bord des campagnes · MaxQuiz</p></div>
 </div>
+{% include "game/_dashboard_nav.html" with active="overview" %}
 
 <div style="display:flex;gap:8px;margin-top:14px" class="stagger">
   <div class="kpi"><b>{{ total }}</b><span class="small">participations</span></div>
   <div class="kpi"><b>{{ completion }}%</b><span class="small">complétion</span></div>
   <div class="kpi"><b>{{ consented }}</b><span class="small">contacts consentants</span></div>
 </div>
-<a class="btn vert" href="?export=contacts" style="margin-top:10px">⬇️ Exporter les contacts (CSV)</a>
+<a class="btn vert" href="?export=contacts" style="margin-top:10px;width:auto;display:inline-block;padding:12px 20px">⬇️ Exporter les contacts (CSV)</a>
 
-<h2 style="font-size:18px;margin:22px 0 4px">📉 Connaissance de vos produits</h2>
+{% if tree or orphan_rows %}
+<h2 style="font-size:18px;margin:22px 0 4px">🗂️ Résultats par {{ space.category_label|lower }} / quiz</h2>
+<p class="small" style="margin:0 0 10px">Participations et complétion, jusqu'au détail de chaque quiz.</p>
+<div class="dash-grid">
+{% for c in tree %}
+<div class="card" style="margin-bottom:8px;padding:12px 14px">
+  <p style="margin:0 0 6px;font-weight:800">{{ c.category.name }} <span class="small" style="font-weight:400">· {{ c.total }} participation{{ c.total|pluralize }}</span></p>
+  {% for s in c.subs %}
+  <p class="small" style="margin:8px 0 2px;font-weight:700">{{ s.sub.name }} · {{ s.total }} participation{{ s.total|pluralize }}</p>
+  {% for r in s.rows %}
+  <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit;padding:4px 0">
+    <span class="small">{{ r.quiz.name }}</span>
+    <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
+  </a>
+  {% endfor %}
+  {% endfor %}
+  {% for r in c.direct_rows %}
+  <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit;padding:4px 0">
+    <span class="small">{{ r.quiz.name }}</span>
+    <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
+  </a>
+  {% endfor %}
+</div>
+{% endfor %}
+{% for r in orphan_rows %}
+<div class="card" style="margin-bottom:8px;padding:12px 14px">
+  <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit">
+    <span style="font-weight:600;font-size:14px">{{ r.quiz.name }}</span>
+    <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
+  </a>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<h2 style="font-size:18px;margin:22px 0 4px">📉 {% if has_quizzes %}Général (hors quiz){% else %}Connaissance de vos produits{% endif %}</h2>
 <p class="small" style="margin:0 0 10px">Taux de bonne réponse par question — les moins maîtrisées d'abord :
 c'est là que votre communication a le plus d'impact.</p>
+<div class="dash-grid">
 {% for s in quiz_stats %}
-<div class="card" style="margin-bottom:8px;padding:12px 14px">
+<div class="card" style="padding:12px 14px">
   <p style="margin:0 0 6px;font-size:14px;font-weight:600">{{ s.q.text }}</p>
   <div class="bar"><div style="width:{{ s.pct }}%;background:{% if s.pct < 50 %}var(--rouge){% elif s.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
   <p class="small" style="margin:4px 0 0">{{ s.pct }} % de bonnes réponses · {{ s.n }} réponse{{ s.n|pluralize }}</p>
 </div>
 {% empty %}<p class="small">Pas encore de données.</p>{% endfor %}
+</div>
 
 <h2 style="font-size:18px;margin:22px 0 4px">🗳️ Résultats des sondages</h2>
+<div class="dash-grid">
 {% for s in survey_stats %}
-<div class="card" style="margin-bottom:8px;padding:12px 14px">
+<div class="card" style="padding:12px 14px">
   <p style="margin:0 0 8px;font-size:14px;font-weight:600">{{ s.q.text }} <span class="small">({{ s.n }} réponses)</span></p>
   {% for d in s.dist %}
   <p class="small" style="margin:6px 0 2px">{{ d.opt }} — {{ d.pct }} %</p>
@@ -42,6 +82,7 @@ c'est là que votre communication a le plus d'impact.</p>
   {% endfor %}
 </div>
 {% empty %}<p class="small">Pas encore de sondage actif.</p>{% endfor %}
+</div>
 
 <h2 style="font-size:18px;margin:22px 0 4px">🏅 Meilleurs participants</h2>
 {% for s in top %}
