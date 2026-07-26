@@ -98,7 +98,8 @@ class Command(BaseCommand):
             reward_text="Un diplôme numérique et des bons points pour les meilleurs de chaque quiz",
             dashboard_code="REUSSITE2026", question_count=5, survey_every=5,
             elimination=False, category_label="Niveau", category_label_plural="Niveaux",
-            subcategory_label="Matière", subcategory_label_plural="Matières"))
+            subcategory_label="Matière", subcategory_label_plural="Matières",
+            consent_required=False))
 
         if created:
             for i, level in enumerate(LEVELS):

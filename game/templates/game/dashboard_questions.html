@@ -15,6 +15,7 @@
   <p class="small" style="margin:0">Questions & réponses (quiz et sondages)</p></div>
 </div>
 {% include "game/_dashboard_nav.html" with active="questions" %}
+<a href="#add-form" class="dash-fab" aria-label="Ajouter une question">+</a>
 
 <form method="get" class="card" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
   <div style="flex:1;min-width:140px">
@@ -46,8 +47,10 @@
   {% endif %}
 </form>
 
-<h2 style="font-size:16px;margin:20px 0 8px">➕ Nouvelle question</h2>
-<form method="post" class="card qcard">
+<details class="dash-accordion" id="add-form" style="margin-top:20px">
+<summary>➕ Nouvelle question</summary>
+<div class="accordion-body">
+<form method="post" class="qcard">
   {% csrf_token %}
   <input type="hidden" name="action" value="add_question">
   <label>Type</label>
@@ -89,6 +92,8 @@
   </label>
   <button class="btn" type="submit" style="margin-top:14px">Créer la question</button>
 </form>
+</div>
+</details>
 
 <h2 style="font-size:16px;margin:22px 0 8px">{{ questions|length }} question{{ questions|length|pluralize }}</h2>
 <div class="dash-grid wide">
@@ -98,7 +103,7 @@
     {% if q.sub_category %}{{ q.sub_category.category.name }} — {{ q.sub_category.name }}{% else %}Sans {{ space.category_label|lower }}{% endif %}
     {% if not q.active %} · <span style="color:var(--rouge)">inactive</span>{% endif %}
   </p>
-  <form method="post">
+  <form method="post" onsubmit="return confirm('Enregistrer les modifications de cette question ?');">
   {% csrf_token %}
   <input type="hidden" name="action" value="edit_question">
   <input type="hidden" name="question_id" value="{{ q.id }}">

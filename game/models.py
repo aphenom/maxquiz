@@ -208,6 +208,13 @@ class Space(models.Model):
                                          blank=True, default="Sous-catégorie")
     subcategory_label_plural = models.CharField("Libellé des sous-catégories (pluriel)", max_length=30,
                                                  blank=True, default="Sous-catégories")
+    logo_url = models.URLField("Logo (URL image, vide = emoji)", blank=True, default="")
+    cover_url = models.URLField("Image de couverture (URL, vide = dégradé de couleur)", blank=True, default="")
+    consent_required = models.BooleanField(
+        "Consentement marketing requis",
+        default=True,
+        help_text="À désactiver pour un usage sans finalité marketing (ex. suivi pédagogique en école) : "
+                  "la case à cocher n'est plus proposée aux participants et personne n'est anonymisé dans les exports.")
     active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -216,6 +223,44 @@ class Space(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Membership(models.Model):
+    """Personne identifiée par l'établissement (élève, employé...), matchée par téléphone."""
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="members")
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name="memberships")
+    category = models.ForeignKey("Category", null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="members")
+    sub_category = models.ForeignKey("SubCategory", null=True, blank=True, on_delete=models.SET_NULL,
+                                     related_name="members")
+    full_name = models.CharField("Nom complet", max_length=120)
+    phone = models.CharField("Téléphone (base établissement)", max_length=20)
+    external_ref = models.CharField("Référence externe (matricule...)", max_length=60, blank=True, default="")
+    matched_at = models.DateTimeField("Apparié le", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Membre de l'espace"
+        unique_together = [("space", "phone")]
+
+    def __str__(self):
+        return f"{self.space} · {self.full_name}"
+
+
+class OTPCode(models.Model):
+    """Code de connexion à usage unique envoyé par SMS (stub dev : loggué/affiché)."""
+    phone = models.CharField("Téléphone", max_length=20)
+    code = models.CharField("Code", max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    consumed = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Code de connexion (OTP)"
+
+    def __str__(self):
+        return f"{self.phone} · {self.code}"
 
 
 class Category(models.Model):

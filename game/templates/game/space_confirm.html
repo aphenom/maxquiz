@@ -1,0 +1,14 @@
+{% extends "game/base.html" %}
+{% block title %}Connecté — {{ space.name }}{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+{% include "game/_space_banner.html" with subtitle="Connexion réussie" %}
+<div class="stagger" style="margin-top:14px;text-align:center">
+  <p style="font-size:40px;margin:10px 0 0">✅</p>
+  <p style="font-weight:700;font-size:17px">Bienvenue {{ player.pseudo }} !</p>
+  <p class="small">Tu es connecté chez {{ space.name }}.</p>
+  <a class="btn" href="{% url 'space_home' space.slug %}" style="margin-top:16px">🚀 Jouer</a>
+  <a class="btn vert" href="{% url 'account_home' %}" style="margin-top:10px">📊 Voir mes résultats</a>
+</div>
+{% endblock %}

@@ -281,6 +281,12 @@ def give_up(request):
     return JsonResponse({"ok": True, "reached": session.reached})
 
 
+def _ranked(sessions):
+    """Trie des sessions par performance : finaliste > éliminé, puis question
+    atteinte, puis temps total — utilisé pour tous les classements du site."""
+    return sorted(sessions, key=lambda s: (s.status != "finished", -s.reached, s.total_time_ms))
+
+
 def leaderboard(request):
     today = timezone.localdate()
     rows = (GameSession.objects
@@ -288,8 +294,7 @@ def leaderboard(request):
             .exclude(status="playing")
             .select_related("player")
             .order_by("-status", "-reached", "total_time_ms")[:50])
-    # tri : finished > eliminated, puis question atteinte, puis temps total
-    rows = sorted(rows, key=lambda s: (s.status != "finished", -s.reached, s.total_time_ms))
+    rows = _ranked(rows)
     finishers = sum(1 for s in rows if s.status == "finished")
     cfg = GameConfig.get()
     share = cfg.daily_pot // finishers if finishers else cfg.daily_pot
@@ -328,11 +333,19 @@ import csv
 from django.http import HttpResponse
 from django.db.models import Count, Q
 from django.utils.text import slugify
-from .models import Space, Category, SubCategory, Quiz
+from .models import Space, Category, SubCategory, Quiz, Membership, OTPCode
 
 
 def _space(slug):
     return get_object_or_404(Space, slug=slug, active=True)
+
+
+def _match_membership(space, phone, player):
+    """Associe automatiquement un joueur à une entrée de la base établissement
+    (Membership) déjà présente pour ce téléphone mais pas encore appariée."""
+    if phone:
+        Membership.objects.filter(space=space, phone=phone, player__isnull=True).update(
+            player=player, matched_at=timezone.now())
 
 
 def _post_int(post, key):
@@ -427,7 +440,7 @@ def space_start(request, slug):
         })
     pseudo = request.POST.get("pseudo", "").strip()[:30]
     phone = request.POST.get("phone", "").strip()[:20]
-    consent = request.POST.get("consent") == "on"
+    consent = (request.POST.get("consent") == "on") if space.consent_required else True
 
     player = _player(request)
     if not player:
@@ -439,6 +452,7 @@ def space_start(request, slug):
     if phone and not player.phone:
         player.phone = phone
         player.save(update_fields=["phone"])
+    _match_membership(space, player.phone, player)
 
     today = timezone.localdate()
     if space.one_per_day and GameSession.objects.filter(
@@ -511,7 +525,7 @@ def quiz_start(request, slug, quiz_slug):
         })
     pseudo = request.POST.get("pseudo", "").strip()[:30]
     phone = request.POST.get("phone", "").strip()[:20]
-    consent = request.POST.get("consent") == "on"
+    consent = (request.POST.get("consent") == "on") if space.consent_required else True
 
     player = _player(request)
     if not player:
@@ -523,6 +537,7 @@ def quiz_start(request, slug, quiz_slug):
     if phone and not player.phone:
         player.phone = phone
         player.save(update_fields=["phone"])
+    _match_membership(space, player.phone, player)
 
     today = timezone.localdate()
     if space.one_per_day and GameSession.objects.filter(
@@ -682,8 +697,9 @@ def space_dashboard(request, slug):
 
     # Export CSV des contacts consentants
     if request.GET.get("export") == "contacts":
-        resp = HttpResponse(content_type="text/csv")
+        resp = HttpResponse(content_type="text/csv; charset=utf-8")
         resp["Content-Disposition"] = f'attachment; filename="contacts-{space.slug}.csv"'
+        resp.write("﻿")  # BOM : Excel n'auto-détecte pas l'UTF-8 sans lui (accents affichés en charabia)
         w = csv.writer(resp)
         w.writerow(["pseudo", "telephone", "meilleur_score", "parties"])
         for p in Player.objects.filter(sessions__space=space, sessions__consent=True).distinct():
@@ -692,8 +708,7 @@ def space_dashboard(request, slug):
             w.writerow([p.pseudo, p.phone or "", best, ps.count()])
         return resp
 
-    top = sorted(sessions.select_related("player"),
-                 key=lambda s: (-s.reached, s.total_time_ms))[:10]
+    top = _ranked(sessions.select_related("player"))[:10]
     return render(request, "game/dashboard.html", {
         "space": space, "total": total, "finished": finished,
         "completion": round(100 * finished / total) if total else 0,
@@ -822,11 +837,42 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
         return redirect("dashboard_quiz_detail", slug=slug, quiz_slug=quiz.slug)
 
     sessions = GameSession.objects.filter(space=space, quiz=quiz, flagged=False).exclude(status="playing")
+
+    if request.GET.get("export") == "answers":
+        resp = HttpResponse(content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="reponses-{quiz.slug}.csv"'
+        resp.write("﻿")  # BOM : Excel n'auto-détecte pas l'UTF-8 sans lui (accents affichés en charabia)
+        w = csv.writer(resp)
+
+        sessions_list = list(sessions.select_related("player").prefetch_related("answers__question"))
+        question_ids = {a.question_id for s in sessions_list for a in s.answers.all()}
+        questions = list(Question.objects.filter(id__in=question_ids).order_by("kind", "difficulty", "id"))
+
+        w.writerow(["participant", "telephone", "score", "statut", "temps_total_ms"]
+                  + [q.text for q in questions])
+        for s in sessions_list:
+            anonymize = space.consent_required and not s.consent
+            name = "Anonyme" if anonymize else s.player.pseudo
+            phone = "" if anonymize else (s.player.phone or "")
+            answers_by_question = {a.question_id: a for a in s.answers.all()}
+            row = [name, phone, s.reached, s.get_status_display(), s.total_time_ms]
+            for q in questions:
+                a = answers_by_question.get(q.id)
+                if not a:
+                    row.append("")
+                elif a.choice < 0:
+                    row.append("(temps écoulé)")
+                elif q.kind == "survey":
+                    row.append(q.options()[a.choice])
+                else:
+                    row.append(f"{q.options()[a.choice]} ({'oui' if a.is_correct else 'non'})")
+            w.writerow(row)
+        return resp
+
     total = sessions.count()
     finished = sessions.filter(status="finished").count()
     quiz_stats, survey_stats = _quiz_dashboard_stats(space, sessions)
-    top = sorted(sessions.select_related("player"),
-                 key=lambda s: (-s.reached, s.total_time_ms))[:10]
+    top = _ranked(sessions.select_related("player"))[:10]
     categories = space.categories.prefetch_related("subcategories")
     return render(request, "game/dashboard_quiz_detail.html", {
         "space": space, "quiz": quiz, "total": total, "finished": finished,
@@ -898,3 +944,245 @@ def dashboard_questions(request, slug):
         "space": space, "questions": questions, "categories": categories,
         "f_category": cat_id, "f_subcategory": sub_id, "f_kind": kind,
     })
+
+
+def _member_fields(post, space):
+    return {
+        "full_name": post.get("full_name", "").strip()[:120],
+        "phone": post.get("phone", "").strip()[:20],
+        "external_ref": post.get("external_ref", "").strip()[:60],
+        "category": space.categories.filter(id=_post_int(post, "category_id")).first(),
+        "sub_category": SubCategory.objects.filter(id=_post_int(post, "subcategory_id"),
+                                                    category__space=space).first(),
+    }
+
+
+def dashboard_members(request, slug):
+    """Base des personnes identifiées par l'établissement : liste + import CSV + ajout.
+    L'édition détaillée d'un membre se fait sur sa fiche (dashboard_member_detail)."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "import_csv" and request.FILES.get("csv_file"):
+            raw = request.FILES["csv_file"].read().decode("utf-8-sig", errors="ignore")
+            created, matched = 0, 0
+            for row in csv.reader(raw.splitlines()):
+                if not row or len(row) < 2:
+                    continue
+                full_name, phone = row[0].strip()[:120], row[1].strip()[:20]
+                external_ref = row[2].strip()[:60] if len(row) > 2 else ""
+                if not full_name or not phone or not phone[0].isdigit():
+                    continue  # ignore l'en-tête éventuelle et les lignes vides
+                member, is_new = Membership.objects.get_or_create(
+                    space=space, phone=phone,
+                    defaults={"full_name": full_name, "external_ref": external_ref})
+                created += is_new
+                existing_player = Player.objects.filter(phone=phone).first()
+                if existing_player and not member.player_id:
+                    member.player = existing_player
+                    member.matched_at = timezone.now()
+                    member.save(update_fields=["player", "matched_at"])
+                    matched += 1
+            messages.success(request, f"{created} membre(s) importé(s), {matched} déjà apparié(s).")
+        elif action == "add_member":
+            f = _member_fields(request.POST, space)
+            if not f["full_name"] or not f["phone"]:
+                messages.error(request, "Nom et téléphone sont obligatoires.")
+            else:
+                member, created = Membership.objects.get_or_create(
+                    space=space, phone=f["phone"], defaults={
+                        "full_name": f["full_name"], "external_ref": f["external_ref"],
+                        "category": f["category"], "sub_category": f["sub_category"]})
+                if not created:
+                    messages.error(request, f"Un membre existe déjà avec le téléphone {f['phone']}.")
+                else:
+                    existing_player = Player.objects.filter(phone=f["phone"]).first()
+                    if existing_player:
+                        member.player = existing_player
+                        member.matched_at = timezone.now()
+                        member.save(update_fields=["player", "matched_at"])
+        return redirect("dashboard_members", slug=slug)
+
+    members = space.members.select_related("player", "category", "sub_category").order_by("-matched_at", "full_name")
+    return render(request, "game/dashboard_members.html", {"space": space, "members": members})
+
+
+def dashboard_member_detail(request, slug, member_id):
+    """Fiche d'un membre : infos, édition, historique de quiz et réponses."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+    member = get_object_or_404(Membership, id=member_id, space=space)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "edit_member":
+            f = _member_fields(request.POST, space)
+            if not f["full_name"] or not f["phone"]:
+                messages.error(request, "Nom et téléphone sont obligatoires.")
+            elif space.members.exclude(id=member.id).filter(phone=f["phone"]).exists():
+                messages.error(request, f"Un autre membre utilise déjà le téléphone {f['phone']}.")
+            else:
+                member.full_name = f["full_name"]
+                member.phone = f["phone"]
+                member.external_ref = f["external_ref"]
+                member.category = f["category"]
+                member.sub_category = f["sub_category"]
+                member.save()
+        elif action == "delete_member":
+            member.delete()
+            return redirect("dashboard_members", slug=slug)
+        return redirect("dashboard_member_detail", slug=slug, member_id=member.id)
+
+    sessions_stats = []
+    if member.player_id:
+        sessions = (GameSession.objects.filter(space=space, player_id=member.player_id, flagged=False)
+                    .exclude(status="playing").select_related("quiz")
+                    .prefetch_related("answers__question").order_by("-started_at"))
+        for s in sessions:
+            rank, total = None, None
+            if s.quiz_id:
+                ranked = _ranked(GameSession.objects.filter(
+                    quiz_id=s.quiz_id, flagged=False).exclude(status="playing"))
+                if s in ranked:
+                    rank, total = ranked.index(s) + 1, len(ranked)
+            sessions_stats.append({"session": s, "rank": rank, "total": total, "answers": s.answers.all()})
+
+    categories = space.categories.prefetch_related("subcategories")
+    return render(request, "game/dashboard_member_detail.html", {
+        "space": space, "member": member, "sessions_stats": sessions_stats, "categories": categories,
+    })
+
+
+# ============================================================
+# COMPTES UTILISATEURS (connexion OTP, historique, classements)
+# ============================================================
+from datetime import timedelta
+from django.conf import settings
+from django.urls import reverse
+from django.contrib import messages
+
+OTP_VALIDITY_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+
+
+def _send_otp(phone):
+    """Génère et « envoie » un code OTP. Stub dev : loggué console (point de
+    branchement pour un vrai fournisseur SMS plus tard)."""
+    code = f"{random.randint(0, 999999):06d}"
+    OTPCode.objects.create(phone=phone, code=code)
+    print(f"[OTP] {phone} -> {code}")
+    return code
+
+
+def account_login(request):
+    space_slug = request.GET.get("space") or request.POST.get("space") or ""
+    space = Space.objects.filter(slug=space_slug, active=True).first() if space_slug else None
+    dev_code = None
+    if request.method == "POST":
+        phone = request.POST.get("phone", "").strip()[:20]
+        if phone:
+            dev_code = _send_otp(phone)
+            request.session["otp_phone"] = phone
+            request.session["otp_space"] = space_slug
+            url = reverse("account_verify")
+            if settings.DEBUG:
+                url += f"?dev_code={dev_code}"
+            return redirect(url)
+    return render(request, "game/account_login.html", {"space": space, "space_slug": space_slug})
+
+
+def account_verify(request):
+    phone = request.session.get("otp_phone")
+    space_slug = request.session.get("otp_space") or ""
+    space = Space.objects.filter(slug=space_slug, active=True).first() if space_slug else None
+    if not phone:
+        return redirect("account_login")
+
+    error = None
+    if request.method == "POST":
+        submitted = request.POST.get("code", "").strip()
+        otp = OTPCode.objects.filter(phone=phone, consumed=False).order_by("-created_at").first()
+        expired = not otp or otp.created_at < timezone.now() - timedelta(minutes=OTP_VALIDITY_MINUTES)
+        if not otp or expired:
+            error = "Code expiré — demande un nouveau code."
+        elif otp.attempts >= OTP_MAX_ATTEMPTS:
+            error = "Trop de tentatives — demande un nouveau code."
+        elif submitted != otp.code:
+            otp.attempts += 1
+            otp.save(update_fields=["attempts"])
+            error = "Code incorrect."
+        else:
+            otp.consumed = True
+            otp.save(update_fields=["consumed"])
+            player, _ = Player.objects.get_or_create(phone=phone, defaults={"pseudo": phone})
+            request.session["player_id"] = player.id
+            request.session["verified_player_id"] = player.id
+            Membership.objects.filter(phone=phone, player__isnull=True).update(
+                player=player, matched_at=timezone.now())
+            request.session.pop("otp_phone", None)
+            request.session["otp_space"] = ""
+            if space:
+                return redirect("space_confirm", slug=space.slug)
+            return redirect("account_home")
+
+    dev_code = request.GET.get("dev_code") if settings.DEBUG else None
+    return render(request, "game/account_verify.html", {
+        "space": space, "phone": phone, "error": error, "dev_code": dev_code,
+    })
+
+
+def account_logout(request):
+    for key in ("player_id", "verified_player_id", "otp_phone", "otp_space"):
+        request.session.pop(key, None)
+    return redirect("home")
+
+
+def account_home(request):
+    """« Mes quiz » : historique, scores et classements du joueur connecté."""
+    player_id = request.session.get("verified_player_id")
+    player = Player.objects.filter(id=player_id).first() if player_id else None
+    if not player:
+        return redirect("account_login")
+
+    public_sessions = (GameSession.objects.filter(player=player, space__isnull=True)
+                       .order_by("-day", "-started_at"))
+
+    space_blocks = []
+    for sp in Space.objects.filter(sessions__player=player).distinct():
+        membership = Membership.objects.filter(space=sp, player=player).first()
+        quiz_rows = []
+        for qz in Quiz.objects.filter(sessions__player=player, space=sp).distinct():
+            all_sessions = _ranked(GameSession.objects.filter(
+                quiz=qz, flagged=False).exclude(status="playing"))
+            mine = [s for s in all_sessions if s.player_id == player.id]
+            if not mine:
+                continue
+            best = mine[0]
+            quiz_rows.append({"quiz": qz, "session": best,
+                              "rank": all_sessions.index(best) + 1, "total": len(all_sessions)})
+        flat_count = GameSession.objects.filter(
+            space=sp, quiz__isnull=True, player=player, flagged=False).exclude(status="playing").count()
+        space_blocks.append({"space": sp, "membership": membership,
+                            "quiz_rows": quiz_rows, "flat_count": flat_count})
+
+    return render(request, "game/account_home.html", {
+        "player": player, "public_sessions": public_sessions, "space_blocks": space_blocks,
+        "tab": "account",
+    })
+
+
+def space_confirm(request, slug):
+    """Page de confirmation brandée juste après une connexion OTP initiée
+    depuis le lien d'un établissement."""
+    space = _space(slug)
+    player_id = request.session.get("verified_player_id")
+    player = Player.objects.filter(id=player_id).first() if player_id else None
+    if not player:
+        return redirect(f"{reverse('account_login')}?space={slug}")
+    return render(request, "game/space_confirm.html", {"space": space, "player": player})

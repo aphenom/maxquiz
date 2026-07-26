@@ -19,11 +19,13 @@
       {% if not quiz.active %} · <span style="color:var(--rouge)">désactivé</span>{% endif %}
     </p></div>
   </div>
-  <div style="display:flex;gap:8px">
-    <form method="post">
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="{% url 'dashboard_questions' space.slug %}{% if quiz.sub_category_id %}?subcategory_id={{ quiz.sub_category_id }}{% elif quiz.category_id %}?category_id={{ quiz.category_id }}{% endif %}"
+       class="chip orange">❓ Questions de ce quiz</a>
+    <form method="post" onsubmit="return confirm('{% if quiz.active %}Désactiver{% else %}Réactiver{% endif %} ce quiz ?');">
       {% csrf_token %}
       <input type="hidden" name="action" value="toggle_quiz">
-      <button type="submit" class="chip">{% if quiz.active %}désactiver{% else %}réactiver{% endif %}</button>
+      <button type="submit" class="chip">{% if quiz.active %}Désactiver{% else %}Réactiver{% endif %}</button>
     </form>
     <form method="post" onsubmit="return confirm('Supprimer le quiz « {{ quiz.name }} » ?');">
       {% csrf_token %}
@@ -36,7 +38,7 @@
 <div class="dash-split" style="margin-top:14px">
   <div>
     <h2 style="font-size:16px;margin:0 0 8px">⚙️ Réglages du quiz</h2>
-    <form method="post" class="card">
+    <form method="post" class="card" onsubmit="return confirm('Enregistrer ces modifications ? Elles s\'appliquent immédiatement aux prochaines parties.');">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit_quiz">
       <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Nom du quiz</label>
@@ -80,6 +82,12 @@
       <div class="kpi"><b>{{ total }}</b><span class="small">participations</span></div>
       <div class="kpi"><b>{{ completion }}%</b><span class="small">complétion</span></div>
     </div>
+    <a class="btn vert" href="?export=answers" style="margin-top:10px;width:auto;display:inline-block;padding:12px 20px">
+      ⬇️ Exporter participants & réponses (CSV)</a>
+    {% if space.consent_required %}
+    <p class="small" style="margin-top:8px">Les participants n'ayant pas donné leur consentement
+    apparaissent anonymisés dans cet export.</p>
+    {% endif %}
   </div>
 </div>
 

@@ -1,6 +1,35 @@
-<nav style="display:flex;gap:8px;margin:14px 0 10px;flex-wrap:wrap">
-  <a href="{% url 'space_dashboard' space.slug %}" class="chip {% if active == 'overview' %}orange{% endif %}">📊 Vue d'ensemble</a>
-  <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">🗂️ {{ space.category_label_plural }}</a>
-  <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
-  <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
+<nav class="dash-burger-bar">
+  <button type="button" class="chip orange dash-burger" id="dash-nav-toggle"
+          aria-expanded="false" aria-controls="dash-nav-menu">
+    {% if active == "overview" %}📊 Vue d'ensemble
+    {% elif active == "categories" %}🗂️ {{ space.category_label_plural }}
+    {% elif active == "quizzes" %}📝 Quiz
+    {% elif active == "questions" %}❓ Questions
+    {% elif active == "members" %}🪪 Membres
+    {% endif %} ▾
+  </button>
+  <div class="dash-nav-menu" id="dash-nav-menu">
+    <a href="{% url 'space_dashboard' space.slug %}" class="chip {% if active == 'overview' %}orange{% endif %}">📊 Vue d'ensemble</a>
+    <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">🗂️ {{ space.category_label_plural }}</a>
+    <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
+    <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
+    <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">🪪 Membres</a>
+  </div>
 </nav>
+<script>
+(function(){
+  var btn = document.getElementById('dash-nav-toggle');
+  var menu = document.getElementById('dash-nav-menu');
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var open = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  document.addEventListener('click', function(e){
+    if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) {
+      menu.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+})();
+</script>

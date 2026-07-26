@@ -3,7 +3,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
-                     Category, SubCategory, Quiz)
+                     Category, SubCategory, Quiz, Membership)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -30,8 +30,16 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Space)
 class SpaceAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "active", "question_count", "elimination", "dashboard_code")
+    list_display = ("name", "slug", "active", "consent_required", "question_count", "elimination", "dashboard_code")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(Membership)
+class MembershipAdmin(admin.ModelAdmin):
+    list_display = ("full_name", "space", "category", "sub_category", "phone",
+                    "external_ref", "player", "matched_at")
+    list_filter = ("space", "category")
+    search_fields = ("full_name", "phone", "external_ref")
 
 
 class SubCategoryInline(admin.TabularInline):

@@ -19,4 +19,11 @@ urlpatterns = [
     path("e/<slug:slug>/tableau-de-bord/quiz/", views.dashboard_quizzes, name="dashboard_quizzes"),
     path("e/<slug:slug>/tableau-de-bord/questions/", views.dashboard_questions, name="dashboard_questions"),
     path("e/<slug:slug>/tableau-de-bord/quiz/<slug:quiz_slug>/", views.dashboard_quiz_detail, name="dashboard_quiz_detail"),
+    path("e/<slug:slug>/tableau-de-bord/membres/", views.dashboard_members, name="dashboard_members"),
+    path("e/<slug:slug>/tableau-de-bord/membres/<int:member_id>/", views.dashboard_member_detail, name="dashboard_member_detail"),
+    path("e/<slug:slug>/connecte/", views.space_confirm, name="space_confirm"),
+    path("compte/connexion/", views.account_login, name="account_login"),
+    path("compte/otp/", views.account_verify, name="account_verify"),
+    path("compte/deconnexion/", views.account_logout, name="account_logout"),
+    path("compte/", views.account_home, name="account_home"),
 ]

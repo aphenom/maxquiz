@@ -1,0 +1,28 @@
+{% extends "game/base.html" %}
+{% block title %}Mes quiz — MaxQuiz{% endblock %}
+{% block content %}
+<h1 style="margin-top:10px">📊 Mes quiz</h1>
+<p class="small">Connecté avec le numéro {{ player.phone }} ·
+  <a href="{% url 'account_logout' %}">se déconnecter</a></p>
+
+<h2 style="font-size:18px;margin:20px 0 8px">🎮 Jeu public MaxQuiz</h2>
+{% for s in public_sessions %}
+<div class="card" style="display:flex;justify-content:space-between;margin-bottom:6px;padding:10px 14px">
+  <span>{{ s.day }} · {{ s.get_mode_display }}</span>
+  <span style="font-weight:700;color:var(--orange)">Q{{ s.reached }} · {{ s.get_status_display }}</span>
+</div>
+{% empty %}<p class="small">Pas encore de participation au jeu public.</p>{% endfor %}
+
+{% for sb in space_blocks %}
+<h2 style="font-size:18px;margin:20px 0 8px">{{ sb.space.emoji }} {{ sb.space.name }}
+  {% if sb.membership %}<span class="small" style="color:var(--vert)">· ✅ membre vérifié</span>{% endif %}</h2>
+{% for r in sb.quiz_rows %}
+<div class="card" style="margin-bottom:6px;padding:10px 14px">
+  <p style="margin:0;font-weight:700">{{ r.quiz.name }}</p>
+  <p class="small" style="margin:4px 0 0">Score : Q{{ r.session.reached }} · Rang {{ r.rank }} / {{ r.total }}</p>
+</div>
+{% empty %}
+{% if sb.flat_count %}<p class="small">{{ sb.flat_count }} participation{{ sb.flat_count|pluralize }} (hors quiz spécifique).</p>{% endif %}
+{% endfor %}
+{% empty %}<p class="small">Pas encore de quiz d'établissement joué.</p>{% endfor %}
+{% endblock %}

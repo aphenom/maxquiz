@@ -12,6 +12,7 @@
   --rouge:#D6452C; --or:#E9A820; --sable:#EADFCE; --brun:#6E6152;
 }
 *{box-sizing:border-box}
+html{scroll-behavior:smooth}
 body{margin:0;background:var(--ivoire);color:var(--encre);
   font-family:'Bricolage Grotesque',system-ui,sans-serif;
   max-width:430px;margin-inline:auto;min-height:100dvh;display:flex;flex-direction:column}
@@ -43,7 +44,8 @@ input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px so
 .stagger>*:nth-child(2){animation-delay:.07s}.stagger>*:nth-child(3){animation-delay:.14s}
 .stagger>*:nth-child(4){animation-delay:.21s}.stagger>*:nth-child(5){animation-delay:.28s}
 .stagger>*:nth-child(6){animation-delay:.35s}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}}
 
 /* Tableau de bord client : mise en page large sur grand écran (pages joueur non concernées) */
 body.dash{max-width:1100px}
@@ -62,6 +64,46 @@ body.dash{max-width:1100px}
 .chip.vert{background:rgba(11,154,92,.14);color:var(--vert)}
 select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 14px;border-radius:10px;
   border:1.5px solid var(--sable);font-size:15px;font-family:inherit;background:var(--ivoire)}
+
+/* Menu du tableau de bord : pastille collante (section courante) qui déplie le
+   menu complet au clic, pour rester accessible sans avoir à remonter la page */
+.dash-burger-bar{position:sticky;top:8px;z-index:50;display:flex;justify-content:flex-end;margin:6px 0}
+.dash-burger{cursor:pointer;box-shadow:0 2px 10px rgba(34,26,18,.22);border:none;font-family:inherit}
+.dash-nav-menu{display:none;flex-direction:column;gap:6px;position:absolute;top:44px;right:0;
+  background:#fff;padding:10px;border-radius:14px;box-shadow:0 4px 20px rgba(34,26,18,.2);min-width:210px}
+.dash-nav-menu.open{display:flex}
+.dash-nav-menu .chip{justify-content:flex-start;width:100%}
+
+/* Bouton flottant : accès direct au formulaire d'ajout sans avoir à défiler */
+.dash-fab{position:fixed;right:18px;bottom:18px;z-index:60;width:56px;height:56px;border-radius:50%;
+  background:var(--vert);color:#fff;font-size:28px;font-weight:700;border:none;
+  box-shadow:0 4px 14px rgba(34,26,18,.32);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;text-decoration:none;line-height:1;transition:opacity .15s ease,transform .15s ease}
+.dash-fab:active{transform:scale(.94)}
+.dash-fab.hidden{opacity:0;pointer-events:none;transform:scale(.8)}
+#add-form{scroll-margin-top:64px}
+
+/* Formulaires d'ajout repliés par défaut : n'occupent de la place que si on les ouvre */
+.dash-accordion{background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(34,26,18,.08);overflow:hidden}
+.dash-accordion summary{cursor:pointer;padding:16px;font-weight:700;list-style:none;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dash-accordion summary::-webkit-details-marker{display:none}
+.dash-accordion summary::after{content:'▾';color:var(--orange);transition:transform .2s ease;flex:none}
+.dash-accordion[open] summary::after{transform:rotate(180deg)}
+.dash-accordion .accordion-body{padding:0 16px 16px}
+
+/* Bannière de marque d'un espace (façon page Facebook) : cover, logo qui déborde
+   dessus, nom en dessous — hors du cadre de la couverture */
+.space-banner{margin:-20px -18px 0}
+.space-banner .cover{height:110px;background-size:cover;background-position:center;
+  background-color:var(--sable);border-radius:0 0 18px 18px}
+.space-banner .logo-wrap{width:60px;height:60px;border-radius:50%;background:#fff;border:3px solid #fff;
+  box-shadow:0 2px 6px rgba(34,26,18,.18);display:flex;align-items:center;justify-content:center;
+  overflow:hidden;margin:-30px 0 0 18px}
+.space-banner .logo-wrap img{width:100%;height:100%;object-fit:cover}
+.space-banner .logo-wrap span{font-size:28px}
+.space-banner .space-title{margin:8px 18px 0;font-size:20px;line-height:1.1}
+.space-banner .space-subtitle{margin:2px 18px 0;font-size:12px;color:var(--brun)}
 {% block css %}{% endblock %}
 </style>
 </head>
@@ -73,8 +115,23 @@ select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 
   <a class="tab {% if tab == 'home' %}on{% endif %}" href="/">🎮<br>Jouer</a>
   <a class="tab {% if tab == 'board' %}on{% endif %}" href="/classement/">🏅<br>Classement</a>
   <a class="tab {% if tab == 'wallet' %}on{% endif %}" href="/portefeuille/">💰<br>Portefeuille</a>
+  <a class="tab {% if tab == 'account' %}on{% endif %}" href="{% url 'account_home' %}">🔑<br>Mon compte</a>
 </nav>
 {% endblock %}
 {% block js %}{% endblock %}
+<script>
+(function(){
+  var fab = document.querySelector('.dash-fab');
+  var target = document.getElementById('add-form');
+  if (!fab || !target) return;
+  if (target.tagName === 'DETAILS') {
+    fab.addEventListener('click', function(){ target.open = true; });
+  }
+  if (!('IntersectionObserver' in window)) return;
+  new IntersectionObserver(function(entries){
+    fab.classList.toggle('hidden', entries[0].isIntersecting);
+  }).observe(target);
+})();
+</script>
 </body>
 </html>

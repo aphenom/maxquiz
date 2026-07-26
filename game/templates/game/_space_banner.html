@@ -1,0 +1,8 @@
+<div class="space-banner stagger">
+  <div class="cover" style="{% if space.cover_url %}background-image:url('{{ space.cover_url }}'){% else %}background:linear-gradient(135deg,{{ space.color_primary }},{{ space.color_accent }}){% endif %}"></div>
+  <div class="logo-wrap">
+    {% if space.logo_url %}<img src="{{ space.logo_url }}" alt="{{ space.name }}">{% else %}<span>{{ space.emoji }}</span>{% endif %}
+  </div>
+  <h1 class="space-title">{{ space.name }}</h1>
+  {% if subtitle %}<p class="space-subtitle">{{ subtitle }}</p>{% endif %}
+</div>

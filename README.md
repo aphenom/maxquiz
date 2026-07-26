@@ -111,6 +111,29 @@ Français) = 8 quiz avec lien direct (ex. `/e/college-la-reussite/q/5eme-mathema
 40 questions et des dizaines de participations simulées avec un taux de maîtrise
 différent par quiz, pour un tableau de bord immédiatement parlant en rendez-vous.
 
+### Comptes utilisateurs (connexion OTP) & branding enrichi
+
+Jouer reste possible sans connexion (pseudo + téléphone, comme aujourd'hui). Pour
+retrouver son historique et son classement depuis n'importe quel appareil, un
+participant peut se connecter par téléphone + code à usage unique sur
+`/compte/connexion/` (avec `?space=slug` pour rester dans le branding d'un espace) :
+en environnement de dev, aucun SMS n'est réellement envoyé, le code est affiché à
+l'écran et loggué console (`_send_otp()` dans `game/views.py` est le point unique à
+brancher sur un vrai fournisseur SMS plus tard). Une fois connecté, `/compte/`
+(« Mes quiz ») liste l'historique du joueur — jeu public et chaque espace joué, avec
+score et rang — et une connexion initiée depuis le lien d'un établissement atterrit
+sur une page de confirmation brandée (`/e/slug/connecte/`) plutôt que l'accueil
+générique.
+
+Un établissement peut aussi faire correspondre les participants à sa propre base
+(élèves, employés…) : import CSV (`nom,telephone[,reference]`) depuis l'onglet
+« Membres » du tableau de bord, avec appariement automatique par téléphone — à
+l'import si le numéro a déjà joué, ou dès sa première participation sinon.
+
+Chaque espace peut aussi définir un logo et une image de couverture (`logo_url`/
+`cover_url` dans l'admin) affichés en bannière façon page Facebook sur ses pages ;
+sans ces champs, repli sur l'emoji et un dégradé des couleurs de l'espace.
+
 ## ⚠️ Avertissement important
 
 Le **joker payant** peut faire qualifier le jeu de jeu d'argent (paiement + gain en

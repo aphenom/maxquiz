@@ -10,12 +10,14 @@
   <p class="small" style="margin:0">{{ space.category_label_plural }} & {{ space.subcategory_label_plural|lower }}</p></div>
 </div>
 {% include "game/_dashboard_nav.html" with active="categories" %}
+<a href="#add-form" class="dash-fab" aria-label="Ajouter : {{ space.category_label|lower }}">+</a>
 
 <div class="dash-split" style="margin-top:8px">
   <div class="dash-grid">
     {% for c in categories %}
     <div class="card" style="padding:14px">
-      <form method="post" style="display:flex;gap:6px;align-items:center">
+      <form method="post" style="display:flex;gap:6px;align-items:center"
+            onsubmit="return confirm('Renommer « {{ c.name }} » ? Le nom est visible par tous les participants.');">
         {% csrf_token %}
         <input type="hidden" name="action" value="rename_category">
         <input type="hidden" name="category_id" value="{{ c.id }}">
@@ -32,7 +34,8 @@
       {% for sub in c.subcategories.all %}
       <div style="display:flex;gap:6px;align-items:center;margin-top:10px;padding-left:10px">
         <span class="small">↳</span>
-        <form method="post" style="display:flex;gap:6px;flex:1;align-items:center">
+        <form method="post" style="display:flex;gap:6px;flex:1;align-items:center"
+              onsubmit="return confirm('Renommer « {{ sub.name }} » ?');">
           {% csrf_token %}
           <input type="hidden" name="action" value="rename_subcategory">
           <input type="hidden" name="subcategory_id" value="{{ sub.id }}">
@@ -63,19 +66,21 @@
     {% endfor %}
   </div>
 
-  <div>
-    <h2 style="font-size:16px;margin:0 0 8px">➕ Ajouter : {{ space.category_label|lower }}</h2>
-    <form method="post" class="card" style="display:flex;gap:6px">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="add_category">
-      <input type="text" name="name" maxlength="80" required
-             placeholder="Ex. : 5ème" style="flex:1">
-      <button class="btn" style="width:auto;padding:10px 16px;font-size:14px">Créer</button>
-    </form>
-    <p class="small" style="margin-top:16px">
-      Une fois {{ space.category_label_plural|lower }} et {{ space.subcategory_label_plural|lower }} en place,
-      ajoutez vos questions dans l'onglet « Questions », puis créez vos quiz dans l'onglet « Quiz ».
-    </p>
-  </div>
+  <details class="dash-accordion" id="add-form">
+    <summary>➕ Ajouter : {{ space.category_label|lower }}</summary>
+    <div class="accordion-body">
+      <form method="post" style="display:flex;gap:6px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_category">
+        <input type="text" name="name" maxlength="80" required
+               placeholder="{{ space.category_label }}…" style="flex:1">
+        <button class="btn" style="width:auto;padding:10px 16px;font-size:14px">Créer</button>
+      </form>
+      <p class="small" style="margin-top:16px">
+        Une fois {{ space.category_label_plural|lower }} et {{ space.subcategory_label_plural|lower }} en place,
+        ajoutez vos questions dans l'onglet « Questions », puis créez vos quiz dans l'onglet « Quiz ».
+      </p>
+    </div>
+  </details>
 </div>
 {% endblock %}
