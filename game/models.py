@@ -10,6 +10,9 @@ class GameConfig(models.Model):
     # Chrono en secondes par niveau de difficulté
     timer_by_difficulty = models.JSONField("Chrono par difficulté (s)", default=dict)
     ad_every = models.PositiveSmallIntegerField("Pub toutes les N questions", default=3)
+    # Interrupteur général : récompenses et jokers ne sont plus le cœur du jeu,
+    # désactivés par défaut sur une nouvelle installation.
+    rewards_enabled = models.BooleanField("Récompenses et jokers activés (jeu public)", default=False)
     # Jokers
     joker_paid_enabled = models.BooleanField("Joker payant activé", default=True)
     joker_ad_enabled = models.BooleanField("Joker publicité activé", default=True)
@@ -44,6 +47,7 @@ class GameConfig(models.Model):
 class Player(models.Model):
     phone = models.CharField("Téléphone", max_length=20, unique=True, null=True, blank=True)
     pseudo = models.CharField("Pseudo", max_length=30)
+    full_name = models.CharField("Nom complet", max_length=80, blank=True, default="")
     city = models.CharField("Ville", max_length=50, blank=True, default="")
     balance = models.PositiveIntegerField("Solde (F CFA)", default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -183,6 +187,9 @@ class Withdrawal(models.Model):
         return f"{self.player} · {self.amount} F · {self.get_status_display()}"
 
 
+REWARD_TYPES = [("monetaire", "Monétaire"), ("nature", "En nature"), ("autre", "Autre")]
+
+
 class Space(models.Model):
     """Espace cloisonné d'une entreprise cliente (multi-tenant)."""
     name = models.CharField("Nom de l'entreprise", max_length=80)
@@ -191,8 +198,10 @@ class Space(models.Model):
     color_primary = models.CharField("Couleur principale", max_length=9, default="#F2790F")
     color_accent = models.CharField("Couleur secondaire", max_length=9, default="#0B9A5C")
     welcome = models.TextField("Message d'accueil", blank=True, default="")
-    reward_text = models.CharField("Récompense annoncée", max_length=200,
-                                   default="Des lots offerts par l'entreprise aux meilleurs participants")
+    reward_type = models.CharField("Type de récompense", max_length=10, choices=REWARD_TYPES,
+                                   blank=True, default="")
+    reward_text = models.CharField("Récompense annoncée (vide = aucune)", max_length=200,
+                                   blank=True, default="")
     access_code = models.CharField("Code d'accès joueurs (vide = lien public)",
                                    max_length=20, blank=True, default="")
     dashboard_code = models.CharField("Code d'accès au tableau de bord client", max_length=20)
@@ -225,11 +234,48 @@ class Space(models.Model):
         return self.name
 
 
+class License(models.Model):
+    """Licence d'un espace pour une période donnée (l'année scolaire n'est qu'un
+    cas particulier : ce concept vaut pour tout type d'établissement)."""
+    BILLING_MODES = [("per_seat", "Par siège"), ("forfait", "Forfait (illimité)")]
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="licenses")
+    period_label = models.CharField("Période (ex. 2026-2027)", max_length=30)
+    billing_mode = models.CharField("Mode de facturation", max_length=10,
+                                    choices=BILLING_MODES, default="per_seat")
+    seat_count = models.PositiveIntegerField("Sièges (si facturation par siège)", null=True, blank=True)
+    price = models.CharField("Tarif convenu (informatif)", max_length=60, blank=True, default="")
+    reward_type = models.CharField("Type de récompense par défaut", max_length=10, choices=REWARD_TYPES,
+                                   blank=True, default="")
+    reward_text = models.CharField("Récompense par défaut (vide = aucune)", max_length=200,
+                                   blank=True, default="")
+    jokers_allowed = models.BooleanField(
+        "Joker « pub vidéo » activable sur les quiz",
+        default=False,
+        help_text="Autorise l'établissement à activer un joker (seconde chance via pub vidéo, "
+                  "pas d'achat) sur les quiz de son choix. Le joker payant reste réservé au jeu public.")
+    start_date = models.DateField("Début de période")
+    end_date = models.DateField("Fin de période")
+    active = models.BooleanField("Licence active", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Licence"
+
+    def __str__(self):
+        return f"{self.space} · {self.period_label}"
+
+    def seats_used(self):
+        return self.memberships.count()
+
+
 class Membership(models.Model):
-    """Personne identifiée par l'établissement (élève, employé...), matchée par téléphone."""
+    """Personne identifiée par l'établissement (élève, employé...), matchée par téléphone.
+    Une ligne par période/licence : permet de conserver l'historique d'une année sur l'autre."""
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="members")
     player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.SET_NULL,
                                related_name="memberships")
+    license = models.ForeignKey(License, null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name="memberships")
     category = models.ForeignKey("Category", null=True, blank=True, on_delete=models.SET_NULL,
                                  related_name="members")
     sub_category = models.ForeignKey("SubCategory", null=True, blank=True, on_delete=models.SET_NULL,
@@ -242,7 +288,7 @@ class Membership(models.Model):
 
     class Meta:
         verbose_name = "Membre de l'espace"
-        unique_together = [("space", "phone")]
+        unique_together = [("space", "phone", "license")]
 
     def __str__(self):
         return f"{self.space} · {self.full_name}"
@@ -309,6 +355,19 @@ class Quiz(models.Model):
     question_count = models.PositiveSmallIntegerField("Questions par partie", default=10)
     survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
     elimination = models.BooleanField("Mode survie (élimination)", default=False)
+    REPLAY_POLICIES = [
+        ("daily", "Une fois par jour"),
+        ("once", "Une seule fois (jamais rejouable)"),
+        ("unlimited", "Illimité (rejouable à tout moment)"),
+    ]
+    replay_policy = models.CharField("Rejouabilité", max_length=10, choices=REPLAY_POLICIES, default="daily")
+    joker_enabled = models.BooleanField(
+        "Joker « pub vidéo » activé sur ce quiz", default=False,
+        help_text="Nécessite que la licence de l'espace l'autorise (License.jokers_allowed).")
+    reward_type = models.CharField("Type de récompense (vide = hérite de l'espace/licence)", max_length=10,
+                                   choices=REWARD_TYPES, blank=True, default="")
+    reward_text = models.CharField("Récompense (vide = hérite de l'espace/licence)", max_length=200,
+                                   blank=True, default="")
     active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

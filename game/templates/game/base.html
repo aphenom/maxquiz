@@ -112,9 +112,11 @@ select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 
 <main>{% block content %}{% endblock %}</main>
 {% block tabs %}
 <nav class="tabbar">
-  <a class="tab {% if tab == 'home' %}on{% endif %}" href="/">🎮<br>Jouer</a>
+  <a class="tab {% if tab == 'home' %}on{% endif %}" href="{% url 'public_daily' %}">🎮<br>Jouer</a>
   <a class="tab {% if tab == 'board' %}on{% endif %}" href="/classement/">🏅<br>Classement</a>
+  {% if nav_show_wallet %}
   <a class="tab {% if tab == 'wallet' %}on{% endif %}" href="/portefeuille/">💰<br>Portefeuille</a>
+  {% endif %}
   <a class="tab {% if tab == 'account' %}on{% endif %}" href="{% url 'account_home' %}">🔑<br>Mon compte</a>
 </nav>
 {% endblock %}

@@ -21,8 +21,19 @@
   <div><h1 style="font-size:22px;margin:0">{{ member.full_name }}</h1>
   <p class="small" style="margin:0">
     {% if member.player %}✅ Apparié à {{ member.player.pseudo }}{% else %}⏳ En attente de première participation{% endif %}
+    {% if member.license %} · 🎫 {{ member.license.period_label }}{% endif %}
   </p></div>
 </div>
+
+{% if history %}
+<div class="card small" style="margin-top:10px">
+  <strong>Parcours :</strong>
+  {% for h in history %}{{ h.license.period_label|default:"sans licence" }}
+  ({% if h.category %}{{ h.category.name }}{% endif %}{% if h.sub_category %} · {{ h.sub_category.name }}{% endif %}){% if not forloop.last %} → {% endif %}{% endfor %}
+  → {{ member.license.period_label|default:"sans licence" }}
+  ({% if member.category %}{{ member.category.name }}{% endif %}{% if member.sub_category %} · {{ member.sub_category.name }}{% endif %})
+</div>
+{% endif %}
 
 <div class="dash-split" style="margin-top:14px">
   <div>

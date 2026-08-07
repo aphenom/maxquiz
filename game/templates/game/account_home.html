@@ -1,26 +1,138 @@
 {% extends "game/base.html" %}
 {% block title %}Mes quiz — MaxQuiz{% endblock %}
 {% block content %}
-<h1 style="margin-top:10px">📊 Mes quiz</h1>
-<p class="small">Connecté avec le numéro {{ player.phone }} ·
-  <a href="{% url 'account_logout' %}">se déconnecter</a></p>
+<style>
+.kpi{flex:1;text-align:center;background:#fff;border-radius:14px;padding:12px 6px;box-shadow:0 1px 4px rgba(34,26,18,.08)}
+.kpi b{font-size:22px;display:block;color:var(--orange)}
+.bar{height:10px;border-radius:6px;background:var(--sable);overflow:hidden;position:relative;margin-top:4px}
+.bar>div{height:100%;border-radius:6px}
+.qrow summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.qrow summary::-webkit-details-marker{display:none}
+.qrow summary::after{content:'▾';color:var(--brun);flex:none}
+.qrow[open] summary::after{content:'▴'}
+</style>
 
-<h2 style="font-size:18px;margin:20px 0 8px">🎮 Jeu public MaxQuiz</h2>
+<div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+  <span style="font-size:32px">🙂</span>
+  <div>
+    <h1 style="margin:0;font-size:22px">{{ player.pseudo }}</h1>
+    <p class="small" style="margin:0">{{ player.phone }} ·
+      <a href="{% url 'account_logout' %}">se déconnecter</a></p>
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;margin-top:14px" class="stagger">
+  <div class="kpi"><b>{{ total_quizzes }}</b><span class="small">partie{{ total_quizzes|pluralize }} jouée{{ total_quizzes|pluralize }}</span></div>
+  <div class="kpi"><b>{% if overall_pct is not None %}{{ overall_pct }}%{% else %}—{% endif %}</b><span class="small">taux de réussite</span></div>
+  <div class="kpi"><b>{{ space_count }}</b><span class="small">établissement{{ space_count|pluralize }}</span></div>
+</div>
+
+<h2 style="font-size:18px;margin:22px 0 8px">🎮 Jeu public MaxQuiz</h2>
 {% for s in public_sessions %}
-<div class="card" style="display:flex;justify-content:space-between;margin-bottom:6px;padding:10px 14px">
-  <span>{{ s.day }} · {{ s.get_mode_display }}</span>
-  <span style="font-weight:700;color:var(--orange)">Q{{ s.reached }} · {{ s.get_status_display }}</span>
+<div class="card" style="margin-bottom:6px;padding:10px 14px">
+  <div style="display:flex;justify-content:space-between">
+    <span>{{ s.day }} · {{ s.get_mode_display }}</span>
+    <span style="font-weight:700;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
+      Q{{ s.reached }} · {{ s.get_status_display }}</span>
+  </div>
+  {% if s.pct is not None %}
+  <div class="bar"><div style="width:{{ s.pct }}%;background:{% if s.pct < 50 %}var(--rouge){% elif s.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
+  <p class="small" style="margin:2px 0 0">{{ s.pct }} % de bonnes réponses</p>
+  {% endif %}
 </div>
 {% empty %}<p class="small">Pas encore de participation au jeu public.</p>{% endfor %}
 
 {% for sb in space_blocks %}
-<h2 style="font-size:18px;margin:20px 0 8px">{{ sb.space.emoji }} {{ sb.space.name }}
-  {% if sb.membership %}<span class="small" style="color:var(--vert)">· ✅ membre vérifié</span>{% endif %}</h2>
-{% for r in sb.quiz_rows %}
-<div class="card" style="margin-bottom:6px;padding:10px 14px">
-  <p style="margin:0;font-weight:700">{{ r.quiz.name }}</p>
-  <p class="small" style="margin:4px 0 0">Score : Q{{ r.session.reached }} · Rang {{ r.rank }} / {{ r.total }}</p>
+<h2 style="font-size:18px;margin:22px 0 4px">{{ sb.space.emoji }} {{ sb.space.name }}</h2>
+<p class="small" style="margin:0 0 8px">
+  {% if sb.membership %}✅ membre vérifié{% endif %}
+  {% if sb.membership.license %} · 🎫 {{ sb.membership.license.period_label }}{% endif %}
+  {% if sb.membership.category or sb.membership.sub_category %} ·
+    {% if sb.membership.category %}{{ sb.membership.category.name }}{% endif %}{% if sb.membership.sub_category %} · {{ sb.membership.sub_category.name }}{% endif %}
+  {% endif %}
+  {% if sb.space_pct is not None %} · {{ sb.space_pct }}% de maîtrise globale{% endif %}</p>
+
+{% if sb.has_quizzes %}
+<p class="small" style="margin:0 0 8px">
+  <a href="{% url 'space_home' sb.space.slug %}">🔎 Parcourir tous les quiz de {{ sb.space.name }}</a></p>
+{% endif %}
+
+{% if sb.space_pct is not None %}
+<div class="bar" style="margin-bottom:12px"><div style="width:{{ sb.space_pct }}%;background:{% if sb.space_pct < 50 %}var(--rouge){% elif sb.space_pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
+{% endif %}
+
+{% if sb.priority %}
+<div class="card" style="margin-bottom:12px;border-left:5px solid var(--rouge)">
+  <p style="margin:0;font-weight:700">🎯 Priorité : {{ sb.priority.sub_category.name }} ({{ sb.priority.pct }}%)</p>
+  <p class="small" style="margin:4px 0 0">C'est ta plus grosse marge de progression ici.
+    <a href="{% url 'quiz_home' sb.space.slug sb.priority.quiz.slug %}">S'entraîner sur {{ sb.priority.quiz.name }} →</a></p>
 </div>
+{% endif %}
+
+{% if sb.sub_breakdown|length > 1 %}
+<div class="card" style="margin-bottom:12px">
+  <p style="margin:0 0 8px;font-weight:700">📊 Points forts / à travailler</p>
+  {% for r in sb.sub_breakdown %}
+  <p class="small" style="margin:6px 0 0;display:flex;justify-content:space-between">
+    <span>{% if r.sub_category.category %}{{ r.sub_category.category.name }} · {% endif %}{{ r.sub_category.name }}</span>
+    <span style="font-weight:700;color:{% if r.pct < 50 %}var(--rouge){% elif r.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}">{{ r.pct }}%</span>
+  </p>
+  <div class="bar" style="margin:2px 0 8px"><div style="width:{{ r.pct }}%;background:{% if r.pct < 50 %}var(--rouge){% elif r.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if sb.history %}
+<p class="small" style="margin:0 0 8px">📈 Parcours :
+  {% for h in sb.history %}{{ h.license.period_label|default:"—" }}
+    ({% if h.category %}{{ h.category.name }}{% endif %}{% if h.sub_category %} · {{ h.sub_category.name }}{% endif %}) →
+  {% endfor %}
+  <strong>{{ sb.membership.license.period_label|default:"—" }}</strong>
+  ({% if sb.membership.category %}{{ sb.membership.category.name }}{% endif %}{% if sb.membership.sub_category %} · {{ sb.membership.sub_category.name }}{% endif %})</p>
+{% endif %}
+
+{% if sb.assigned_quizzes %}
+<p class="small" style="margin:0 0 4px;font-weight:700">📌 Quiz à faire ({{ sb.assigned_quizzes|length }})</p>
+{% for aq in sb.assigned_quizzes %}
+<a href="{% url 'quiz_home' sb.space.slug aq.quiz.slug %}" class="card" style="display:block;margin-bottom:6px;padding:10px 14px;text-decoration:none;color:inherit">
+  <p style="margin:0;font-weight:700">{{ aq.quiz.name }}</p>
+  <p class="small" style="margin:4px 0 0">
+    {% if aq.quiz.category %}{{ aq.quiz.category.name }}{% endif %}{% if aq.quiz.sub_category %} · {{ aq.quiz.sub_category.name }}{% endif %}
+    {% if not aq.current and aq.period_label %} · {{ aq.period_label }}{% endif %}
+    · pas encore joué →</p>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if sb.quiz_rows %}
+<p class="small" style="margin:14px 0 4px;font-weight:700">🕓 Historique</p>
+{% endif %}
+{% for r in sb.quiz_rows %}
+<details class="card qrow" style="margin-bottom:6px;padding:10px 14px">
+  <summary>
+    <span>
+      <span style="font-weight:700">{{ r.quiz.name }}</span><br>
+      <span class="small">{{ r.date|date:"d/m/Y H:i" }} · Rang {{ r.rank }} / {{ r.total }}</span>
+    </span>
+    <span style="font-weight:800;color:{% if r.pct >= 75 %}var(--vert){% elif r.pct >= 50 %}var(--orange){% else %}var(--rouge){% endif %}">
+      {% if r.pct is not None %}{{ r.pct }}%{% else %}Q{{ r.session.reached }}{% endif %}</span>
+  </summary>
+  {% if r.reward_text %}
+  <p class="small" style="margin:8px 0 0;font-weight:700;color:{% if r.reward_eligible %}var(--vert){% else %}var(--brun){% endif %}">
+    {% if r.reward_eligible %}🎁 Éligible à la récompense{% else %}🎁 Quiz à récompense — non éligible cette fois{% endif %}
+    <span class="small" style="font-weight:400">({{ r.reward_text }})</span></p>
+  {% endif %}
+  {% if r.answers %}
+  <div style="margin-top:10px">
+    {% for a in r.answers %}
+    <p class="small" style="margin:4px 0;display:flex;justify-content:space-between;gap:8px">
+      <span>{% if a.is_correct %}✅{% else %}❌{% endif %} {{ a.question.text|truncatechars:60 }}</span>
+      <span style="white-space:nowrap;color:var(--brun)">{{ a.time_ms }} ms</span>
+    </p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</details>
 {% empty %}
 {% if sb.flat_count %}<p class="small">{{ sb.flat_count }} participation{{ sb.flat_count|pluralize }} (hors quiz spécifique).</p>{% endif %}
 {% endfor %}

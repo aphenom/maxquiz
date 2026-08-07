@@ -6,68 +6,115 @@
 {% include "game/_space_banner.html" with subtitle="Quiz interactif propulsé par MaxQuiz" %}
 <div class="stagger">
   <p class="small" style="text-align:right;margin:8px 0 0">
-    <a href="{% url 'account_login' %}?space={{ space.slug }}">🔑 Se connecter / mes résultats</a></p>
+    {% if player %}<a href="{% url 'account_home' %}">📋 Mes résultats</a>
+    {% else %}<a href="{% url 'account_login' %}?space={{ space.slug }}">🔑 Se connecter / mes résultats</a>{% endif %}</p>
 
   {% if space.welcome %}
   <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
   {% endif %}
 
   <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
-    <p style="margin:0;font-weight:700">🎁 {{ space.reward_text }}</p>
-    <p class="small" style="margin:6px 0 0">Participation gratuite · {{ space.question_count }} questions
+    {% if reward_text %}
+    <p style="margin:0;font-weight:700">
+      {% if reward_type == "monetaire" %}💰{% elif reward_type == "autre" %}🏅{% else %}🎁{% endif %}
+      {{ reward_text }}</p>
+    {% endif %}
+    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">Participation gratuite · {{ space.question_count }} questions
     {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
   </div>
 
-  {% if categories or orphan_quizzes %}
+  {% if has_catalog %}
   <div class="card" style="margin-top:12px">
-    <p style="margin:0 0 10px;font-weight:700">🔎 Choisis ton quiz</p>
+    <p style="margin:0 0 10px;font-weight:700">🔎 {% if profile_filtered %}Ton quiz{% else %}Choisis ton quiz{% endif %}</p>
+    {% if profile_filtered %}
+    <p class="small" style="margin:0 0 10px">🎯 Filtré sur ton profil ({{ space.category_label|default:"catégorie" }}/{{ space.subcategory_label|default:"sous-catégorie" }}) ·
+      <a href="?all=1">voir tout le catalogue</a></p>
+    {% elif show_all and player %}
+    <p class="small" style="margin:0 0 10px"><a href="{% url 'space_home' space.slug %}">← revenir à mon profil</a></p>
+    {% endif %}
+    {% if not categories and not orphan_quizzes %}
+    <p class="small" style="margin:0">Aucun quiz ne correspond à ton profil pour l'instant ·
+      <a href="?all=1">voir tout le catalogue</a></p>
+    {% endif %}
     {% for c in categories %}
     <p class="small" style="margin:10px 0 4px;font-weight:700;text-transform:uppercase">{{ c.category.name }}</p>
     {% for s in c.subs %}
     <p class="small" style="margin:6px 0 2px;color:var(--brun)">{{ s.sub.name }}</p>
     {% for q in s.quizzes %}
-    <a class="btn" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
-       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}</a>
+    <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
     {% endfor %}
     {% endfor %}
     {% for q in c.direct %}
-    <a class="btn" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
-       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}</a>
+    <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
     {% endfor %}
     {% endfor %}
     {% for q in orphan_quizzes %}
-    <a class="btn" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
-       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}</a>
+    <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
     {% endfor %}
   </div>
   {% endif %}
 
   {% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:10px">{{ error }}</p>{% endif %}
 
-  <form method="post" action="{% url 'space_start' space.slug %}" style="margin-top:14px">
+  {% if has_catalog %}
+  {% if player %}
+  <div class="card" style="margin-top:14px">
+    <p style="margin:0;font-weight:700">👋 Bienvenue {{ player.pseudo }} !</p>
+    <p class="small" style="margin:4px 0 0">Choisis un quiz ci-dessus pour commencer ·
+      <a href="{% url 'account_home' %}">Mes quiz & résultats</a></p>
+  </div>
+  {% else %}
+  <p class="small" style="text-align:center;margin-top:14px">👆 Choisis un quiz ci-dessus : la connexion
+  (téléphone + code) te sera demandée sur sa page.</p>
+  {% endif %}
+  {% else %}
+  {% if player %}
+  <div class="card" style="margin-top:14px">
+    <p style="margin:0;font-weight:700">👋 Bienvenue {{ player.pseudo }} !</p>
+    <p class="small" style="margin:4px 0 0"><a href="{% url 'account_home' %}">Mes quiz & résultats</a></p>
+  </div>
+  <form method="post" action="{% url 'space_start' space.slug %}" style="margin-top:12px">
     {% csrf_token %}
+    {% if space.access_code or space.consent_required %}
     <div class="card">
-      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Ton pseudo</label>
-      <input type="text" name="pseudo" maxlength="30" required
-             value="{{ player.pseudo|default:'' }}" placeholder="Ex. : Aya de Cocody">
-      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Ton numéro (pour recevoir ton lot)</label>
-      <input type="text" name="phone" maxlength="20" placeholder="07 XX XX XX XX">
       {% if space.access_code %}
-      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Code d'accès</label>
-      <input type="text" name="access_code" placeholder="Code fourni par {{ space.name }}">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Code d'accès</label>
+      <input type="text" name="access_code" required placeholder="Code fourni par {{ space.name }}">
       {% endif %}
       {% if space.consent_required %}
-      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--brun)">
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:{% if space.access_code %}14px{% else %}0{% endif %};font-size:13px;color:var(--brun)">
         <input type="checkbox" name="consent" style="margin-top:2px">
         <span>J'accepte que {{ space.name }} utilise mes réponses et mon contact pour m'informer
         de ses offres et services.</span>
       </label>
       {% endif %}
     </div>
+    {% endif %}
     <button class="btn" type="submit" style="margin-top:12px" {% if already %}disabled{% endif %}>
       {% if already %}✅ Déjà participé aujourd'hui — reviens demain !{% else %}🚀 Commencer le quiz{% endif %}
     </button>
   </form>
+  {% else %}
+  <form method="post" action="{% url 'account_login' %}" style="margin-top:14px">
+    {% csrf_token %}
+    <input type="hidden" name="space" value="{{ space.slug }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <div class="card">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Ton numéro de téléphone</label>
+      <input type="text" name="phone" maxlength="20" required placeholder="07 XX XX XX XX">
+      {% if space.access_code %}
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Code d'accès</label>
+      <input type="text" name="access_code" required placeholder="Code fourni par {{ space.name }}">
+      {% endif %}
+      <p class="small" style="margin:8px 0 0">On t'envoie un code de connexion — ça vaut inscription si c'est ta 1ère fois.</p>
+    </div>
+    <button class="btn" type="submit" style="margin-top:12px">Recevoir mon code & commencer</button>
+  </form>
+  {% endif %}
+  {% endif %}
 </div>
 <p class="small" style="margin-top:auto;text-align:center;padding-top:20px">
   Propulsé par <strong>MaxQuiz</strong> · MQ Technologies</p>

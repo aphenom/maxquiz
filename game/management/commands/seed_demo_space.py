@@ -3,10 +3,10 @@ des sondages, et ~40 participations simulées pour un tableau de bord parlant.
 Usage : python manage.py seed_demo_space
 """
 import random
-from datetime import timedelta
+from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from game.models import Space, Question, Player, GameSession, Answer
+from game.models import Space, Question, Player, GameSession, Answer, License
 
 QUIZ = [
     (1, "Quel document est indispensable pour ouvrir un compte chez Banque Horizon ?",
@@ -53,6 +53,11 @@ class Command(BaseCommand):
             reward_text="10 000 F de crédit téléphonique pour les 3 meilleurs de la semaine",
             dashboard_code="HORIZON2026", question_count=10, survey_every=4,
             elimination=False))
+
+        License.objects.get_or_create(space=space, period_label="2026", defaults=dict(
+            billing_mode="forfait", price="Forfait annuel — tarif à convenir",
+            start_date=date(2026, 1, 1), end_date=date(2026, 12, 31), active=True))
+
         if created:
             for diff, text, opts, correct in QUIZ:
                 Question.objects.create(space=space, kind="quiz", category="cg",

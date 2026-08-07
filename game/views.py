@@ -59,6 +59,15 @@ def _build_deck(cfg, total):
 
 
 def home(request):
+    """Routeur d'accueil : un membre d'établissement connecté atterrit sur son
+    espace personnel ; sinon, défi public du jour (voir aussi public_daily)."""
+    verified_id = request.session.get("verified_player_id")
+    if verified_id and Membership.objects.filter(player_id=verified_id).exists():
+        return redirect("account_home")
+    return public_daily(request)
+
+
+def public_daily(request):
     cfg = GameConfig.get()
     player = _player(request)
     today = timezone.localdate()
@@ -75,20 +84,13 @@ def home(request):
 @require_POST
 def start(request):
     cfg = GameConfig.get()
-    pseudo = request.POST.get("pseudo", "").strip()[:30]
     mode = request.POST.get("mode", "daily")
     if mode not in ("daily", "training"):
         mode = "daily"
 
     player = _player(request)
     if not player:
-        if not pseudo:
-            return redirect("home")
-        player = Player.objects.create(pseudo=pseudo)
-        request.session["player_id"] = player.id
-    elif pseudo and player.pseudo != pseudo:
-        player.pseudo = pseudo
-        player.save(update_fields=["pseudo"])
+        return redirect("public_daily")
 
     total = cfg.daily_question_count if mode == "daily" else TRAINING_COUNT
     deck = _build_deck(cfg, total)
@@ -115,11 +117,12 @@ def start(request):
         "joker": {
             "paid": cfg.joker_paid_enabled,
             "ad": cfg.joker_ad_enabled,
-            "max": cfg.joker_max_per_game,
+            "max": cfg.joker_max_per_game if cfg.rewards_enabled else 0,
             "prices": cfg.joker_price_by_difficulty,
         },
         "balance": player.balance,
-        "pot": cfg.daily_pot,
+        "rewards_enabled": cfg.rewards_enabled,
+        "pot": cfg.daily_pot if cfg.rewards_enabled else 0,
         "pot_sponsor": cfg.pot_sponsor,
         "questions": [
             {"id": q.id, "cat": q.get_category_display(), "difficulty": q.difficulty,
@@ -191,9 +194,9 @@ def answer(request):
                 resp["status"] = "finished"
                 resp["done"] = True
         else:
-            # ÉLIMINATION — proposer un joker si possible
+            # ÉLIMINATION — proposer un joker si possible (récompenses/jokers activés)
             price = int(cfg.joker_price_by_difficulty.get(str(question.difficulty), 500))
-            can_joker = session.jokers_used < cfg.joker_max_per_game
+            can_joker = cfg.rewards_enabled and session.jokers_used < cfg.joker_max_per_game
             resp["status"] = "eliminated_pending"
             resp["joker_offer"] = {
                 "available": can_joker and (cfg.joker_paid_enabled or cfg.joker_ad_enabled),
@@ -219,7 +222,7 @@ def joker(request):
     player = _player(request)
     data = json.loads(request.body)
     session = get_object_or_404(GameSession, id=data["session_id"],
-                                player=player, status="playing", mode="daily")
+                                player=player, status="playing", mode__in=["daily", "space"])
     kind = data.get("kind")
     last = session.answers.order_by("-id").first()
     if not last or last.is_correct or last.saved_by_joker:
@@ -232,6 +235,8 @@ def joker(request):
 
     with transaction.atomic():
         if kind == "paid":
+            if session.mode != "daily":
+                return JsonResponse({"error": "joker payant réservé au jeu public"}, status=400)
             if not cfg.joker_paid_enabled:
                 return JsonResponse({"error": "joker payant désactivé"}, status=400)
             p = Player.objects.select_for_update().get(id=player.id)
@@ -242,8 +247,10 @@ def joker(request):
             JokerUse.objects.create(session=session, question_index=idx, kind="paid", price=price)
             balance = p.balance
         elif kind == "ad":
-            if not cfg.joker_ad_enabled:
+            if session.mode == "daily" and not cfg.joker_ad_enabled:
                 return JsonResponse({"error": "joker pub désactivé"}, status=400)
+            if session.mode == "space" and not _jokers_ok(session.space, session.quiz):
+                return JsonResponse({"error": "joker désactivé pour ce quiz"}, status=400)
             ad = AdCampaign.objects.filter(id=data.get("ad_id")).first()
             if ad:
                 AdCampaign.objects.filter(id=ad.id).update(impressions=F("impressions") + 1)
@@ -333,7 +340,7 @@ import csv
 from django.http import HttpResponse
 from django.db.models import Count, Q
 from django.utils.text import slugify
-from .models import Space, Category, SubCategory, Quiz, Membership, OTPCode
+from .models import Space, Category, SubCategory, Quiz, Membership, OTPCode, License, REWARD_TYPES
 
 
 def _space(slug):
@@ -410,23 +417,54 @@ def space_home(request, slug):
     already = bool(player and space.one_per_day and GameSession.objects.filter(
         player=player, space=space, day=today).exists())
 
-    # Arbre de découverte des quiz (facultatif) : catégorie > sous-catégorie > quiz
+    # Catégorie/sous-catégorie du profil du joueur dans cet espace : union de
+    # toutes ses adhésions (licence en cours ou passée) — (category_id, sub_category_id)
+    # avec sub_category_id=None pour un membre affecté à une catégorie sans détail.
+    my_pairs = set()
+    if player:
+        for m in Membership.objects.filter(space=space, player=player):
+            if m.sub_category_id:
+                my_pairs.add((m.category_id, m.sub_category_id))
+            elif m.category_id:
+                my_pairs.add((m.category_id, None))
+    show_all = request.GET.get("all") == "1" or not my_pairs
+
+    # Arbre de découverte des quiz (facultatif) : catégorie > sous-catégorie > quiz.
+    # Un membre au profil connu (catégorie/sous-catégorie) ne voit que ce qui le
+    # concerne, pas tout le catalogue — sauf s'il demande explicitement à tout voir.
     categories, orphan_quizzes = [], []
-    if space.quizzes.filter(active=True).exists():
+    has_catalog = space.quizzes.filter(active=True).exists()
+    if has_catalog:
         for cat in space.categories.prefetch_related("subcategories"):
             subs = []
             for sub in cat.subcategories.all():
+                if not show_all and (cat.id, sub.id) not in my_pairs:
+                    continue
                 qs = list(sub.quizzes.filter(active=True))
                 if qs:
                     subs.append({"sub": sub, "quizzes": qs})
-            direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True))
+            direct = []
+            if show_all or (cat.id, None) in my_pairs:
+                direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True))
             if subs or direct:
                 categories.append({"category": cat, "subs": subs, "direct": direct})
-        orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
+        if show_all:
+            orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
 
+    played_quiz_ids = set()
+    if player and has_catalog:
+        played_quiz_ids = set(Quiz.objects.filter(sessions__player=player, space=space)
+                              .values_list("id", flat=True))
+
+    reward_text, reward_type = _effective_reward(space)
     return render(request, "game/space_home.html", {
         "space": space, "player": player, "already": already,
         "categories": categories, "orphan_quizzes": orphan_quizzes,
+        "reward_text": reward_text, "reward_type": reward_type,
+        "profile_filtered": bool(my_pairs) and not show_all,
+        "show_all": show_all,
+        "has_catalog": has_catalog,
+        "played_quiz_ids": played_quiz_ids,
     })
 
 
@@ -438,20 +476,11 @@ def space_start(request, slug):
             "space": space, "player": _player(request),
             "error": "Code d'accès incorrect.", "already": False,
         })
-    pseudo = request.POST.get("pseudo", "").strip()[:30]
-    phone = request.POST.get("phone", "").strip()[:20]
     consent = (request.POST.get("consent") == "on") if space.consent_required else True
 
     player = _player(request)
     if not player:
-        if not pseudo:
-            return redirect("space_home", slug=slug)
-        existing = Player.objects.filter(phone=phone).first() if phone else None
-        player = existing or Player.objects.create(pseudo=pseudo, phone=phone or None)
-        request.session["player_id"] = player.id
-    if phone and not player.phone:
-        player.phone = phone
-        player.save(update_fields=["phone"])
+        return redirect("space_home", slug=slug)
     _match_membership(space, player.phone, player)
 
     today = timezone.localdate()
@@ -479,6 +508,7 @@ def space_start(request, slug):
         player=player, mode="space", space=space, consent=consent,
         question_ids=[q.id for q in deck])
 
+    reward_text, reward_type = _effective_reward(space)
     payload = {
         "session_id": session.id,
         "mode": "space",
@@ -490,7 +520,7 @@ def space_start(request, slug):
         "balance": 0, "pot": 0, "pot_sponsor": "",
         "brand": {"name": space.name, "emoji": space.emoji,
                   "primary": space.color_primary, "accent": space.color_accent,
-                  "reward": space.reward_text},
+                  "reward": reward_text, "reward_type": reward_type},
         "questions": [
             {"id": q.id, "cat": q.get_category_display(), "difficulty": q.difficulty,
              "kind": q.kind, "text": q.text, "options": q.options(), "explanation": ""}
@@ -501,16 +531,34 @@ def space_start(request, slug):
     return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
 
 
+def _quiz_locked(player, quiz, today):
+    """Verrou de rejouabilité selon Quiz.replay_policy : aucun verrou (unlimited),
+    une fois par jour (daily, par défaut), ou définitivement après une 1ère
+    tentative comptée (once). Une partie abandonnée (statut "playing", jamais
+    finie) ne compte jamais comme une tentative — sinon un onglet fermé en
+    cours de route bloquerait le joueur pour rien."""
+    if not player or quiz.replay_policy == "unlimited":
+        return False
+    sessions = GameSession.objects.filter(player=player, quiz=quiz, flagged=False).exclude(status="playing")
+    if quiz.replay_policy == "once":
+        return sessions.exists()
+    return sessions.filter(day=today).exists()
+
+
 def quiz_home(request, slug, quiz_slug):
     """Page d'accueil d'un quiz précis (lien direct partagé par l'entité)."""
     space = _space(slug)
     quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug, active=True)
     player = _player(request)
     today = timezone.localdate()
-    already = bool(player and space.one_per_day and GameSession.objects.filter(
-        player=player, quiz=quiz, day=today).exists())
+    already = _quiz_locked(player, quiz, today)
+    played_before = bool(player and GameSession.objects.filter(
+        player=player, quiz=quiz, flagged=False).exclude(status="playing").exists())
+    reward_text, reward_type = _effective_reward(space, quiz)
     return render(request, "game/quiz_home.html", {
         "space": space, "quiz": quiz, "player": player, "already": already,
+        "played_before": played_before,
+        "reward_text": reward_text, "reward_type": reward_type,
     })
 
 
@@ -523,25 +571,15 @@ def quiz_start(request, slug, quiz_slug):
             "space": space, "quiz": quiz, "player": _player(request),
             "error": "Code d'accès incorrect.", "already": False,
         })
-    pseudo = request.POST.get("pseudo", "").strip()[:30]
-    phone = request.POST.get("phone", "").strip()[:20]
     consent = (request.POST.get("consent") == "on") if space.consent_required else True
 
     player = _player(request)
     if not player:
-        if not pseudo:
-            return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
-        existing = Player.objects.filter(phone=phone).first() if phone else None
-        player = existing or Player.objects.create(pseudo=pseudo, phone=phone or None)
-        request.session["player_id"] = player.id
-    if phone and not player.phone:
-        player.phone = phone
-        player.save(update_fields=["phone"])
+        return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
     _match_membership(space, player.phone, player)
 
     today = timezone.localdate()
-    if space.one_per_day and GameSession.objects.filter(
-            player=player, quiz=quiz, day=today).exists():
+    if _quiz_locked(player, quiz, today):
         return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
 
     # Deck scopé à la sous-catégorie (ou catégorie) du quiz + sondages de l'espace
@@ -571,6 +609,8 @@ def quiz_start(request, slug, quiz_slug):
         player=player, mode="space", space=space, quiz=quiz, consent=consent,
         question_ids=[q.id for q in deck])
 
+    jokers_ok = _jokers_ok(space, quiz)
+    reward_text, reward_type = _effective_reward(space, quiz)
     payload = {
         "session_id": session.id,
         "mode": "space",
@@ -578,19 +618,26 @@ def quiz_start(request, slug, quiz_slug):
         "total": len(deck),
         "ad_every": 0,
         "timers": cfg.timer_by_difficulty,
-        "joker": {"paid": False, "ad": False, "max": 0, "prices": {}},
+        "joker": {"paid": False, "ad": jokers_ok, "max": cfg.joker_max_per_game if jokers_ok else 0, "prices": {}},
         "balance": 0, "pot": 0, "pot_sponsor": "",
         "brand": {"name": space.name, "emoji": space.emoji,
                   "primary": space.color_primary, "accent": space.color_accent,
-                  "reward": space.reward_text},
+                  "reward": reward_text, "reward_type": reward_type},
         "questions": [
             {"id": q.id, "cat": q.sub_category.name if q.sub_category else q.get_category_display(),
              "difficulty": q.difficulty, "kind": q.kind, "text": q.text,
              "options": q.options(), "explanation": ""}
             for q in deck
         ],
-        "ads": [], "video_ads": [],
+        "ads": [],
+        "video_ads": [{"brand": a.brand, "tagline": a.tagline, "pitch": a.pitch,
+                       "emoji": a.emoji, "color": a.color, "aid": a.id}
+                      for a in AdCampaign.objects.filter(active=True, is_video=True)] if jokers_ok else [],
     }
+    if jokers_ok and not payload["video_ads"]:
+        payload["video_ads"] = [{"brand": "Partenaire vidéo", "tagline": "Votre spot ici",
+                                 "pitch": "15 secondes d'attention totale pour votre marque.",
+                                 "emoji": "🎬", "color": "#0B9A5C", "aid": None}]
     return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
 
 
@@ -625,22 +672,43 @@ def space_answer(request):
                           time_ms=time_ms, is_correct=is_correct)
     session.total_time_ms += time_ms
 
-    eliminated = (question.kind == "quiz" and not is_correct
-                  and session.space.elimination)
-    if not eliminated:
-        session.reached = idx + 1
-    done = eliminated or session.reached >= len(session.question_ids)
-    if done:
-        session.status = "eliminated" if eliminated else "finished"
+    space_elimination = session.quiz.elimination if session.quiz_id else session.space.elimination
+    eliminated = (question.kind == "quiz" and not is_correct and space_elimination)
+
+    # Joker « pub vidéo » : nécessite un quiz dont la licence de l'espace l'autorise
+    joker_offer = None
+    if eliminated:
+        can_joker = _jokers_ok(session.space, session.quiz) and session.jokers_used < cfg.joker_max_per_game
+        if can_joker:
+            joker_offer = {
+                "available": True, "paid": False, "ad": True, "price": 0,
+                "balance": player.balance, "remaining": cfg.joker_max_per_game - session.jokers_used,
+            }
+
+    if joker_offer:
+        status, done = "eliminated_pending", False
+    elif eliminated:
+        session.status = "eliminated"
         session.finished_at = timezone.now()
+        status, done = "eliminated", True
+    else:
+        session.reached = idx + 1
+        done = session.reached >= len(session.question_ids)
+        if done:
+            session.status = "finished"
+            session.finished_at = timezone.now()
+        status = session.status if done else "playing"
     session.save()
 
-    return JsonResponse({
+    resp = {
         "correct": is_correct, "survey": question.kind == "survey",
         "correct_index": question.correct if question.kind == "quiz" else choice,
         "explanation": "", "reached": session.reached,
-        "status": session.status if done else "playing", "done": done,
-    })
+        "status": status, "done": done,
+    }
+    if joker_offer:
+        resp["joker_offer"] = joker_offer
+    return JsonResponse(resp)
 
 
 def _quiz_row(sessions, quiz):
@@ -781,11 +849,16 @@ def dashboard_quizzes(request, slug):
             sub = cat.subcategories.filter(id=_post_int(request.POST, "subcategory_id")).first() if cat else None
             if name:
                 quiz_slug = _unique_slug(space.quizzes, name)
+                replay_policy = request.POST.get("replay_policy")
+                if replay_policy not in dict(Quiz.REPLAY_POLICIES):
+                    replay_policy = "daily"
                 Quiz.objects.create(
                     space=space, category=cat, sub_category=sub, slug=quiz_slug, name=name,
                     question_count=int(request.POST.get("question_count") or space.question_count),
                     survey_every=int(request.POST.get("survey_every") or space.survey_every),
-                    elimination=request.POST.get("elimination") == "on")
+                    elimination=request.POST.get("elimination") == "on",
+                    replay_policy=replay_policy,
+                    **_quiz_reward_joker_fields(request.POST))
         elif action == "toggle_quiz":
             qz = space.quizzes.filter(id=_post_int(request.POST, "quiz_id")).first()
             if qz:
@@ -800,8 +873,11 @@ def dashboard_quizzes(request, slug):
     for qz in quizzes:
         qz.total = base_sessions.filter(quiz=qz).count()
     categories = space.categories.prefetch_related("subcategories")
+    current_license = _current_license(space)
     return render(request, "game/dashboard_quizzes.html", {
         "space": space, "quizzes": quizzes, "categories": categories,
+        "jokers_allowed": bool(current_license and current_license.jokers_allowed),
+        "reward_types": REWARD_TYPES, "replay_policies": Quiz.REPLAY_POLICIES,
     })
 
 
@@ -827,6 +903,11 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
                 quiz.question_count = int(request.POST.get("question_count") or space.question_count)
                 quiz.survey_every = int(request.POST.get("survey_every") or space.survey_every)
                 quiz.elimination = request.POST.get("elimination") == "on"
+                replay_policy = request.POST.get("replay_policy")
+                if replay_policy in dict(Quiz.REPLAY_POLICIES):
+                    quiz.replay_policy = replay_policy
+                for field, value in _quiz_reward_joker_fields(request.POST).items():
+                    setattr(quiz, field, value)
                 quiz.save()
         elif action == "toggle_quiz":
             quiz.active = not quiz.active
@@ -874,11 +955,16 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
     quiz_stats, survey_stats = _quiz_dashboard_stats(space, sessions)
     top = _ranked(sessions.select_related("player"))[:10]
     categories = space.categories.prefetch_related("subcategories")
+    current_license = _current_license(space)
+    reward_text, reward_type = _effective_reward(space, quiz)
     return render(request, "game/dashboard_quiz_detail.html", {
         "space": space, "quiz": quiz, "total": total, "finished": finished,
         "completion": round(100 * finished / total) if total else 0,
         "quiz_stats": quiz_stats, "survey_stats": survey_stats, "top": top,
         "categories": categories,
+        "jokers_allowed": bool(current_license and current_license.jokers_allowed),
+        "reward_types": REWARD_TYPES, "replay_policies": Quiz.REPLAY_POLICIES,
+        "reward_text": reward_text, "reward_type": reward_type,
     })
 
 
@@ -957,6 +1043,45 @@ def _member_fields(post, space):
     }
 
 
+def _current_license(space):
+    return space.licenses.filter(active=True).first()
+
+
+def _effective_reward(space, quiz=None):
+    """Résout la récompense à afficher : quiz > espace > licence courante > aucune."""
+    for obj in (quiz, space, _current_license(space)):
+        if obj and obj.reward_text:
+            return obj.reward_text, obj.reward_type
+    return "", ""
+
+
+def _jokers_ok(space, quiz):
+    lic = _current_license(space)
+    return bool(quiz and quiz.joker_enabled and lic and lic.jokers_allowed)
+
+
+def _quiz_reward_joker_fields(post):
+    reward_type = post.get("reward_type", "")
+    if reward_type not in dict(REWARD_TYPES):
+        reward_type = ""
+    return {
+        "reward_type": reward_type,
+        "reward_text": post.get("reward_text", "").strip()[:200],
+        "joker_enabled": post.get("joker_enabled") == "on",
+    }
+
+
+def _seat_check(space, license_obj):
+    """None si un siège est disponible, sinon le message d'erreur à afficher."""
+    if not license_obj or license_obj.billing_mode != "per_seat" or not license_obj.seat_count:
+        return None
+    used = Membership.objects.filter(space=space, license=license_obj).count()
+    if used >= license_obj.seat_count:
+        return (f"Limite de sièges atteinte pour la licence {license_obj.period_label} "
+               f"({license_obj.seat_count} sièges) — contactez MQ Technologies pour l'étendre.")
+    return None
+
+
 def dashboard_members(request, slug):
     """Base des personnes identifiées par l'établissement : liste + import CSV + ajout.
     L'édition détaillée d'un membre se fait sur sa fiche (dashboard_member_detail)."""
@@ -965,11 +1090,13 @@ def dashboard_members(request, slug):
     if gate is not None:
         return gate
 
+    current_license = _current_license(space)
+
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "import_csv" and request.FILES.get("csv_file"):
             raw = request.FILES["csv_file"].read().decode("utf-8-sig", errors="ignore")
-            created, matched = 0, 0
+            created, matched, skipped = 0, 0, 0
             for row in csv.reader(raw.splitlines()):
                 if not row or len(row) < 2:
                     continue
@@ -977,8 +1104,12 @@ def dashboard_members(request, slug):
                 external_ref = row[2].strip()[:60] if len(row) > 2 else ""
                 if not full_name or not phone or not phone[0].isdigit():
                     continue  # ignore l'en-tête éventuelle et les lignes vides
+                existing = Membership.objects.filter(space=space, phone=phone, license=current_license).first()
+                if not existing and _seat_check(space, current_license):
+                    skipped += 1
+                    continue
                 member, is_new = Membership.objects.get_or_create(
-                    space=space, phone=phone,
+                    space=space, phone=phone, license=current_license,
                     defaults={"full_name": full_name, "external_ref": external_ref})
                 created += is_new
                 existing_player = Player.objects.filter(phone=phone).first()
@@ -987,28 +1118,37 @@ def dashboard_members(request, slug):
                     member.matched_at = timezone.now()
                     member.save(update_fields=["player", "matched_at"])
                     matched += 1
-            messages.success(request, f"{created} membre(s) importé(s), {matched} déjà apparié(s).")
+            msg = f"{created} membre(s) importé(s), {matched} déjà apparié(s)."
+            if skipped:
+                msg += f" {skipped} ignoré(s) faute de sièges disponibles."
+            messages.success(request, msg)
         elif action == "add_member":
             f = _member_fields(request.POST, space)
             if not f["full_name"] or not f["phone"]:
                 messages.error(request, "Nom et téléphone sont obligatoires.")
             else:
-                member, created = Membership.objects.get_or_create(
-                    space=space, phone=f["phone"], defaults={
-                        "full_name": f["full_name"], "external_ref": f["external_ref"],
-                        "category": f["category"], "sub_category": f["sub_category"]})
-                if not created:
-                    messages.error(request, f"Un membre existe déjà avec le téléphone {f['phone']}.")
+                seat_error = _seat_check(space, current_license)
+                if seat_error:
+                    messages.error(request, seat_error)
                 else:
-                    existing_player = Player.objects.filter(phone=f["phone"]).first()
-                    if existing_player:
-                        member.player = existing_player
-                        member.matched_at = timezone.now()
-                        member.save(update_fields=["player", "matched_at"])
+                    member, created = Membership.objects.get_or_create(
+                        space=space, phone=f["phone"], license=current_license, defaults={
+                            "full_name": f["full_name"], "external_ref": f["external_ref"],
+                            "category": f["category"], "sub_category": f["sub_category"]})
+                    if not created:
+                        messages.error(request, f"Un membre existe déjà avec le téléphone {f['phone']}.")
+                    else:
+                        existing_player = Player.objects.filter(phone=f["phone"]).first()
+                        if existing_player:
+                            member.player = existing_player
+                            member.matched_at = timezone.now()
+                            member.save(update_fields=["player", "matched_at"])
         return redirect("dashboard_members", slug=slug)
 
     members = space.members.select_related("player", "category", "sub_category").order_by("-matched_at", "full_name")
-    return render(request, "game/dashboard_members.html", {"space": space, "members": members})
+    return render(request, "game/dashboard_members.html", {
+        "space": space, "members": members, "current_license": current_license,
+    })
 
 
 def dashboard_member_detail(request, slug, member_id):
@@ -1040,6 +1180,7 @@ def dashboard_member_detail(request, slug, member_id):
         return redirect("dashboard_member_detail", slug=slug, member_id=member.id)
 
     sessions_stats = []
+    history = []
     if member.player_id:
         sessions = (GameSession.objects.filter(space=space, player_id=member.player_id, flagged=False)
                     .exclude(status="playing").select_related("quiz")
@@ -1053,9 +1194,14 @@ def dashboard_member_detail(request, slug, member_id):
                     rank, total = ranked.index(s) + 1, len(ranked)
             sessions_stats.append({"session": s, "rank": rank, "total": total, "answers": s.answers.all()})
 
+        history = (Membership.objects.filter(space=space, player_id=member.player_id)
+                  .exclude(id=member.id).select_related("license", "category", "sub_category")
+                  .order_by("license__start_date"))
+
     categories = space.categories.prefetch_related("subcategories")
     return render(request, "game/dashboard_member_detail.html", {
-        "space": space, "member": member, "sessions_stats": sessions_stats, "categories": categories,
+        "space": space, "member": member, "sessions_stats": sessions_stats,
+        "categories": categories, "history": history,
     })
 
 
@@ -1082,19 +1228,26 @@ def _send_otp(phone):
 
 def account_login(request):
     space_slug = request.GET.get("space") or request.POST.get("space") or ""
+    next_url = request.GET.get("next") or request.POST.get("next") or ""
     space = Space.objects.filter(slug=space_slug, active=True).first() if space_slug else None
     dev_code = None
+    error = None
     if request.method == "POST":
         phone = request.POST.get("phone", "").strip()[:20]
-        if phone:
+        if space and space.access_code and request.POST.get("access_code", "").strip() != space.access_code:
+            error = "Code d'accès incorrect."
+        elif phone:
             dev_code = _send_otp(phone)
             request.session["otp_phone"] = phone
             request.session["otp_space"] = space_slug
+            request.session["otp_next"] = next_url
             url = reverse("account_verify")
             if settings.DEBUG:
                 url += f"?dev_code={dev_code}"
             return redirect(url)
-    return render(request, "game/account_login.html", {"space": space, "space_slug": space_slug})
+    return render(request, "game/account_login.html", {
+        "space": space, "space_slug": space_slug, "next": next_url, "error": error,
+    })
 
 
 def account_verify(request):
@@ -1120,13 +1273,24 @@ def account_verify(request):
         else:
             otp.consumed = True
             otp.save(update_fields=["consumed"])
-            player, _ = Player.objects.get_or_create(phone=phone, defaults={"pseudo": phone})
+            player, created = Player.objects.get_or_create(phone=phone, defaults={"pseudo": ""})
             request.session["player_id"] = player.id
             request.session["verified_player_id"] = player.id
             Membership.objects.filter(phone=phone, player__isnull=True).update(
                 player=player, matched_at=timezone.now())
+            if not player.full_name:
+                matched = Membership.objects.filter(player=player).exclude(
+                    full_name="").order_by("-created_at").first()
+                if matched:
+                    player.full_name = matched.full_name
+                    player.save(update_fields=["full_name"])
             request.session.pop("otp_phone", None)
+            if created or not player.pseudo:
+                return redirect("account_register")
+            next_url = request.session.pop("otp_next", "") or ""
             request.session["otp_space"] = ""
+            if next_url:
+                return redirect(next_url)
             if space:
                 return redirect("space_confirm", slug=space.slug)
             return redirect("account_home")
@@ -1137,43 +1301,173 @@ def account_verify(request):
     })
 
 
-def account_logout(request):
-    for key in ("player_id", "verified_player_id", "otp_phone", "otp_space"):
-        request.session.pop(key, None)
-    return redirect("home")
-
-
-def account_home(request):
-    """« Mes quiz » : historique, scores et classements du joueur connecté."""
+def account_register(request):
+    """Complète le profil lors de la 1ère vérification OTP — uniquement les infos
+    manquantes : le nom complet est déjà connu s'il vient d'une fiche membre
+    d'établissement appariée par téléphone (voir account_verify)."""
     player_id = request.session.get("verified_player_id")
     player = Player.objects.filter(id=player_id).first() if player_id else None
     if not player:
         return redirect("account_login")
 
-    public_sessions = (GameSession.objects.filter(player=player, space__isnull=True)
-                       .order_by("-day", "-started_at"))
+    need_name = not player.full_name
+    error = None
+    if request.method == "POST":
+        pseudo = request.POST.get("pseudo", "").strip()[:30]
+        full_name = request.POST.get("full_name", "").strip()[:80] if need_name else player.full_name
+        city = request.POST.get("city", "").strip()[:50]
+        if not pseudo or (need_name and not full_name):
+            error = "Le pseudo" + (" et le nom complet sont obligatoires." if need_name else " est obligatoire.")
+        else:
+            player.pseudo = pseudo
+            player.full_name = full_name
+            player.city = city
+            player.save(update_fields=["pseudo", "full_name", "city"])
+            space_slug = request.session.pop("otp_space", "") or ""
+            next_url = request.session.pop("otp_next", "") or ""
+            space = Space.objects.filter(slug=space_slug, active=True).first() if space_slug else None
+            if next_url:
+                return redirect(next_url)
+            if space:
+                return redirect("space_confirm", slug=space.slug)
+            return redirect("account_home")
+
+    return render(request, "game/account_register.html", {
+        "player": player, "error": error, "need_name": need_name,
+    })
+
+
+def account_logout(request):
+    for key in ("player_id", "verified_player_id", "otp_phone", "otp_space", "otp_next"):
+        request.session.pop(key, None)
+    return redirect("home")
+
+
+def _session_pct(session):
+    """Taux de bonne réponse (questions type quiz uniquement) pour une session."""
+    qs = session.answers.filter(question__kind="quiz")
+    n = qs.count()
+    return round(100 * qs.filter(is_correct=True).count() / n) if n else None
+
+
+def account_home(request):
+    """« Mes quiz » : historique, scores, classements et détail des réponses du joueur connecté."""
+    player_id = request.session.get("verified_player_id")
+    player = Player.objects.filter(id=player_id).first() if player_id else None
+    if not player:
+        return redirect("account_login")
+
+    public_sessions = list(GameSession.objects.filter(player=player, space__isnull=True)
+                           .order_by("-day", "-started_at"))
+    for s in public_sessions:
+        s.pct = _session_pct(s)
+
+    finished_answers = Answer.objects.filter(session__player=player, question__kind="quiz")
+    overall_n = finished_answers.count()
+    overall_pct = round(100 * finished_answers.filter(is_correct=True).count() / overall_n) if overall_n else None
+    total_quizzes = GameSession.objects.filter(
+        player=player, flagged=False).exclude(status="playing").count()
+
+    # Espaces où le joueur a déjà joué OU est inscrit (membre) sans avoir encore joué
+    played_space_ids = set(GameSession.objects.filter(player=player)
+                           .exclude(space__isnull=True).values_list("space_id", flat=True))
+    member_space_ids = set(Membership.objects.filter(player=player).values_list("space_id", flat=True))
+    spaces = Space.objects.filter(id__in=played_space_ids | member_space_ids)
 
     space_blocks = []
-    for sp in Space.objects.filter(sessions__player=player).distinct():
-        membership = Membership.objects.filter(space=sp, player=player).first()
+    for sp in spaces:
+        memberships = list(Membership.objects.filter(space=sp, player=player)
+                           .select_related("license", "category", "sub_category")
+                           .order_by("-created_at"))
+        current_license = _current_license(sp)
+        membership = next((m for m in memberships if m.license_id == current_license.id), None) \
+            if current_license else None
+        if not membership:
+            membership = memberships[0] if memberships else None
+        history = [m for m in memberships if membership is None or m.id != membership.id]
+
         quiz_rows = []
+        played_quiz_ids = set()
         for qz in Quiz.objects.filter(sessions__player=player, space=sp).distinct():
+            played_quiz_ids.add(qz.id)
             all_sessions = _ranked(GameSession.objects.filter(
                 quiz=qz, flagged=False).exclude(status="playing"))
             mine = [s for s in all_sessions if s.player_id == player.id]
             if not mine:
                 continue
             best = mine[0]
-            quiz_rows.append({"quiz": qz, "session": best,
-                              "rank": all_sessions.index(best) + 1, "total": len(all_sessions)})
+            reward_text, reward_type = _effective_reward(sp, qz)
+            quiz_rows.append({
+                "quiz": qz, "session": best,
+                "rank": all_sessions.index(best) + 1, "total": len(all_sessions),
+                "pct": _session_pct(best), "date": best.finished_at or best.started_at,
+                "answers": best.answers.select_related("question").all(),
+                "reward_text": reward_text, "reward_type": reward_type,
+                "reward_eligible": bool(reward_text) and best.status == "finished",
+            })
+        quiz_rows.sort(key=lambda r: r["date"], reverse=True)
+
+        space_answers = Answer.objects.filter(session__player=player, session__space=sp, question__kind="quiz")
+        space_n = space_answers.count()
+        space_pct = round(100 * space_answers.filter(is_correct=True).count() / space_n) if space_n else None
+
+        # Points forts / points faibles par catégorie · sous-catégorie (matière) :
+        # la moyenne globale de l'espace masque où sont réellement les lacunes.
+        sub_totals = {}
+        for a in space_answers.select_related("question__sub_category__category"):
+            sub = a.question.sub_category
+            if not sub:
+                continue
+            row = sub_totals.setdefault(sub.id, {"sub": sub, "n": 0, "correct": 0})
+            row["n"] += 1
+            row["correct"] += 1 if a.is_correct else 0
+        sub_breakdown = sorted((
+            {"sub_category": r["sub"], "n": r["n"], "pct": round(100 * r["correct"] / r["n"])}
+            for r in sub_totals.values()
+        ), key=lambda r: r["pct"])
+
+        priority = None
+        if len(sub_breakdown) > 1 and sub_breakdown[0]["pct"] < 70:
+            weak_sub = sub_breakdown[0]["sub_category"]
+            quiz = Quiz.objects.filter(space=sp, active=True, sub_category=weak_sub).exclude(
+                id__in=played_quiz_ids).first() or Quiz.objects.filter(
+                space=sp, active=True, sub_category=weak_sub).first()
+            if quiz:
+                priority = {"sub_category": weak_sub, "pct": sub_breakdown[0]["pct"], "quiz": quiz}
+
+        # Quiz correspondant à l'établissement + catégorie/sous-catégorie de CHAQUE
+        # adhésion du joueur (licence en cours ou passée) : un quiz d'une année
+        # antérieure reste utile en révision, pas seulement l'année en cours.
+        assigned_quizzes = []
+        seen_quiz_ids = set()
+        for m in memberships:
+            if not (m.sub_category_id or m.category_id):
+                continue
+            qs = Quiz.objects.filter(space=sp, active=True)
+            qs = qs.filter(sub_category=m.sub_category) if m.sub_category_id \
+                else qs.filter(category=m.category, sub_category__isnull=True)
+            for q in qs:
+                if q.id in played_quiz_ids or q.id in seen_quiz_ids:
+                    continue
+                seen_quiz_ids.add(q.id)
+                assigned_quizzes.append({
+                    "quiz": q,
+                    "current": bool(membership and m.id == membership.id),
+                    "period_label": m.license.period_label if m.license_id else "",
+                })
+
         flat_count = GameSession.objects.filter(
             space=sp, quiz__isnull=True, player=player, flagged=False).exclude(status="playing").count()
-        space_blocks.append({"space": sp, "membership": membership,
-                            "quiz_rows": quiz_rows, "flat_count": flat_count})
+        space_blocks.append({"space": sp, "membership": membership, "history": history,
+                            "assigned_quizzes": assigned_quizzes, "space_pct": space_pct,
+                            "quiz_rows": quiz_rows, "flat_count": flat_count,
+                            "has_quizzes": sp.quizzes.filter(active=True).exists(),
+                            "sub_breakdown": sub_breakdown, "priority": priority})
 
     return render(request, "game/account_home.html", {
         "player": player, "public_sessions": public_sessions, "space_blocks": space_blocks,
-        "tab": "account",
+        "tab": "account", "overall_pct": overall_pct, "total_quizzes": total_quizzes,
+        "space_count": len(spaces),
     })
 
 

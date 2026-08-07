@@ -1,8 +1,10 @@
 {% extends "game/base.html" %}
 {% block content %}
 <h1>Classement du jour</h1>
-<p class="small">Trié par question atteinte, puis rapidité. Les finalistes 🏆 se partagent
-{{ cfg.daily_pot }} F{% if finishers %} ({{ share }} F chacun aujourd'hui){% endif %}.</p>
+<p class="small">Trié par question atteinte, puis rapidité.
+{% if cfg.rewards_enabled %}Les finalistes 🏆 se partagent
+{{ cfg.daily_pot }} F{% if finishers %} ({{ share }} F chacun aujourd'hui){% endif %}.
+{% else %}Les finalistes 🏆 tiennent jusqu'au bout des questions du jour.{% endif %}</p>
 <div class="stagger" style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
   {% for s in rows %}
   <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px;
@@ -22,7 +24,7 @@
   <div class="card" style="text-align:center">
     <p style="margin:0;font-size:40px">🌅</p>
     <p style="margin:6px 0 0;font-weight:700">Personne n'a encore tenté le défi aujourd'hui !</p>
-    <a class="btn" href="/" style="margin-top:12px">Lancer le défi</a>
+    <a class="btn" href="{% url 'public_daily' %}" style="margin-top:12px">Lancer le défi</a>
   </div>
   {% endfor %}
 </div>

@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("defi-du-jour/", views.public_daily, name="public_daily"),
     path("start/", views.start, name="start"),
     path("api/answer/", views.answer, name="answer"),
     path("api/joker/", views.joker, name="joker"),
@@ -24,6 +25,7 @@ urlpatterns = [
     path("e/<slug:slug>/connecte/", views.space_confirm, name="space_confirm"),
     path("compte/connexion/", views.account_login, name="account_login"),
     path("compte/otp/", views.account_verify, name="account_verify"),
+    path("compte/inscription/", views.account_register, name="account_register"),
     path("compte/deconnexion/", views.account_logout, name="account_logout"),
     path("compte/", views.account_home, name="account_home"),
 ]

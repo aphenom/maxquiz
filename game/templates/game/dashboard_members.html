@@ -20,6 +20,20 @@
 {% endfor %}
 {% endif %}
 
+{% if current_license %}
+<div class="card small" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+  <span>🎫 Licence <strong>{{ current_license.period_label }}</strong></span>
+  {% if current_license.billing_mode == "forfait" %}
+  <span style="color:var(--vert);font-weight:700">Forfait — participation illimitée</span>
+  {% else %}
+  <span style="font-weight:700;{% if current_license.seats_used >= current_license.seat_count %}color:var(--rouge){% else %}color:var(--orange){% endif %}">
+    {{ current_license.seats_used }} / {{ current_license.seat_count }} sièges</span>
+  {% endif %}
+</div>
+{% else %}
+<p class="small" style="margin-top:10px">Aucune licence active pour cet espace — usage libre, sans limite de sièges.</p>
+{% endif %}
+
 <div class="dash-split" style="margin-top:8px">
   <div class="dash-grid">
     {% for m in members %}

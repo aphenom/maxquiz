@@ -362,16 +362,24 @@ function endScreen(status, reachedOverride) {
   if (status === 'finished' && G.brand) {
     $('endEmoji').textContent = '🎉';
     $('endTitle').textContent = 'Bravo, quiz terminé !';
-    $('endLabel').textContent = G.brand.reward;
-    $('endCard').style.borderTop = '6px solid var(--or)';
-    $('endBig').style.color = 'var(--or)';
-    $('endBig').textContent = '🎁';
-    $('endStats').textContent = G.brand.name + ' contactera les gagnants. Reviens demain !';
+    if (G.brand.reward) {
+      $('endLabel').textContent = G.brand.reward;
+      $('endCard').style.borderTop = '6px solid var(--or)';
+      $('endBig').style.color = 'var(--or)';
+      $('endBig').textContent = G.brand.reward_type === 'monetaire' ? '💰' : G.brand.reward_type === 'autre' ? '🏅' : '🎁';
+      $('endStats').textContent = G.brand.name + ' contactera les gagnants. Reviens demain !';
+    } else {
+      $('endLabel').textContent = '';
+      $('endCard').style.borderTop = '6px solid var(--orange)';
+      $('endBig').style.color = 'var(--orange)';
+      $('endBig').textContent = '';
+      $('endStats').textContent = 'Reviens demain pour un nouveau quiz !';
+    }
     $('endScreen').hidden = false;
     confetti(100);
     return;
   }
-  if (status === 'finished') {
+  if (status === 'finished' && G.rewards_enabled) {
     $('endEmoji').textContent = '🏆';
     $('endTitle').textContent = 'FINALISTE DU JOUR !';
     $('endLabel').textContent = 'Tu as survécu aux '+G.total+' questions. Ta part de la cagnotte :';
@@ -383,6 +391,16 @@ function endScreen(status, reachedOverride) {
     setTimeout(()=>{ $('endBig').textContent = 'jusqu\u2019à '+G.pot+' F'; }, 100);
     $('endStats').textContent = 'Partagée entre les finalistes du jour · créditée sur ton portefeuille';
     confetti(120); setTimeout(()=>confetti(80), 800);
+  } else if (status === 'finished') {
+    $('endEmoji').textContent = '🏆';
+    $('endTitle').textContent = 'Défi terminé !';
+    $('endLabel').textContent = 'Tu as survécu aux '+G.total+' questions.';
+    $('endCard').style.borderTop = '6px solid var(--or)';
+    $('endBig').style.color = 'var(--or)';
+    $('endBig').textContent = '🎉';
+    $('endStats').textContent = 'Reviens demain pour un nouveau défi !';
+    $('endScreen').hidden = false;
+    confetti(120);
   } else {
     $('endEmoji').textContent = '💪';
     $('endTitle').textContent = G.mode==='training' ? 'Entraînement terminé' : 'Éliminé… pour aujourd\u2019hui !';

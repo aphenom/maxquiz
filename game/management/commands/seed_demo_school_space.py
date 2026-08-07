@@ -4,11 +4,11 @@ direct partageable, plus des participations simulées pour un tableau de bord pa
 Usage : python manage.py seed_demo_school_space
 """
 import random
-from datetime import timedelta
+from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.text import slugify
-from game.models import Space, Category, SubCategory, Quiz, Question, Player, GameSession, Answer
+from game.models import Space, Category, SubCategory, Quiz, Question, Player, GameSession, Answer, License
 
 LEVELS = ["6ème", "5ème", "4ème", "3ème"]
 SUBJECTS = ["Mathématiques", "Français"]
@@ -100,6 +100,10 @@ class Command(BaseCommand):
             elimination=False, category_label="Niveau", category_label_plural="Niveaux",
             subcategory_label="Matière", subcategory_label_plural="Matières",
             consent_required=False))
+
+        License.objects.get_or_create(space=space, period_label="2026-2027", defaults=dict(
+            billing_mode="per_seat", seat_count=60, price="60 sièges — tarif à convenir",
+            start_date=date(2026, 9, 1), end_date=date(2027, 7, 31), active=True))
 
         if created:
             for i, level in enumerate(LEVELS):

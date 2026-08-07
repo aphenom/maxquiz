@@ -3,7 +3,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
-                     Category, SubCategory, Quiz, Membership)
+                     Category, SubCategory, Quiz, Membership, License)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -34,11 +34,19 @@ class SpaceAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
 
 
+@admin.register(License)
+class LicenseAdmin(admin.ModelAdmin):
+    list_display = ("space", "period_label", "billing_mode", "seat_count",
+                    "seats_used", "price", "jokers_allowed", "reward_type", "active",
+                    "start_date", "end_date")
+    list_filter = ("space", "billing_mode", "jokers_allowed", "active")
+
+
 @admin.register(Membership)
 class MembershipAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "space", "category", "sub_category", "phone",
+    list_display = ("full_name", "space", "license", "category", "sub_category", "phone",
                     "external_ref", "player", "matched_at")
-    list_filter = ("space", "category")
+    list_filter = ("space", "license", "category")
     search_fields = ("full_name", "phone", "external_ref")
 
 
@@ -58,8 +66,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ("name", "space", "category", "sub_category", "active", "created_at")
-    list_filter = ("space", "category", "active")
+    list_display = ("name", "space", "category", "sub_category", "replay_policy",
+                    "reward_type", "joker_enabled", "active", "created_at")
+    list_filter = ("space", "category", "replay_policy", "joker_enabled", "active")
     prepopulated_fields = {"slug": ("name",)}
 
 
