@@ -76,14 +76,55 @@ QUESTIONS = {
         (4, "Quel est le sens du mot « lucide » ?", ["confus", "clairvoyant", "triste", "rapide"], 1),
     ],
 }
-CONJUGAISON_QUESTIONS = [
-    (1, "Quelle est la bonne conjugaison de « aller » au présent, 3ᵉ personne du singulier ?",
-     ["il va", "il vas", "il allait", "il ira"], 0),
-    (1, "Quelle est la terminaison du verbe « finir » au présent avec « nous » ?",
-     ["finissons", "finisont", "finissez", "finis"], 0),
-    (2, "À quel temps est conjugué « je mangeai » ?",
-     ["présent", "passé simple", "imparfait", "futur"], 1),
-]
+# Exemple de thématiques, par (niveau, matière) : plusieurs quiz plus précis
+# qu'une matière entière peuvent coexister sous la même matière, chacun avec
+# ses propres questions taguées — pour montrer qu'un élève peut avoir
+# plusieurs quiz à faire simultanément dans une seule matière.
+EXTRA_THEMES = {
+    ("6ème", "Français"): {
+        "Conjugaison": [
+            (1, "Quelle est la bonne conjugaison de « aller » au présent, 3ᵉ personne du singulier ?",
+             ["il va", "il vas", "il allait", "il ira"], 0),
+            (1, "Quelle est la terminaison du verbe « finir » au présent avec « nous » ?",
+             ["finissons", "finisont", "finissez", "finis"], 0),
+            (2, "À quel temps est conjugué « je mangeai » ?",
+             ["présent", "passé simple", "imparfait", "futur"], 1),
+        ],
+        "Orthographe": [
+            (1, "Quel est le pluriel correct de « journal » ?",
+             ["journals", "journaux", "journeaux", "journals"], 1),
+            (1, "Quelle phrase est bien orthographiée ?",
+             ["il c'est trompé", "il s'est trompé", "il ces trompé", "il ses trompé"], 1),
+            (2, "Comment s'écrit le son [s] dans « garçon » ?",
+             ["c", "ç", "s", "ss"], 1),
+        ],
+        "Vocabulaire": [
+            (1, "Quel est le sens du mot « minuscule » ?",
+             ["très grand", "très petit", "coloré", "rapide"], 1),
+            (1, "Quel mot signifie « content » ?",
+             ["triste", "joyeux", "fatigué", "calme"], 1),
+            (2, "Quel est l'antonyme de « rapide » ?",
+             ["lent", "vif", "agile", "prompt"], 0),
+        ],
+    },
+    ("5ème", "Mathématiques"): {
+        "Nombres relatifs": [
+            (1, "Combien font (-7) + 3 ?", ["-10", "-4", "4", "10"], 1),
+            (1, "Quel est l'opposé de -8 ?", ["-8", "8", "0", "1/8"], 1),
+            (2, "Combien font (-5) x (-2) ?", ["-10", "10", "-7", "7"], 1),
+        ],
+        "Fractions": [
+            (1, "Quelle fraction est équivalente à 2/4 ?", ["1/3", "1/2", "3/4", "2/3"], 1),
+            (1, "Combien font 1/3 + 1/3 ?", ["1/3", "2/3", "2/6", "1/6"], 1),
+            (2, "Quelle est la fraction décimale de 3/10 ?", ["0,3", "3,0", "0,03", "30"], 0),
+        ],
+        "Pourcentages": [
+            (1, "30 % de 200, combien cela fait-il ?", ["30", "60", "90", "600"], 1),
+            (2, "Un prix de 50 F baisse de 20 %. Nouveau prix ?", ["30 F", "40 F", "45 F", "60 F"], 1),
+            (2, "Quel pourcentage représente 1/4 ?", ["4 %", "25 %", "40 %", "75 %"], 1),
+        ],
+    },
+}
 SURVEYS = [
     ("Quel est ton format de révision préféré ?",
      ["Fiches de révision", "Vidéos explicatives", "Exercices en ligne", "Cours particuliers"]),
@@ -128,22 +169,22 @@ class Command(BaseCommand):
                                                 difficulty=diff, text=text, option_a=opts[0],
                                                 option_b=opts[1], option_c=opts[2], option_d=opts[3],
                                                 correct=correct)
-                    if level == "6ème" and subject == "Français":
-                        # Exemple de thématique : un quiz plus précis qu'une matière entière,
-                        # avec ses propres questions taguées à cette thématique.
-                        theme = Theme.objects.create(sub_category=sub, name="Conjugaison",
-                                                     slug="conjugaison", order=0)
-                        Quiz.objects.create(
-                            space=space, category=cat, sub_category=sub, theme=theme,
-                            name="Entraînement conjugaison", slug=slugify(f"{level}-{subject}-conjugaison"),
-                            question_count=3, survey_every=0, elimination=False,
-                            replay_policy="once")
-                        for diff, text, opts, correct in CONJUGAISON_QUESTIONS:
-                            Question.objects.create(space=space, kind="quiz", category="ec",
-                                                    sub_category=sub, theme=theme,
-                                                    difficulty=diff, text=text, option_a=opts[0],
-                                                    option_b=opts[1], option_c=opts[2], option_d=opts[3],
-                                                    correct=correct)
+                    if (level, subject) in EXTRA_THEMES:
+                        for k, (theme_name, questions) in enumerate(EXTRA_THEMES[(level, subject)].items()):
+                            theme = Theme.objects.create(sub_category=sub, name=theme_name,
+                                                         slug=slugify(theme_name), order=k)
+                            Quiz.objects.create(
+                                space=space, category=cat, sub_category=sub, theme=theme,
+                                name=f"Entraînement {theme_name.lower()}",
+                                slug=slugify(f"{level}-{subject}-{theme_name}"),
+                                question_count=3, survey_every=0, elimination=False,
+                                replay_policy="once")
+                            for diff, text, opts, correct in questions:
+                                Question.objects.create(space=space, kind="quiz", category="ec",
+                                                        sub_category=sub, theme=theme,
+                                                        difficulty=diff, text=text, option_a=opts[0],
+                                                        option_b=opts[1], option_c=opts[2], option_d=opts[3],
+                                                        correct=correct)
             for text, opts in SURVEYS:
                 Question.objects.create(space=space, kind="survey", category="ec",
                                         difficulty=1, text=text, option_a=opts[0],

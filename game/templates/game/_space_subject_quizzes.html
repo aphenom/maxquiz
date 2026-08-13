@@ -1,0 +1,14 @@
+{% for t in s.themed %}
+<p class="small" style="margin:4px 0 2px 10px;font-style:italic">{{ space.theme_label }} : {{ t.theme.name }}</p>
+{% for q in t.quizzes %}
+<a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+   href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
+{% endfor %}
+{% endfor %}
+{% if s.themed and s.general %}
+<p class="small" style="margin:4px 0 2px 10px;font-style:italic">Général</p>
+{% endif %}
+{% for q in s.general %}
+<a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+   href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
+{% endfor %}

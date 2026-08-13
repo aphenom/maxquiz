@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/space-answer/", views.space_answer, name="space_answer"),
     path("e/<slug:slug>/", views.space_home, name="space_home"),
     path("e/<slug:slug>/jouer/", views.space_start, name="space_start"),
+    path("e/<slug:slug>/mon-niveau/", views.space_declare_level, name="space_declare_level"),
     path("e/<slug:slug>/q/<slug:quiz_slug>/", views.quiz_home, name="quiz_home"),
     path("e/<slug:slug>/q/<slug:quiz_slug>/jouer/", views.quiz_start, name="quiz_start"),
     path("e/<slug:slug>/q/<slug:quiz_slug>/classement/", views.quiz_leaderboard, name="quiz_leaderboard"),

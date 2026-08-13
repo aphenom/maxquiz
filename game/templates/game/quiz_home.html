@@ -1,6 +1,5 @@
 {% extends "game/base.html" %}
 {% block title %}{{ quiz.name }} — {{ space.name }} × MaxQuiz{% endblock %}
-{% block tabs %}{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
 {% include "game/_space_banner.html" with subtitle=quiz.name %}
@@ -37,6 +36,14 @@
     <p style="margin:0;font-weight:700">👋 Bienvenue {{ player.pseudo }} !</p>
     <p class="small" style="margin:4px 0 0"><a href="{% url 'account_home' %}">Mes quiz & résultats</a></p>
   </div>
+  {% if expired %}
+  <div class="card" style="margin-top:12px;text-align:center">
+    <p style="margin:0;font-weight:700;color:var(--brun)">🔒 Période terminée</p>
+    <p class="small" style="margin:6px 0 0">Ce quiz n'est plus jouable, la licence à laquelle il était rattaché est
+      arrivée à échéance. {% if played_before %}Tes résultats restent consultables.{% endif %}
+      <a href="{% url 'account_home' %}">Voir mes résultats</a></p>
+  </div>
+  {% else %}
   {% if played_before and not already %}
   <p class="small" style="text-align:center;margin-top:10px">✅ Tu as déjà participé à ce quiz —
     <a href="{% url 'account_home' %}">voir ton résultat</a>.</p>
@@ -62,6 +69,7 @@
       {% if already %}{% if quiz.replay_policy == "once" %}✅ Quiz déjà réalisé (tentative unique){% else %}✅ Déjà participé aujourd'hui{% endif %}{% else %}🚀 Commencer le quiz{% endif %}
     </button>
   </form>
+  {% endif %}
   {% else %}
   <form method="post" action="{% url 'account_login' %}" style="margin-top:14px">
     {% csrf_token %}

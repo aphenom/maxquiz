@@ -1,6 +1,5 @@
 {% extends "game/base.html" %}
 {% block title %}Classement — {{ quiz.name }} × MaxQuiz{% endblock %}
-{% block tabs %}{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
 {% include "game/_space_banner.html" with subtitle=quiz.name %}
@@ -29,7 +28,8 @@
           {% if reward_text and s.status == "finished" %}
           <span class="small" style="color:var(--vert);font-weight:700">· ✔ éligible 🎁</span>
           {% endif %}</p>
-        <p class="small" style="margin:0">Question {{ s.reached }}</p>
+        {% if s.status != "finished" %}<p class="small" style="margin:0">Éliminé à la question {{ s.reached }}</p>{% endif %}
+        {% if s.pct is not None %}<p class="small" style="margin:0">{{ s.pct }}% de réussite</p>{% endif %}
       </div>
       <span style="font-weight:800;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
         {% if s.status == "finished" %}FINALISTE{% else %}Q{{ s.reached }}{% endif %}</span>

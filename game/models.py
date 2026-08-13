@@ -218,6 +218,11 @@ class Space(models.Model):
     survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
     elimination = models.BooleanField("Mode survie (élimination)", default=False)
     one_per_day = models.BooleanField("Une participation par jour", default=True)
+    playful_fx = models.BooleanField(
+        "Effets ludiques (confettis, séries, vibrations)",
+        default=True,
+        help_text="À désactiver pour un contexte sobre (évaluation notée, quiz de conformité...) : "
+                  "le jeu garde son minuteur et son suivi de score, sans les effets festifs.")
     category_label = models.CharField("Libellé d'une catégorie (singulier)", max_length=30,
                                       blank=True, default="Catégorie")
     category_label_plural = models.CharField("Libellé des catégories (pluriel)", max_length=30,
@@ -436,3 +441,12 @@ class Quiz(models.Model):
             return f"{self.space} · {self.name}"
         label = " · ".join(filter(None, [self.shared_level_name, self.shared_subject_name]))
         return f"[Partagé{' · ' + label if label else ''}] {self.name}"
+
+    def level_name(self):
+        """Nom du niveau, que le quiz soit propre à un espace (Category) ou
+        partagé (shared_level_name en texte libre)."""
+        return self.category.name if self.category_id else self.shared_level_name
+
+    def subject_name(self):
+        """Nom de la matière, même logique que level_name()."""
+        return self.sub_category.name if self.sub_category_id else self.shared_subject_name

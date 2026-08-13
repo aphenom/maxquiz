@@ -73,20 +73,23 @@ def _pending_quizzes(player):
             or (memberships[0] if memberships else None)
         if not membership or not (membership.sub_category_id or membership.category_id):
             continue
+        if _license_expired(membership.license):
+            # Licence passée : plus rien à proposer pour cet établissement,
+            # seuls les résultats déjà obtenus restent visibles sur /compte/.
+            continue
         # Filtré par l'espace de la SESSION (pas Quiz.space) : un quiz partagé
         # (space=None) joué via cet espace doit quand même compter comme fait.
         played_ids = set(GameSession.objects.filter(player=player, space=sp, quiz__isnull=False)
                          .values_list("quiz_id", flat=True))
-        if membership.sub_category_id:
-            qs = list(Quiz.objects.filter(space=sp, active=True, sub_category=membership.sub_category)) \
-                + list(_global_quizzes_for(membership.category, membership.sub_category))
-        else:
-            qs = list(Quiz.objects.filter(space=sp, active=True, category=membership.category,
-                                          sub_category__isnull=True)) \
-                + list(_global_quizzes_for(membership.category))
+        days_left = _license_days_left(membership.license)
+        qs = _quizzes_for_membership(sp, membership)
         for q in qs:
             if q.id not in played_ids:
-                pending.append({"space": sp, "quiz": q})
+                pending.append({"space": sp, "quiz": q, "days_left": days_left})
+    # Les quiz dont la licence expire bientôt remontent en premier — un quiz
+    # qui va disparaître de la liste mérite d'être vu avant celui qui a tout
+    # son temps, plutôt que d'être signalé au même rang qu'eux.
+    pending.sort(key=lambda p: p["days_left"] if p["days_left"] is not None else 9999)
     return pending
 
 
@@ -312,10 +315,29 @@ def give_up(request):
     return JsonResponse({"ok": True, "reached": session.reached})
 
 
+def _session_elimination(s):
+    """Le mode élimination détermine ce qui distingue les joueurs : en mode
+    survie, une seule erreur élimine, donc la question atteinte est le signal
+    utile. Sans élimination (la plupart des quiz d'évaluation), tout le monde
+    va jusqu'au bout du quiz quel que soit son score — la question atteinte
+    ne distingue plus rien, il faut se baser sur le taux de bonne réponse."""
+    if s.mode == "daily":
+        return True
+    if s.quiz_id:
+        return s.quiz.elimination
+    return bool(s.space_id and s.space.elimination)
+
+
 def _ranked(sessions):
-    """Trie des sessions par performance : finaliste > éliminé, puis question
-    atteinte, puis temps total — utilisé pour tous les classements du site."""
-    return sorted(sessions, key=lambda s: (s.status != "finished", -s.reached, s.total_time_ms))
+    """Trie des sessions par performance pour tous les classements du site :
+    finaliste > éliminé, puis (en mode survie) question atteinte, sinon taux
+    de bonne réponse, puis temps total en départage."""
+    sessions = list(sessions)
+    def key(s):
+        if _session_elimination(s):
+            return (s.status != "finished", -s.reached, s.total_time_ms)
+        return (s.status != "finished", -(_session_pct(s) or 0), s.total_time_ms)
+    return sorted(sessions, key=key)
 
 
 def leaderboard(request):
@@ -326,6 +348,8 @@ def leaderboard(request):
             .select_related("player")
             .order_by("-status", "-reached", "total_time_ms")[:50])
     rows = _ranked(rows)
+    for s in rows:
+        s.pct = _session_pct(s)
     finishers = sum(1 for s in rows if s.status == "finished")
     cfg = GameConfig.get()
     share = cfg.daily_pot // finishers if finishers else cfg.daily_pot
@@ -345,6 +369,7 @@ def leaderboard(request):
             my_quiz_ranks.append({
                 "quiz": qz, "space": mine.space,
                 "rank": all_sessions.index(mine) + 1, "total": len(all_sessions),
+                "pct": _session_pct(mine),
                 "reward_text": reward_text, "reward_type": reward_type,
                 "reward_eligible": bool(reward_text) and mine.status == "finished",
             })
@@ -365,10 +390,12 @@ def quiz_leaderboard(request, slug, quiz_slug):
     player = _player(request)
     rows = _ranked(GameSession.objects.filter(quiz=quiz, space=space, flagged=False)
                    .exclude(status="playing").select_related("player"))[:50]
+    for s in rows:
+        s.pct = _session_pct(s)
     reward_text, reward_type = _effective_reward(space, quiz)
     return render(request, "game/quiz_leaderboard.html", {
         "space": space, "quiz": quiz, "rows": rows, "player": player,
-        "reward_text": reward_text, "reward_type": reward_type,
+        "reward_text": reward_text, "reward_type": reward_type, "tab": "board",
     })
 
 
@@ -434,6 +461,40 @@ def _resolve_quiz(space, quiz_slug):
     if quiz.shared_subject_name:
         cats = SubCategory.objects.filter(category__in=cats, name__iexact=quiz.shared_subject_name)
     return quiz if cats.exists() else None
+
+
+def _quizzes_for_membership(space, membership):
+    """Quiz (propres à l'espace + partagés correspondants) auxquels une
+    adhésion donne accès : une matière précise si sub_category est renseignée,
+    sinon TOUTES les matières du niveau — une adhésion à un niveau seul ne
+    doit pas cloisonner l'élève aux seuls quiz sans matière du tout."""
+    cat = membership.category
+    if not cat:
+        return []
+    if membership.sub_category_id:
+        sub = membership.sub_category
+        return (list(Quiz.objects.filter(space=space, active=True, sub_category=sub))
+                + list(_global_quizzes_for(cat, sub)))
+    quizzes = (list(Quiz.objects.filter(space=space, active=True, category=cat))
+              + list(_global_quizzes_for(cat)))
+    for sub in cat.subcategories.all():
+        quizzes += list(_global_quizzes_for(cat, sub))
+    return quizzes
+
+
+def _quiz_still_playable(player, space, quiz):
+    """Une fois la licence d'une adhésion passée, seuls les résultats déjà
+    obtenus restent consultables — le quiz ne doit plus pouvoir être
+    (re)lancé sur la seule base de cette adhésion expirée. On bloque
+    uniquement si TOUTES les adhésions du joueur qui donnaient accès à ce
+    quiz sont désormais expirées ; un visiteur sans adhésion concernée par ce
+    quiz n'est pas affecté (comportement actuel inchangé)."""
+    memberships = list(Membership.objects.filter(space=space, player=player)
+                       .select_related("license", "category", "sub_category"))
+    matching = [m for m in memberships if quiz in _quizzes_for_membership(space, m)]
+    if not matching:
+        return True
+    return any(not _license_expired(m.license) for m in matching)
 
 
 def _match_membership(space, phone, player):
@@ -516,27 +577,35 @@ def space_home(request, slug):
         memberships = list(Membership.objects.filter(space=space, player=player).order_by("-created_at"))
         current_membership = next((m for m in memberships if current_license and m.license_id == current_license.id), None) \
             or (memberships[0] if memberships else None)
-    my_pairs = set()
-    if current_membership:
+    # Une adhésion à une matière précise (sub_category renseignée) cloisonne à
+    # cette seule matière. Une adhésion à un niveau SANS matière précisée ne
+    # cloisonne à rien : l'élève doit avoir accès à toutes les matières de ce
+    # niveau, pas seulement aux quiz qui n'ont pas de matière du tout.
+    my_full_categories = set()
+    my_specific_pairs = set()
+    if current_membership and current_membership.category_id:
         if current_membership.sub_category_id:
-            my_pairs.add((current_membership.category_id, current_membership.sub_category_id))
-        elif current_membership.category_id:
-            my_pairs.add((current_membership.category_id, None))
+            my_specific_pairs.add((current_membership.category_id, current_membership.sub_category_id))
+        else:
+            my_full_categories.add(current_membership.category_id)
+    my_category_ids = my_full_categories | {c for c, s in my_specific_pairs}
     # Sans profil déterminé (visiteur, ou membre sans catégorie renseignée), on
     # n'a rien à filtrer : le catalogue complet reste le seul repli possible.
     # Avec un profil, le filtre est strict — voir d'autres niveaux ne sert à
     # rien à l'élève, ce qui lui est utile (son parcours) est sur /compte/.
-    no_profile = not my_pairs
+    no_profile = not my_category_ids
 
     # Arbre de découverte : quiz propres à l'espace + quiz partagés (créés
     # depuis l'admin, sans espace) dont le niveau/matière correspond par nom à
     # une catégorie/sous-catégorie de cet espace — automatiquement mêlés au
     # catalogue, sans configuration de la part de l'établissement.
+    all_categories = list(space.categories.prefetch_related("subcategories"))
     categories, orphan_quizzes = [], []
-    for cat in space.categories.prefetch_related("subcategories"):
+    for cat in all_categories:
         subs = []
         for sub in cat.subcategories.all():
-            if not no_profile and (cat.id, sub.id) not in my_pairs:
+            if not no_profile and cat.id not in my_full_categories \
+                    and (cat.id, sub.id) not in my_specific_pairs:
                 continue
             qs = list(sub.quizzes.filter(active=True).select_related("theme")) \
                 + list(_global_quizzes_for(cat, sub))
@@ -552,9 +621,9 @@ def space_home(request, slug):
                 seen.add(q.theme_id)
                 themed.append({"theme": q.theme, "quizzes": [x for x in qs if x.theme_id == q.theme_id]})
             general = [q for q in qs if not q.theme_id]
-            subs.append({"sub": sub, "themed": themed, "general": general})
+            subs.append({"sub": sub, "themed": themed, "general": general, "count": len(qs)})
         direct = []
-        if no_profile or (cat.id, None) in my_pairs:
+        if no_profile or cat.id in my_category_ids:
             direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True)) \
                 + list(_global_quizzes_for(cat))
         if subs or direct:
@@ -562,6 +631,12 @@ def space_home(request, slug):
     if no_profile:
         orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
     has_catalog = bool(categories or orphan_quizzes)
+    # Une seule matière au total (cas courant : profil cloisonné à une seule
+    # sous-catégorie) : pas besoin d'accordion, ça n'ajoute qu'un clic pour
+    # rien. Dès qu'il y en a plusieurs (profil niveau-seul avec accès à
+    # toutes les matières, ou catalogue complet pour un visiteur), chaque
+    # matière est repliée dans son propre accordion pour rester lisible.
+    total_subs = sum(len(c["subs"]) for c in categories)
 
     played_quiz_ids = set()
     if player and has_catalog:
@@ -571,14 +646,55 @@ def space_home(request, slug):
                               .values_list("quiz_id", flat=True))
 
     reward_text, reward_type = _effective_reward(space)
+    # Un élève sans fiche établissement (personne n'a chargé son numéro) peut se
+    # déclarer lui-même — seulement s'il y a un niveau à choisir, et seulement
+    # tant que l'établissement n'a rien réglé pour lui (no_profile).
+    can_declare_level = bool(player and no_profile and all_categories)
     return render(request, "game/space_home.html", {
         "space": space, "player": player, "already": already,
         "categories": categories, "orphan_quizzes": orphan_quizzes,
         "reward_text": reward_text, "reward_type": reward_type,
-        "profile_filtered": bool(my_pairs),
+        "profile_filtered": bool(my_category_ids),
         "has_catalog": has_catalog,
         "played_quiz_ids": played_quiz_ids,
+        "multi_subject": total_subs > 1,
+        "all_categories": all_categories,
+        "can_declare_level": can_declare_level,
+        "tab": "home",
     })
+
+
+@require_POST
+def space_declare_level(request, slug):
+    """Auto-déclaration du niveau/matière par un élève sans fiche établissement
+    (personne n'a chargé son numéro) : crée ou complète sa Membership pour la
+    période en cours, sans jamais écraser une fiche déjà réglée par
+    l'établissement. Celui-ci reste libre de la corriger ensuite depuis son
+    tableau de bord — cette déclaration n'est qu'un point de départ."""
+    space = _space(slug)
+    player = _player(request)
+    if not player:
+        return redirect("space_home", slug=slug)
+    category = Category.objects.filter(space=space, id=_post_int(request.POST, "category")).first()
+    if not category:
+        return redirect("space_home", slug=slug)
+    sub_category = category.subcategories.filter(id=_post_int(request.POST, "sub_category")).first()
+
+    current_license = _current_license(space)
+    existing = Membership.objects.filter(space=space, phone=player.phone, license=current_license).first()
+    if existing:
+        if not existing.category_id:
+            existing.category = category
+            existing.sub_category = sub_category
+            existing.player = existing.player or player
+            existing.matched_at = existing.matched_at or timezone.now()
+            existing.save(update_fields=["category", "sub_category", "player", "matched_at"])
+    elif not _seat_check(space, current_license):
+        Membership.objects.create(
+            space=space, phone=player.phone, license=current_license,
+            full_name=player.full_name or player.pseudo, player=player,
+            category=category, sub_category=sub_category, matched_at=timezone.now())
+    return redirect("space_home", slug=slug)
 
 
 @require_POST
@@ -631,6 +747,8 @@ def space_start(request, slug):
         "timers": cfg.timer_by_difficulty,
         "joker": {"paid": False, "ad": False, "max": 0, "prices": {}},
         "balance": 0, "pot": 0, "pot_sponsor": "",
+        "playful": space.playful_fx,
+        "home_url": reverse("space_home", args=[space.slug]),
         "brand": {"name": space.name, "emoji": space.emoji,
                   "primary": space.color_primary, "accent": space.color_accent,
                   "reward": reward_text, "reward_type": reward_type},
@@ -670,11 +788,13 @@ def quiz_home(request, slug, quiz_slug):
     already = _quiz_locked(player, quiz, today)
     played_before = bool(player and GameSession.objects.filter(
         player=player, quiz=quiz, flagged=False).exclude(status="playing").exists())
+    expired = bool(player) and not _quiz_still_playable(player, space, quiz)
     reward_text, reward_type = _effective_reward(space, quiz)
     return render(request, "game/quiz_home.html", {
         "space": space, "quiz": quiz, "player": player, "already": already,
-        "played_before": played_before,
+        "played_before": played_before, "expired": expired,
         "reward_text": reward_text, "reward_type": reward_type,
+        "tab": "home",
     })
 
 
@@ -695,6 +815,13 @@ def quiz_start(request, slug, quiz_slug):
     if not player:
         return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
     _match_membership(space, player.phone, player)
+
+    if not _quiz_still_playable(player, space, quiz):
+        return render(request, "game/quiz_home.html", {
+            "space": space, "quiz": quiz, "player": player, "expired": True,
+            "error": "La période de licence liée à ce quiz est terminée — il n'est plus jouable, "
+                    "mais tes résultats passés restent visibles sur ton compte.",
+        })
 
     today = timezone.localdate()
     if _quiz_locked(player, quiz, today):
@@ -755,6 +882,9 @@ def quiz_start(request, slug, quiz_slug):
         "timers": cfg.timer_by_difficulty,
         "joker": {"paid": False, "ad": jokers_ok, "max": cfg.joker_max_per_game if jokers_ok else 0, "prices": {}},
         "balance": 0, "pot": 0, "pot_sponsor": "",
+        "playful": space.playful_fx,
+        "home_url": reverse("space_home", args=[space.slug]),
+        "board_url": reverse("quiz_leaderboard", args=[space.slug, quiz.slug]),
         "brand": {"name": space.name, "emoji": space.emoji,
                   "primary": space.color_primary, "accent": space.color_accent,
                   "reward": reward_text, "reward_type": reward_type},
@@ -1224,6 +1354,27 @@ def _current_license(space):
     return space.licenses.filter(active=True).first()
 
 
+def _license_expired(license_obj):
+    """Une licence est « passée » si elle a été désactivée ou si sa date de
+    fin est dépassée. Pas de licence du tout = pas de notion d'expiration
+    (comportement inchangé pour les espaces qui n'utilisent pas ce système)."""
+    if not license_obj:
+        return False
+    if not license_obj.active:
+        return True
+    return license_obj.end_date < timezone.localdate()
+
+
+def _license_days_left(license_obj):
+    """Jours restants avant la fin d'une licence active (None si pas de
+    licence, licence désactivée, ou déjà expirée — ces cas n'ont pas de
+    compte à rebours à afficher, le quiz est simplement retiré de la liste)."""
+    if not license_obj or not license_obj.active:
+        return None
+    days = (license_obj.end_date - timezone.localdate()).days
+    return days if days >= 0 else None
+
+
 def _effective_reward(space, quiz=None):
     """Résout la récompense à afficher : quiz > espace > licence courante > aucune."""
     for obj in (quiz, space, _current_license(space)):
@@ -1691,15 +1842,13 @@ def account_home(request):
         assigned_quizzes = []
         seen_quiz_ids = set()
         for m in memberships:
-            if not (m.sub_category_id or m.category_id):
+            if not m.category_id or _license_expired(m.license):
+                # Licence passée : les résultats déjà obtenus restent visibles
+                # dans l'historique ci-dessous, mais on n'offre plus de jouer
+                # de nouveaux quiz sur la seule base de cette adhésion.
                 continue
-            if m.sub_category_id:
-                qs = list(Quiz.objects.filter(space=sp, active=True, sub_category=m.sub_category)) \
-                    + list(_global_quizzes_for(m.category, m.sub_category))
-            else:
-                qs = list(Quiz.objects.filter(space=sp, active=True, category=m.category, sub_category__isnull=True)) \
-                    + list(_global_quizzes_for(m.category))
-            for q in qs:
+            days_left = _license_days_left(m.license)
+            for q in _quizzes_for_membership(sp, m):
                 if q.id in played_quiz_ids or q.id in seen_quiz_ids:
                     continue
                 seen_quiz_ids.add(q.id)
@@ -1707,7 +1856,11 @@ def account_home(request):
                     "quiz": q,
                     "current": bool(membership and m.id == membership.id),
                     "period_label": m.license.period_label if m.license_id else "",
+                    "days_left": days_left,
                 })
+        # Comme sur l'accueil : les quiz dont la licence expire bientôt remontent
+        # en premier, pour que l'élève les voie avant qu'ils ne disparaissent.
+        assigned_quizzes.sort(key=lambda a: a["days_left"] if a["days_left"] is not None else 9999)
 
         flat_count = GameSession.objects.filter(
             space=sp, quiz__isnull=True, player=player, flagged=False).exclude(status="playing").count()

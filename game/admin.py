@@ -33,7 +33,8 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Space)
 class SpaceAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "active", "consent_required", "question_count", "elimination", "dashboard_code")
+    list_display = ("name", "slug", "active", "consent_required", "question_count", "elimination",
+                    "playful_fx", "dashboard_code")
     prepopulated_fields = {"slug": ("name",)}
 
 

@@ -273,7 +273,42 @@ ci-dessus, pas dans l'arbre de découverte). Le filtre est strict, sans
 concernent pas n'apporte rien à l'élève, ce qui lui est utile (son parcours,
 son historique) est sur `/compte/`. Un visiteur pas encore identifié (ou sans
 catégorie/sous-catégorie renseignée) voit le catalogue complet par défaut,
-faute de profil à filtrer.
+faute de profil à filtrer. Le cloisonnement dépend précisément de ce que
+l'adhésion précise : une matière définie (sous-catégorie renseignée) limite à
+cette seule matière ; un niveau seul (catégorie renseignée, pas de
+sous-catégorie) ne cloisonne à rien — l'élève voit **toutes** les matières de
+ce niveau, pas seulement les quiz sans matière du tout. Sur cette page
+catalogue (`/e/slug/`), chaque matière (sous-catégorie) est **repliée dans
+son propre accordion** dès qu'il y en a plus d'une à afficher côte à côte —
+cas courant depuis ce même correctif, un profil niveau seul pouvant voir
+plusieurs matières en même temps. Avec une seule matière (profil cloisonné à
+une matière précise, ou catalogue à une seule matière), pas d'accordion :
+inutile d'ajouter un clic quand il n'y a qu'une section à montrer.
+
+Une fois la période d'une licence **passée** (désactivée dans l'admin, ou
+date de fin dépassée), l'adhésion qu'elle couvre bascule en lecture seule :
+ses quiz disparaissent de « Quiz à faire »/« Quiz en attente » et le
+lancement direct d'un de ces quiz (`quiz_start`) est bloqué côté serveur avec
+un message dédié — pas seulement caché de la liste, une tentative par URL
+directe échoue aussi. Seuls les **résultats déjà obtenus** restent
+consultables : l'historique, les stats détaillées et le classement par quiz
+de cette période ne sont pas affectés. Si un même quiz reste par ailleurs
+accessible via une autre adhésion du joueur (licence toujours active), il
+continue d'être proposé normalement — seule l'adhésion expirée perd l'accès
+au jeu, pas le quiz lui-même. Un quiz dont la licence expire dans **7 jours
+ou moins** remonte en tête de « Quiz à faire »/« Quiz en attente » avec un
+avertissement (« ⏳ Plus que N jours pour le faire ») : disparaître de la
+liste sans prévenir aurait été frustrant pour l'élève.
+
+Un élève qui découvre le lien d'un établissement sans que son numéro y ait
+été chargé (oubli, faute de frappe, arrivée en cours d'année) peut **se
+déclarer lui-même** un niveau (et une matière, facultative) directement
+depuis `/e/slug/` — ça crée son adhésion pour la période en cours, avec le
+catalogue filtré qui va avec. Cette auto-déclaration ne prend jamais le pas
+sur une fiche déjà réglée par l'établissement (elle ne s'affiche que tant
+qu'aucune catégorie n'est renseignée pour lui) et respecte la limite de
+sièges de la licence le cas échéant ; l'établissement reste libre de la
+corriger ensuite depuis son tableau de bord — ce n'est qu'un point de départ.
 
 Sur l'accueil (`/`), un membre connecté voit ses **quiz en attente** (tous
 établissements confondus) mis en avant, avant même le défi public du jour et
@@ -307,6 +342,23 @@ participants **ayant terminé** ce quiz (donc éligibles) sont mis en évidence 
 badge « 🎁 Éligible à la récompense » sur leur historique personnel (`/compte/`) et
 sur la liste des meilleurs participants du tableau de bord établissement, pour que
 l'entreprise sache concrètement qui récompenser.
+
+### Navigation contextuelle et ambiance ludique/sobre
+
+La barre d'onglets en bas de page (Jouer / Classement / Portefeuille / Mon
+compte) s'adapte au contexte plutôt que de renvoyer systématiquement vers le
+jeu public national : à l'intérieur d'un espace établissement (`/e/slug/...`),
+« 🎮 Jouer » pointe vers le catalogue de cet établissement, et « 🏅 Classement »
+vers le classement du quiz consulté quand il y en a un précis — pas vers le
+classement du défi public. Ça évite de sortir un élève de son contexte
+scolaire par réflexe de navigation ; en dehors de tout espace, la barre garde
+son comportement public habituel.
+
+Le ton très ludique du jeu (confettis, séries « 🔥 », vibrations) est pensé
+pour le défi public, mais peut être coupé par espace via `Space.playful_fx`
+(activé par défaut) — utile pour un quiz d'évaluation notée ou un quiz de
+conformité bancaire, où l'ambiance festive serait déplacée. Minuteur, score et
+retours texte restent identiques ; seuls les effets sont retirés.
 
 ## ⚠️ Avertissement important
 

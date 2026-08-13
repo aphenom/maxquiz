@@ -1,6 +1,5 @@
 {% extends "game/base.html" %}
 {% block title %}{{ space.name }} × MaxQuiz{% endblock %}
-{% block tabs %}{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
 {% include "game/_space_banner.html" with subtitle="Quiz interactif propulsé par MaxQuiz" %}
@@ -23,6 +22,37 @@
     {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
   </div>
 
+  {% if can_declare_level %}
+  <div class="card" style="margin-top:12px">
+    <p style="margin:0 0 8px;font-weight:700">🎯 Indique ton {{ space.category_label|default:"niveau"|lower }}</p>
+    <p class="small" style="margin:0 0 10px">Pour un catalogue trié pour toi et le suivi de tes quiz à faire.
+      {{ space.name }} peut ajuster cette info à tout moment.</p>
+    <form method="post" action="{% url 'space_declare_level' space.slug %}">
+      {% csrf_token %}
+      <select name="category" id="declCat" required onchange="declFilterSub()">
+        <option value="">{{ space.category_label|default:"Niveau" }}…</option>
+        {% for c in all_categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+      <select name="sub_category" id="declSub" style="margin-top:8px">
+        <option value="">Toutes les {{ space.subcategory_label_plural|default:"matières"|lower }}</option>
+        {% for c in all_categories %}{% for s in c.subcategories.all %}
+        <option value="{{ s.id }}" data-cat="{{ c.id }}">{{ c.name }} · {{ s.name }}</option>
+        {% endfor %}{% endfor %}
+      </select>
+      <button class="btn" type="submit" style="margin-top:10px">Valider</button>
+    </form>
+  </div>
+  <script>
+  function declFilterSub(){
+    var cat = document.getElementById('declCat').value;
+    document.querySelectorAll('#declSub option[data-cat]').forEach(function(o){
+      o.hidden = cat && o.dataset.cat !== cat;
+    });
+    document.getElementById('declSub').value = '';
+  }
+  </script>
+  {% endif %}
+
   {% if has_catalog %}
   <div class="card" style="margin-top:12px">
     <p style="margin:0 0 10px;font-weight:700">🔎 {% if profile_filtered %}Ton quiz{% else %}Choisis ton quiz{% endif %}</p>
@@ -36,21 +66,18 @@
     {% for c in categories %}
     <p class="small" style="margin:10px 0 4px;font-weight:700;text-transform:uppercase">{{ c.category.name }}</p>
     {% for s in c.subs %}
+    {% if multi_subject %}
+    <details class="dash-accordion" style="margin-bottom:8px">
+      <summary style="font-size:14px">{{ s.sub.name }}
+        <span class="small" style="font-weight:400">· {{ s.count }} quiz</span></summary>
+      <div class="accordion-body">
+        {% include "game/_space_subject_quizzes.html" %}
+      </div>
+    </details>
+    {% else %}
     <p class="small" style="margin:6px 0 2px;color:var(--brun)">{{ s.sub.name }}</p>
-    {% for t in s.themed %}
-    <p class="small" style="margin:4px 0 2px 10px;font-style:italic">{{ space.theme_label }} : {{ t.theme.name }}</p>
-    {% for q in t.quizzes %}
-    <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
-       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
-    {% endfor %}
-    {% endfor %}
-    {% if s.themed and s.general %}
-    <p class="small" style="margin:4px 0 2px 10px;font-style:italic">Général</p>
+    {% include "game/_space_subject_quizzes.html" %}
     {% endif %}
-    {% for q in s.general %}
-    <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
-       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
-    {% endfor %}
     {% endfor %}
     {% for q in c.direct %}
     <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"

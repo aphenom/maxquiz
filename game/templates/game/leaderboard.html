@@ -15,7 +15,9 @@
     <div style="flex:1">
       <p style="margin:0;font-weight:700">{{ s.player.pseudo }}{% if player and s.player_id == player.id %} (toi){% endif %}
         {% if s.status == "finished" %}🏆{% endif %}</p>
-      <p class="small" style="margin:0">Question {{ s.reached }} · {{ s.jokers_used }} joker{{ s.jokers_used|pluralize }}</p>
+      <p class="small" style="margin:0">Question {{ s.reached }}
+        {% if s.pct is not None %} · {{ s.pct }}% de réussite{% endif %}
+        · {{ s.jokers_used }} joker{{ s.jokers_used|pluralize }}</p>
     </div>
     <span style="font-weight:800;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
       {% if s.status == "finished" %}FINALISTE{% else %}Q{{ s.reached }}{% endif %}</span>
@@ -38,6 +40,7 @@
     <span>
       <span style="font-weight:700">{{ r.quiz.name }}</span><br>
       <span class="small">{{ r.space.emoji }} {{ r.space.name }} · rang {{ r.rank }} / {{ r.total }}
+        {% if r.pct is not None %} · {{ r.pct }}% de réussite{% endif %}
         {% if r.reward_eligible %} · <span style="color:var(--vert);font-weight:700">✔ éligible 🎁</span>{% endif %}</span>
     </span>
     <span class="small">Voir →</span>
