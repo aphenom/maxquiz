@@ -77,6 +77,9 @@ class Question(models.Model):
     theme = models.ForeignKey("Theme", null=True, blank=True, on_delete=models.SET_NULL,
                               related_name="questions",
                               verbose_name="Thématique (optionnelle, au sein de la sous-catégorie)")
+    quiz = models.ForeignKey("Quiz", null=True, blank=True, on_delete=models.CASCADE,
+                             related_name="own_questions",
+                             verbose_name="Quiz partagé (banque dédiée d'un quiz sans espace)")
     difficulty = models.PositiveSmallIntegerField("Difficulté", choices=DIFFICULTIES, default=1)
     text = models.TextField("Question")
     option_a = models.CharField(max_length=200)
@@ -95,6 +98,9 @@ class Question(models.Model):
 
     def options(self):
         return [self.option_a, self.option_b, self.option_c, self.option_d]
+
+    def correct_text(self):
+        return self.options()[self.correct]
 
 
 class AdCampaign(models.Model):
@@ -368,8 +374,21 @@ class Theme(models.Model):
 
 
 class Quiz(models.Model):
-    """Quiz partageable par lien direct, rattaché à une catégorie/sous-catégorie."""
-    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="quizzes")
+    """Quiz partageable par lien direct, rattaché à une catégorie/sous-catégorie
+    d'un espace précis — ou, si space est vide, quiz partagé rattaché par nom
+    de niveau/matière (shared_level_name/shared_subject_name) et automatiquement
+    disponible dans tout espace dont une Catégorie/Sous-catégorie porte ce nom."""
+    space = models.ForeignKey(Space, null=True, blank=True, on_delete=models.CASCADE,
+                              related_name="quizzes",
+                              verbose_name="Espace (vide = quiz partagé par niveau/matière)")
+    shared_level_name = models.CharField(
+        "Niveau (si quiz partagé, ex. 6ème)", max_length=80, blank=True, default="",
+        help_text="Doit correspondre exactement (insensible à la casse) au nom d'une Catégorie "
+                  "d'un espace pour que le quiz y apparaisse automatiquement.")
+    shared_subject_name = models.CharField(
+        "Matière (optionnel, si quiz partagé, ex. Français)", max_length=80, blank=True, default="",
+        help_text="Doit correspondre exactement au nom d'une Sous-catégorie de la catégorie ci-dessus. "
+                  "Vide = le quiz cible le niveau entier, sans matière précise.")
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL,
                                  related_name="quizzes")
     sub_category = models.ForeignKey(SubCategory, null=True, blank=True, on_delete=models.SET_NULL,
@@ -388,6 +407,10 @@ class Quiz(models.Model):
         ("unlimited", "Illimité (rejouable à tout moment)"),
     ]
     replay_policy = models.CharField("Rejouabilité", max_length=10, choices=REPLAY_POLICIES, default="daily")
+    show_corrections = models.BooleanField(
+        "Corrections visibles après coup", default=False,
+        help_text="Si activé, le joueur voit la bonne réponse et l'explication de chaque question "
+                  "dans le détail de sa partie sur son compte, une fois celle-ci terminée.")
     joker_enabled = models.BooleanField(
         "Joker « pub vidéo » activé sur ce quiz", default=False,
         help_text="Nécessite que la licence de l'espace l'autorise (License.jokers_allowed).")
@@ -402,7 +425,14 @@ class Quiz(models.Model):
         verbose_name = "Quiz"
         verbose_name_plural = "Quiz"
         unique_together = [("space", "slug")]
+        constraints = [
+            models.UniqueConstraint(fields=["slug"], condition=models.Q(space__isnull=True),
+                                    name="unique_global_quiz_slug"),
+        ]
         ordering = ["category__order", "sub_category__order", "name"]
 
     def __str__(self):
-        return f"{self.space} · {self.name}"
+        if self.space_id:
+            return f"{self.space} · {self.name}"
+        label = " · ".join(filter(None, [self.shared_level_name, self.shared_subject_name]))
+        return f"[Partagé{' · ' + label if label else ''}] {self.name}"

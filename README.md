@@ -132,6 +132,39 @@ quiz sont en rejouabilité « une seule fois » (évaluation scolaire), pas
 « une fois par jour » — cohérent avec le fait qu'ici le score doit rester un
 signal fiable, pas une invitation à retenter jusqu'à un meilleur résultat.
 
+### Quiz partagés (admin, sans espace) — un même programme scolaire pour tous
+
+Un quiz peut être créé depuis l'admin Django **sans le rattacher à un espace
+précis** : il porte alors juste un niveau et, optionnellement, une matière en
+texte libre (`Quiz.shared_level_name`/`shared_subject_name`, ex. « 6ème » /
+« Français »), avec sa propre banque de questions dédiée (`Question.quiz`).
+Ce quiz devient **automatiquement disponible** — sans aucune configuration de
+leur part — dans tout espace dont une Catégorie/Sous-catégorie porte
+**exactement ce nom** (insensible à la casse), et pour les membres de cet
+espace dont l'adhésion y correspond : il apparaît dans l'arbre de
+l'établissement (`/e/slug/`, sous « Général », un quiz partagé n'a pas de
+thématique propre), dans « Quiz à faire » sur `/compte/`, et dans la vue
+d'ensemble du tableau de bord établissement (marqué 🌐, en lecture seule —
+l'établissement suit la participation de ses membres mais ne peut ni le
+modifier ni le supprimer, ce n'est pas son quiz).
+
+Le matching étant strictement par nom, un espace qui a renommé sa catégorie
+(ex. « 6eme RENOMME » au lieu de « 6ème ») ne bénéficie plus automatiquement
+d'un quiz partagé tant que le nom ne correspond pas exactement — comportement
+attendu, pas un bug. Le formulaire admin du quiz sépare clairement les deux
+usages en deux sections : « Quiz propre à un espace » (`space`/`category`/
+`sub_category`/`theme`, les selects habituels) vs « Quiz partagé » (niveau/
+matière), pour ne pas donner l'impression qu'un quiz partagé serait quand
+même rattaché à un espace précis. Les champs niveau/matière restent du texte
+libre (un niveau pas encore créé par aucun espace doit pouvoir être saisi à
+l'avance) mais proposent en suggestion (`<datalist>`) les noms de Catégorie/
+Sous-catégorie déjà utilisés quelque part, pour limiter le risque de faute de
+frappe qui casserait silencieusement le rattachement automatique. C'est le
+mécanisme pensé pour construire, une fois, une bibliothèque de quiz alignée
+sur un même programme scolaire et la
+propager progressivement à tous les établissements qui l'utilisent, sans que
+chacun ait à recréer son propre contenu.
+
 ### Comptes utilisateurs (téléphone + OTP comme parcours standard) & branding enrichi
 
 Le téléphone + code à usage unique est désormais le **seul** point d'entrée pour
@@ -175,10 +208,27 @@ Pour un élève, la valeur n'est pas juste le score : `/compte/` calcule, par
 établissement, un **taux de maîtrise par catégorie/sous-catégorie** (matière) —
 pas seulement une moyenne globale qui masque les écarts — trié du point le plus
 faible au plus fort, avec un encart « 🎯 Priorité » pointant vers la sous-catégorie
-la plus en retard (< 70 %) et un lien direct pour s'entraîner dessus. C'est la
+la plus en retard (< 70 %) et un lien direct pour s'entraîner dessus, et la même
+chose **par thématique** quand les questions en portent une. C'est la
 promesse vendue aux établissements : des métriques claires sur les points
 forts/faibles de chaque élève, avec une orientation concrète pour combler les
 lacunes — pas juste un historique de scores.
+
+**Classement par quiz** : au-delà du classement du défi public, `/classement/`
+liste pour un joueur connecté chacun des quiz d'établissement auxquels il a
+déjà participé (« 🏫 Mes quiz d'établissement »), avec son rang et son
+éligibilité à la récompense s'il y en a une — chaque quiz a son propre
+classement complet sur `/e/slug/q/quiz-slug/classement/` (accessible aussi
+depuis la page du quiz), qui affiche la récompense en tête si elle existe et
+marque les participants ayant terminé comme éligibles.
+
+**Corrections activables** (`Quiz.show_corrections`, décoché par défaut) :
+un établissement peut choisir, quiz par quiz, de révéler la bonne réponse et
+l'explication de chaque question dans l'historique du joueur sur `/compte/`
+une fois la partie terminée — utile en pédagogie, mais pas automatique (ex.
+un même quiz réutilisé sur plusieurs classes à des dates différentes). Pour
+un quiz partagé (sans espace), c'est l'admin qui active ce réglage, pas de
+tableau de bord établissement pour ce cas.
 
 Un établissement peut aussi faire correspondre les participants à sa propre base
 (élèves, employés…) : import CSV (`nom,telephone[,reference]`) depuis l'onglet

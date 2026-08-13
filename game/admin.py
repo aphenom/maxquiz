@@ -1,6 +1,9 @@
+from django import forms
 from django.contrib import admin
 from django.db.models import Sum
 from django.utils import timezone
+from django.utils.html import format_html, escape
+from django.utils.safestring import mark_safe
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
                      Category, SubCategory, Theme, Quiz, Membership, License)
@@ -71,18 +74,70 @@ class ThemeAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
 
 
+class DatalistTextInput(forms.TextInput):
+    """Champ texte avec suggestions (noms de Catégorie/Sous-catégorie déjà
+    utilisés) : garde la souplesse du texte libre (un niveau pas encore créé
+    par aucun espace reste saisissable) tout en réduisant le risque de faute
+    de frappe qui casserait silencieusement le rattachement par nom."""
+    def __init__(self, datalist_id, options, attrs=None):
+        self.datalist_id = datalist_id
+        self.options = options
+        merged = {"list": datalist_id, "autocomplete": "off"}
+        if attrs:
+            merged.update(attrs)
+        super().__init__(attrs=merged)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        input_html = super().render(name, value, attrs, renderer)
+        options_html = mark_safe("".join(f'<option value="{escape(opt)}">' for opt in self.options))
+        return format_html('{}<datalist id="{}">{}</datalist>', input_html, self.datalist_id, options_html)
+
+
+class QuizAdminForm(forms.ModelForm):
+    class Meta:
+        model = Quiz
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        levels = sorted(set(Category.objects.values_list("name", flat=True)))
+        subjects = sorted(set(SubCategory.objects.values_list("name", flat=True)))
+        self.fields["shared_level_name"].widget = DatalistTextInput("shared-level-names", levels)
+        self.fields["shared_subject_name"].widget = DatalistTextInput("shared-subject-names", subjects)
+
+
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ("name", "space", "category", "sub_category", "theme", "replay_policy",
-                    "reward_type", "joker_enabled", "active", "created_at")
+    form = QuizAdminForm
+    list_display = ("name", "space", "shared_level_name", "shared_subject_name", "category", "sub_category",
+                    "theme", "replay_policy", "reward_type", "joker_enabled", "active", "created_at")
     list_filter = ("space", "category", "replay_policy", "joker_enabled", "active")
     prepopulated_fields = {"slug": ("name",)}
+    fieldsets = (
+        (None, {"fields": ("name", "slug", "active")}),
+        ("Quiz propre à un espace", {
+            "fields": ("space", "category", "sub_category", "theme"),
+            "description": "À remplir pour un quiz propre à un établissement précis. Laisser "
+                           "« Espace » vide si ce quiz est partagé (voir ci-dessous) — dans ce cas, "
+                           "ne pas remplir ces champs non plus, ils ne s'appliqueraient qu'à un seul espace.",
+        }),
+        ("Quiz partagé (sans espace, par niveau/matière)", {
+            "fields": ("shared_level_name", "shared_subject_name"),
+            "description": "À remplir seulement si « Espace » ci-dessus est vide : le quiz devient "
+                           "automatiquement disponible dans tout établissement dont une catégorie/sous-catégorie "
+                           "porte ce nom (comparaison insensible à la casse), avec sa propre banque de questions "
+                           "(à ajouter depuis l'admin Question, champ « Quiz partagé »).",
+        }),
+        ("Paramètres de jeu", {"fields": ("question_count", "survey_every", "elimination",
+                                          "replay_policy", "show_corrections")}),
+        ("Récompense & joker", {"fields": ("reward_type", "reward_text", "joker_enabled")}),
+    )
 
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ("text", "space", "kind", "category", "sub_category", "theme", "difficulty", "active")
-    list_filter = ("space", "kind", "category", "sub_category", "difficulty", "active")
+    list_display = ("text", "space", "quiz", "kind", "category", "sub_category", "theme", "difficulty", "active")
+    list_filter = ("space", "quiz", "kind", "category", "sub_category", "difficulty", "active")
     list_editable = ("difficulty", "active")
     search_fields = ("text",)
 

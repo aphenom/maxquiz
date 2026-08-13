@@ -15,6 +15,7 @@ urlpatterns = [
     path("e/<slug:slug>/jouer/", views.space_start, name="space_start"),
     path("e/<slug:slug>/q/<slug:quiz_slug>/", views.quiz_home, name="quiz_home"),
     path("e/<slug:slug>/q/<slug:quiz_slug>/jouer/", views.quiz_start, name="quiz_start"),
+    path("e/<slug:slug>/q/<slug:quiz_slug>/classement/", views.quiz_leaderboard, name="quiz_leaderboard"),
     path("e/<slug:slug>/tableau-de-bord/", views.space_dashboard, name="space_dashboard"),
     path("e/<slug:slug>/tableau-de-bord/categories/", views.dashboard_categories, name="dashboard_categories"),
     path("e/<slug:slug>/tableau-de-bord/quiz/", views.dashboard_quizzes, name="dashboard_quizzes"),

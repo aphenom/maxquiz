@@ -28,4 +28,21 @@
   </div>
   {% endfor %}
 </div>
+
+{% if my_quiz_ranks %}
+<h2 style="font-size:18px;margin:22px 0 8px">🏫 Mes quiz d'établissement</h2>
+<div class="stagger" style="display:flex;flex-direction:column;gap:8px">
+  {% for r in my_quiz_ranks %}
+  <a href="{% url 'quiz_leaderboard' r.space.slug r.quiz.slug %}" class="card"
+     style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;text-decoration:none;color:inherit">
+    <span>
+      <span style="font-weight:700">{{ r.quiz.name }}</span><br>
+      <span class="small">{{ r.space.emoji }} {{ r.space.name }} · rang {{ r.rank }} / {{ r.total }}
+        {% if r.reward_eligible %} · <span style="color:var(--vert);font-weight:700">✔ éligible 🎁</span>{% endif %}</span>
+    </span>
+    <span class="small">Voir →</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

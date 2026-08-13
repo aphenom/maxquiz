@@ -1,0 +1,45 @@
+{% extends "game/base.html" %}
+{% block title %}Classement — {{ quiz.name }} × MaxQuiz{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+{% include "game/_space_banner.html" with subtitle=quiz.name %}
+<div class="stagger">
+  <p class="small" style="text-align:center;margin-top:10px">
+    <a href="{% url 'quiz_home' space.slug quiz.slug %}">← {{ quiz.name }}</a></p>
+  {% if reward_text %}
+  <div class="card" style="margin-top:10px;text-align:center;border-top:6px solid var(--or)">
+    <p style="margin:0;font-weight:700">
+      {% if reward_type == "monetaire" %}💰{% elif reward_type == "autre" %}🏅{% else %}🎁{% endif %}
+      {{ reward_text }}</p>
+    <p class="small" style="margin:6px 0 0">Réservée aux participants ayant terminé le quiz.</p>
+  </div>
+  {% endif %}
+
+  <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+    {% for s in rows %}
+    <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px;
+         {% if player and s.player_id == player.id %}border:2px solid var(--orange);background:#FFF1E3{% endif %}">
+      <span style="font-weight:800;width:34px;font-size:17px">
+        {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}.{% endif %}
+      </span>
+      <div style="flex:1">
+        <p style="margin:0;font-weight:700">{{ s.player.pseudo }}{% if player and s.player_id == player.id %} (toi){% endif %}
+          {% if s.status == "finished" %}🏆{% endif %}
+          {% if reward_text and s.status == "finished" %}
+          <span class="small" style="color:var(--vert);font-weight:700">· ✔ éligible 🎁</span>
+          {% endif %}</p>
+        <p class="small" style="margin:0">Question {{ s.reached }}</p>
+      </div>
+      <span style="font-weight:800;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
+        {% if s.status == "finished" %}FINALISTE{% else %}Q{{ s.reached }}{% endif %}</span>
+    </div>
+    {% empty %}
+    <div class="card" style="text-align:center">
+      <p style="margin:0;font-size:40px">🌅</p>
+      <p style="margin:6px 0 0;font-weight:700">Personne n'a encore participé à ce quiz !</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

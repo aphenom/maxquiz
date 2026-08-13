@@ -3,7 +3,7 @@ import random
 
 from django.db import IntegrityError, transaction
 from django.db.models import F
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -73,10 +73,17 @@ def _pending_quizzes(player):
             or (memberships[0] if memberships else None)
         if not membership or not (membership.sub_category_id or membership.category_id):
             continue
-        played_ids = set(Quiz.objects.filter(sessions__player=player, space=sp).values_list("id", flat=True))
-        qs = Quiz.objects.filter(space=sp, active=True)
-        qs = qs.filter(sub_category=membership.sub_category) if membership.sub_category_id \
-            else qs.filter(category=membership.category, sub_category__isnull=True)
+        # Filtré par l'espace de la SESSION (pas Quiz.space) : un quiz partagé
+        # (space=None) joué via cet espace doit quand même compter comme fait.
+        played_ids = set(GameSession.objects.filter(player=player, space=sp, quiz__isnull=False)
+                         .values_list("quiz_id", flat=True))
+        if membership.sub_category_id:
+            qs = list(Quiz.objects.filter(space=sp, active=True, sub_category=membership.sub_category)) \
+                + list(_global_quizzes_for(membership.category, membership.sub_category))
+        else:
+            qs = list(Quiz.objects.filter(space=sp, active=True, category=membership.category,
+                                          sub_category__isnull=True)) \
+                + list(_global_quizzes_for(membership.category))
         for q in qs:
             if q.id not in played_ids:
                 pending.append({"space": sp, "quiz": q})
@@ -322,9 +329,46 @@ def leaderboard(request):
     finishers = sum(1 for s in rows if s.status == "finished")
     cfg = GameConfig.get()
     share = cfg.daily_pot // finishers if finishers else cfg.daily_pot
+
+    player = _player(request)
+    my_quiz_ranks = []
+    if player:
+        quiz_ids = (GameSession.objects.filter(player=player, quiz__isnull=False, flagged=False)
+                   .exclude(status="playing").values_list("quiz_id", flat=True).distinct())
+        for qz in Quiz.objects.filter(id__in=quiz_ids).select_related("space"):
+            all_sessions = _ranked(GameSession.objects.filter(
+                quiz=qz, flagged=False).exclude(status="playing"))
+            mine = next((s for s in all_sessions if s.player_id == player.id), None)
+            if not mine:
+                continue
+            reward_text, reward_type = _effective_reward(mine.space, qz)
+            my_quiz_ranks.append({
+                "quiz": qz, "space": mine.space,
+                "rank": all_sessions.index(mine) + 1, "total": len(all_sessions),
+                "reward_text": reward_text, "reward_type": reward_type,
+                "reward_eligible": bool(reward_text) and mine.status == "finished",
+            })
+
     return render(request, "game/leaderboard.html", {
-        "rows": rows, "player": _player(request), "today": today,
+        "rows": rows, "player": player, "today": today,
         "cfg": cfg, "finishers": finishers, "share": share, "tab": "board",
+        "my_quiz_ranks": my_quiz_ranks,
+    })
+
+
+def quiz_leaderboard(request, slug, quiz_slug):
+    """Classement d'un quiz d'établissement précis, accessible au joueur."""
+    space = _space(slug)
+    quiz = _resolve_quiz(space, quiz_slug)
+    if not quiz:
+        raise Http404("Quiz introuvable pour cet espace.")
+    player = _player(request)
+    rows = _ranked(GameSession.objects.filter(quiz=quiz, space=space, flagged=False)
+                   .exclude(status="playing").select_related("player"))[:50]
+    reward_text, reward_type = _effective_reward(space, quiz)
+    return render(request, "game/quiz_leaderboard.html", {
+        "space": space, "quiz": quiz, "rows": rows, "player": player,
+        "reward_text": reward_text, "reward_type": reward_type,
     })
 
 
@@ -362,6 +406,34 @@ from .models import Space, Category, SubCategory, Theme, Quiz, Membership, OTPCo
 
 def _space(slug):
     return get_object_or_404(Space, slug=slug, active=True)
+
+
+def _global_quizzes_for(category, sub_category=None):
+    """Quiz partagés (créés depuis l'admin, sans espace) dont le niveau/matière
+    correspond par nom (insensible à la casse) à cette catégorie/sous-catégorie
+    d'un espace précis — rendus automatiquement disponibles à cet espace."""
+    qs = Quiz.objects.filter(space__isnull=True, active=True,
+                             shared_level_name__iexact=category.name)
+    if sub_category:
+        return qs.filter(shared_subject_name__iexact=sub_category.name)
+    return qs.filter(shared_subject_name="")
+
+
+def _resolve_quiz(space, quiz_slug):
+    """Retrouve un quiz par slug dans le contexte d'un espace : d'abord parmi
+    les quiz propres à l'espace, sinon parmi les quiz partagés dont le
+    niveau/matière correspond à l'une des catégories/sous-catégories de cet
+    espace (voir _global_quizzes_for)."""
+    quiz = Quiz.objects.filter(space=space, slug=quiz_slug, active=True).first()
+    if quiz:
+        return quiz
+    quiz = Quiz.objects.filter(space__isnull=True, slug=quiz_slug, active=True).first()
+    if not quiz:
+        return None
+    cats = Category.objects.filter(space=space, name__iexact=quiz.shared_level_name)
+    if quiz.shared_subject_name:
+        cats = SubCategory.objects.filter(category__in=cats, name__iexact=quiz.shared_subject_name)
+    return quiz if cats.exists() else None
 
 
 def _match_membership(space, phone, player):
@@ -456,39 +528,47 @@ def space_home(request, slug):
     # rien à l'élève, ce qui lui est utile (son parcours) est sur /compte/.
     no_profile = not my_pairs
 
+    # Arbre de découverte : quiz propres à l'espace + quiz partagés (créés
+    # depuis l'admin, sans espace) dont le niveau/matière correspond par nom à
+    # une catégorie/sous-catégorie de cet espace — automatiquement mêlés au
+    # catalogue, sans configuration de la part de l'établissement.
     categories, orphan_quizzes = [], []
-    has_catalog = space.quizzes.filter(active=True).exists()
-    if has_catalog:
-        for cat in space.categories.prefetch_related("subcategories"):
-            subs = []
-            for sub in cat.subcategories.all():
-                if not no_profile and (cat.id, sub.id) not in my_pairs:
+    for cat in space.categories.prefetch_related("subcategories"):
+        subs = []
+        for sub in cat.subcategories.all():
+            if not no_profile and (cat.id, sub.id) not in my_pairs:
+                continue
+            qs = list(sub.quizzes.filter(active=True).select_related("theme")) \
+                + list(_global_quizzes_for(cat, sub))
+            if not qs:
+                continue
+            # À l'intérieur d'une matière, regrouper les quiz par thématique
+            # (ex. « Conjugaison ») ; ceux sans thématique restent « généraux »
+            # (un quiz partagé n'a jamais de thématique propre à un espace).
+            themed, seen = [], set()
+            for q in qs:
+                if not q.theme_id or q.theme_id in seen:
                     continue
-                qs = list(sub.quizzes.filter(active=True).select_related("theme"))
-                if not qs:
-                    continue
-                # À l'intérieur d'une matière, regrouper les quiz par thématique
-                # (ex. « Conjugaison ») ; ceux sans thématique restent « généraux ».
-                themed, seen = [], set()
-                for q in qs:
-                    if not q.theme_id or q.theme_id in seen:
-                        continue
-                    seen.add(q.theme_id)
-                    themed.append({"theme": q.theme, "quizzes": [x for x in qs if x.theme_id == q.theme_id]})
-                general = [q for q in qs if not q.theme_id]
-                subs.append({"sub": sub, "themed": themed, "general": general})
-            direct = []
-            if no_profile or (cat.id, None) in my_pairs:
-                direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True))
-            if subs or direct:
-                categories.append({"category": cat, "subs": subs, "direct": direct})
-        if no_profile:
-            orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
+                seen.add(q.theme_id)
+                themed.append({"theme": q.theme, "quizzes": [x for x in qs if x.theme_id == q.theme_id]})
+            general = [q for q in qs if not q.theme_id]
+            subs.append({"sub": sub, "themed": themed, "general": general})
+        direct = []
+        if no_profile or (cat.id, None) in my_pairs:
+            direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True)) \
+                + list(_global_quizzes_for(cat))
+        if subs or direct:
+            categories.append({"category": cat, "subs": subs, "direct": direct})
+    if no_profile:
+        orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
+    has_catalog = bool(categories or orphan_quizzes)
 
     played_quiz_ids = set()
     if player and has_catalog:
-        played_quiz_ids = set(Quiz.objects.filter(sessions__player=player, space=space)
-                              .values_list("id", flat=True))
+        # Filtré par l'espace de la SESSION (pas Quiz.space) : un quiz partagé
+        # (space=None) joué via cet espace doit quand même être marqué « déjà joué ».
+        played_quiz_ids = set(GameSession.objects.filter(player=player, space=space, quiz__isnull=False)
+                              .values_list("quiz_id", flat=True))
 
     reward_text, reward_type = _effective_reward(space)
     return render(request, "game/space_home.html", {
@@ -579,9 +659,12 @@ def _quiz_locked(player, quiz, today):
 
 
 def quiz_home(request, slug, quiz_slug):
-    """Page d'accueil d'un quiz précis (lien direct partagé par l'entité)."""
+    """Page d'accueil d'un quiz précis (lien direct partagé par l'entité, ou
+    quiz partagé rattaché par niveau/matière — voir _resolve_quiz)."""
     space = _space(slug)
-    quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug, active=True)
+    quiz = _resolve_quiz(space, quiz_slug)
+    if not quiz:
+        raise Http404("Quiz introuvable pour cet espace.")
     player = _player(request)
     today = timezone.localdate()
     already = _quiz_locked(player, quiz, today)
@@ -598,7 +681,9 @@ def quiz_home(request, slug, quiz_slug):
 @require_POST
 def quiz_start(request, slug, quiz_slug):
     space = _space(slug)
-    quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug, active=True)
+    quiz = _resolve_quiz(space, quiz_slug)
+    if not quiz:
+        raise Http404("Quiz introuvable pour cet espace.")
     if space.access_code and request.POST.get("access_code", "").strip() != space.access_code:
         return render(request, "game/quiz_home.html", {
             "space": space, "quiz": quiz, "player": _player(request),
@@ -615,27 +700,32 @@ def quiz_start(request, slug, quiz_slug):
     if _quiz_locked(player, quiz, today):
         return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
 
-    # Deck scopé à la thématique (si renseignée), sinon sous-catégorie ou
-    # catégorie du quiz + sondages de l'espace. Repli automatique si pas assez
-    # de questions taguées à la thématique : on complète avec le reste de la
-    # matière plutôt que de bloquer le quiz (même philosophie que _build_deck
-    # pour la difficulté).
-    if quiz.sub_category_id:
-        fallback_pool = Question.objects.filter(
-            space=space, active=True, kind="quiz", sub_category=quiz.sub_category)
-    elif quiz.category_id:
-        fallback_pool = Question.objects.filter(
-            space=space, active=True, kind="quiz", sub_category__category=quiz.category)
+    if quiz.space_id is None:
+        # Quiz partagé (sans espace) : banque de questions qui lui est
+        # dédiée, indépendante des catégories/sous-catégories de l'espace.
+        quiz_pool = list(Question.objects.filter(quiz=quiz, active=True, kind="quiz"))
     else:
-        fallback_pool = Question.objects.filter(space=space, active=True, kind="quiz")
+        # Deck scopé à la thématique (si renseignée), sinon sous-catégorie ou
+        # catégorie du quiz + sondages de l'espace. Repli automatique si pas
+        # assez de questions taguées à la thématique : on complète avec le
+        # reste de la matière plutôt que de bloquer le quiz (même philosophie
+        # que _build_deck pour la difficulté).
+        if quiz.sub_category_id:
+            fallback_pool = Question.objects.filter(
+                space=space, active=True, kind="quiz", sub_category=quiz.sub_category)
+        elif quiz.category_id:
+            fallback_pool = Question.objects.filter(
+                space=space, active=True, kind="quiz", sub_category__category=quiz.category)
+        else:
+            fallback_pool = Question.objects.filter(space=space, active=True, kind="quiz")
 
-    if quiz.theme_id:
-        quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz", theme=quiz.theme))
-        if len(quiz_pool) < quiz.question_count:
-            themed_ids = {q.id for q in quiz_pool}
-            quiz_pool += [q for q in fallback_pool if q.id not in themed_ids]
-    else:
-        quiz_pool = list(fallback_pool)
+        if quiz.theme_id:
+            quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz", theme=quiz.theme))
+            if len(quiz_pool) < quiz.question_count:
+                themed_ids = {q.id for q in quiz_pool}
+                quiz_pool += [q for q in fallback_pool if q.id not in themed_ids]
+        else:
+            quiz_pool = list(fallback_pool)
     surveys = list(Question.objects.filter(space=space, active=True, kind="survey"))
     random.shuffle(quiz_pool)
     random.shuffle(surveys)
@@ -766,27 +856,30 @@ def _quiz_row(sessions, quiz):
 
 def _build_quiz_tree(space, sessions):
     """Arbre Catégorie > Sous-catégorie > Quiz avec compteurs de participation,
-    pour la vue d'ensemble du tableau de bord."""
+    pour la vue d'ensemble du tableau de bord — quiz propres à l'espace et
+    quiz partagés (admin, sans espace) dont le niveau/matière correspond,
+    inclus en lecture seule pour que l'établissement suive la participation
+    de ses membres même à un contenu qu'il ne gère pas lui-même."""
     quizzes = list(space.quizzes.select_related("category", "sub_category", "theme").filter(active=True))
-    rows = [_quiz_row(sessions, qz) for qz in quizzes]
     tree = []
-    for cat in space.categories.all():
-        cat_rows = [r for r in rows if r["quiz"].category_id == cat.id]
-        if not cat_rows:
-            continue
-        subs, seen = [], set()
-        for r in cat_rows:
-            sub = r["quiz"].sub_category
-            if sub.id in seen:
+    for cat in space.categories.prefetch_related("subcategories"):
+        cat_quizzes = [q for q in quizzes if q.category_id == cat.id]
+        subs = []
+        for sub in cat.subcategories.all():
+            sub_quizzes = [q for q in cat_quizzes if q.sub_category_id == sub.id] \
+                + list(_global_quizzes_for(cat, sub))
+            if not sub_quizzes:
                 continue
-            seen.add(sub.id)
-            sub_rows = [x for x in cat_rows if x["quiz"].sub_category_id == sub.id]
+            sub_rows = [_quiz_row(sessions, q) for q in sub_quizzes]
             subs.append({"sub": sub, "rows": sub_rows,
                         "total": sum(x["total"] for x in sub_rows)})
-        direct_rows = [r for r in cat_rows if r["quiz"].sub_category_id is None]
-        tree.append({"category": cat, "subs": subs, "direct_rows": direct_rows,
-                    "total": sum(r["total"] for r in cat_rows)})
-    orphan_rows = [r for r in rows if r["quiz"].category_id is None]
+        direct_quizzes = [q for q in cat_quizzes if q.sub_category_id is None] + list(_global_quizzes_for(cat))
+        direct_rows = [_quiz_row(sessions, q) for q in direct_quizzes]
+        if subs or direct_rows:
+            tree.append({"category": cat, "subs": subs, "direct_rows": direct_rows,
+                        "total": sum(r["total"] for s in subs for r in s["rows"])
+                                + sum(r["total"] for r in direct_rows)})
+    orphan_rows = [_quiz_row(sessions, q) for q in quizzes if q.category_id is None]
     return tree, orphan_rows
 
 
@@ -801,9 +894,11 @@ def space_dashboard(request, slug):
     total = sessions.count()
     finished = sessions.filter(status="finished").count()
     consented = sessions.filter(consent=True).values("player").distinct().count()
-    has_quizzes = space.quizzes.exists()
 
     tree, orphan_rows = _build_quiz_tree(space, sessions)
+    # Un quiz partagé (admin, sans espace) compte aussi comme quiz pour cet
+    # espace s'il correspond par nom à l'une de ses catégories/sous-catégories.
+    has_quizzes = space.quizzes.exists() or bool(tree or orphan_rows)
     # Bucket « Général » : sessions hors quiz (jeu à plat, ou espaces sans catégorie)
     general_sessions = sessions.filter(quiz__isnull=True) if has_quizzes else sessions
     quiz_stats, survey_stats = _quiz_dashboard_stats(space, general_sessions)
@@ -952,7 +1047,15 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
     if gate is not None:
         return gate
 
-    quiz = get_object_or_404(Quiz, space=space, slug=quiz_slug)
+    quiz = _resolve_quiz(space, quiz_slug)
+    if not quiz:
+        raise Http404("Quiz introuvable pour cet espace.")
+    is_own_quiz = quiz.space_id == space.id
+
+    if request.method == "POST" and not is_own_quiz:
+        # Quiz partagé (admin, sans espace) : consultation uniquement, pas de
+        # gestion depuis le tableau de bord établissement — ce n'est pas son quiz.
+        return redirect("dashboard_quiz_detail", slug=slug, quiz_slug=quiz.slug)
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -972,6 +1075,7 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
                 replay_policy = request.POST.get("replay_policy")
                 if replay_policy in dict(Quiz.REPLAY_POLICIES):
                     quiz.replay_policy = replay_policy
+                quiz.show_corrections = request.POST.get("show_corrections") == "on"
                 for field, value in _quiz_reward_joker_fields(request.POST).items():
                     setattr(quiz, field, value)
                 quiz.save()
@@ -1031,6 +1135,7 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
         "jokers_allowed": bool(current_license and current_license.jokers_allowed),
         "reward_types": REWARD_TYPES, "replay_policies": Quiz.REPLAY_POLICIES,
         "reward_text": reward_text, "reward_type": reward_type,
+        "is_own_quiz": is_own_quiz,
     })
 
 
@@ -1513,7 +1618,9 @@ def account_home(request):
 
         quiz_rows = []
         played_quiz_ids = set()
-        for qz in Quiz.objects.filter(sessions__player=player, space=sp).distinct():
+        # Filtré par l'espace de la SESSION (pas Quiz.space) : un quiz partagé
+        # (space=None) joué via cet espace doit quand même apparaître ici.
+        for qz in Quiz.objects.filter(sessions__player=player, sessions__space=sp).distinct():
             played_quiz_ids.add(qz.id)
             all_sessions = _ranked(GameSession.objects.filter(
                 quiz=qz, flagged=False).exclude(status="playing"))
@@ -1551,26 +1658,47 @@ def account_home(request):
             for r in sub_totals.values()
         ), key=lambda r: r["pct"])
 
+        # Même chose par thématique (quand les questions en portent une) — plus
+        # fin que la matière, seulement affiché s'il y a des données à montrer.
+        theme_totals = {}
+        for a in space_answers.select_related("question__theme"):
+            th = a.question.theme
+            if not th:
+                continue
+            row = theme_totals.setdefault(th.id, {"theme": th, "n": 0, "correct": 0})
+            row["n"] += 1
+            row["correct"] += 1 if a.is_correct else 0
+        theme_breakdown = sorted((
+            {"theme": r["theme"], "n": r["n"], "pct": round(100 * r["correct"] / r["n"])}
+            for r in theme_totals.values()
+        ), key=lambda r: r["pct"])
+
         priority = None
         if len(sub_breakdown) > 1 and sub_breakdown[0]["pct"] < 70:
             weak_sub = sub_breakdown[0]["sub_category"]
-            quiz = Quiz.objects.filter(space=sp, active=True, sub_category=weak_sub).exclude(
-                id__in=played_quiz_ids).first() or Quiz.objects.filter(
-                space=sp, active=True, sub_category=weak_sub).first()
+            candidates = list(Quiz.objects.filter(space=sp, active=True, sub_category=weak_sub)) \
+                + list(_global_quizzes_for(weak_sub.category, weak_sub))
+            quiz = next((q for q in candidates if q.id not in played_quiz_ids), None) \
+                or (candidates[0] if candidates else None)
             if quiz:
                 priority = {"sub_category": weak_sub, "pct": sub_breakdown[0]["pct"], "quiz": quiz}
 
         # Quiz correspondant à l'établissement + catégorie/sous-catégorie de CHAQUE
         # adhésion du joueur (licence en cours ou passée) : un quiz d'une année
         # antérieure reste utile en révision, pas seulement l'année en cours.
+        # Les quiz partagés (admin, sans espace) dont le niveau/matière
+        # correspond sont mêlés automatiquement, comme les quiz propres à l'espace.
         assigned_quizzes = []
         seen_quiz_ids = set()
         for m in memberships:
             if not (m.sub_category_id or m.category_id):
                 continue
-            qs = Quiz.objects.filter(space=sp, active=True)
-            qs = qs.filter(sub_category=m.sub_category) if m.sub_category_id \
-                else qs.filter(category=m.category, sub_category__isnull=True)
+            if m.sub_category_id:
+                qs = list(Quiz.objects.filter(space=sp, active=True, sub_category=m.sub_category)) \
+                    + list(_global_quizzes_for(m.category, m.sub_category))
+            else:
+                qs = list(Quiz.objects.filter(space=sp, active=True, category=m.category, sub_category__isnull=True)) \
+                    + list(_global_quizzes_for(m.category))
             for q in qs:
                 if q.id in played_quiz_ids or q.id in seen_quiz_ids:
                     continue
@@ -1587,7 +1715,8 @@ def account_home(request):
                             "assigned_quizzes": assigned_quizzes, "space_pct": space_pct,
                             "quiz_rows": quiz_rows, "flat_count": flat_count,
                             "has_quizzes": sp.quizzes.filter(active=True).exists(),
-                            "sub_breakdown": sub_breakdown, "priority": priority})
+                            "sub_breakdown": sub_breakdown, "theme_breakdown": theme_breakdown,
+                            "priority": priority})
 
     return render(request, "game/account_home.html", {
         "player": player, "public_sessions": public_sessions, "space_blocks": space_blocks,

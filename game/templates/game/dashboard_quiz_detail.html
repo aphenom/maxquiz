@@ -20,6 +20,7 @@
     </p></div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if is_own_quiz %}
     <a href="{% url 'dashboard_questions' space.slug %}{% if quiz.sub_category_id %}?subcategory_id={{ quiz.sub_category_id }}{% elif quiz.category_id %}?category_id={{ quiz.category_id }}{% endif %}"
        class="chip orange">❓ Questions de ce quiz</a>
     <form method="post" onsubmit="return confirm('{% if quiz.active %}Désactiver{% else %}Réactiver{% endif %} ce quiz ?');">
@@ -32,10 +33,14 @@
       <input type="hidden" name="action" value="delete_quiz">
       <button type="submit" class="chip rouge">🗑️ Supprimer</button>
     </form>
+    {% else %}
+    <span class="chip">🌐 Quiz partagé — géré par MaxQuiz</span>
+    {% endif %}
   </div>
 </div>
 
 <div class="dash-split" style="margin-top:14px">
+  {% if is_own_quiz %}
   <div>
     <h2 style="font-size:16px;margin:0 0 8px">⚙️ Réglages du quiz</h2>
     <form method="post" class="card" onsubmit="return confirm('Enregistrer ces modifications ? Elles s\'appliquent immédiatement aux prochaines parties.');">
@@ -81,6 +86,11 @@
         {% for val, label in replay_policies %}<option value="{{ val }}" {% if quiz.replay_policy == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
 
+      <label style="display:flex;gap:10px;align-items:center;margin-top:12px;font-size:13px;color:var(--brun)">
+        <input type="checkbox" name="show_corrections" {% if quiz.show_corrections %}checked{% endif %}>
+        Corrections visibles après coup (bonne réponse + explication dans l'historique du joueur)
+      </label>
+
       <label class="small" style="font-weight:700;display:block;margin:16px 0 6px">🎁 Récompense (optionnelle)</label>
       <select name="reward_type">
         <option value="">— Type —</option>
@@ -98,6 +108,18 @@
       <button class="btn" type="submit" style="margin-top:14px">Enregistrer</button>
     </form>
   </div>
+  {% else %}
+  <div>
+    <h2 style="font-size:16px;margin:0 0 8px">🌐 Quiz partagé</h2>
+    <div class="card">
+      <p class="small" style="margin:0">Ce quiz est rattaché par niveau/matière
+      ({{ quiz.shared_level_name }}{% if quiz.shared_subject_name %} · {{ quiz.shared_subject_name }}{% endif %})
+      et géré depuis l'administration MaxQuiz — il apparaît automatiquement dans votre
+      catalogue mais ne peut pas être modifié ou supprimé ici. Les statistiques de
+      participation de vos membres restent visibles ci-contre.</p>
+    </div>
+  </div>
+  {% endif %}
 
   <div>
     <h2 style="font-size:16px;margin:0 0 8px">🔗 Lien à partager</h2>
@@ -165,6 +187,7 @@
   var catSel = document.getElementById('cat-select');
   var subSel = document.getElementById('sub-select');
   var themeSel = document.getElementById('theme-select');
+  if (!catSel || !subSel) return;  // quiz partagé : pas de formulaire d'édition sur cette page
   function syncTheme(){
     if (!themeSel) return;
     for (var i = 0; i < themeSel.options.length; i++) {
