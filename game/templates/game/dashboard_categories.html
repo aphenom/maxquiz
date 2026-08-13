@@ -49,6 +49,34 @@
           <button type="submit" class="chip rouge">✕</button>
         </form>
       </div>
+
+      {% for th in sub.themes.all %}
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px;padding-left:26px">
+        <span class="small">↳</span>
+        <form method="post" style="display:flex;gap:6px;flex:1;align-items:center"
+              onsubmit="return confirm('Renommer « {{ th.name }} » ?');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="rename_theme">
+          <input type="hidden" name="theme_id" value="{{ th.id }}">
+          <input type="text" name="name" value="{{ th.name }}" maxlength="80" required style="flex:1;font-size:13px">
+          <button type="submit" class="chip vert">✓</button>
+        </form>
+        <form method="post" onsubmit="return confirm('Supprimer « {{ th.name }} » ?');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_theme">
+          <input type="hidden" name="theme_id" value="{{ th.id }}">
+          <button type="submit" class="chip rouge">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+      <form method="post" style="display:flex;gap:6px;margin-top:6px;padding-left:26px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_theme">
+        <input type="hidden" name="subcategory_id" value="{{ sub.id }}">
+        <input type="text" name="name" maxlength="80" required
+               placeholder="{{ space.theme_label }}…" style="flex:1;font-size:13px">
+        <button class="chip orange" type="submit">+</button>
+      </form>
       {% empty %}
       <p class="small" style="margin:10px 0 0;padding-left:10px">Pas encore de {{ space.subcategory_label|lower }}.</p>
       {% endfor %}

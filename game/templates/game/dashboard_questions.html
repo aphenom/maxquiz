@@ -42,7 +42,16 @@
       {% endfor %}{% endfor %}
     </select>
   </div>
-  {% if f_kind or f_category or f_subcategory %}
+  <div style="flex:1;min-width:160px">
+    <label class="small" style="font-weight:700;display:block;margin-bottom:4px">{{ space.theme_label }}</label>
+    <select name="theme_id" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      {% for c in categories %}{% for sub in c.subcategories.all %}{% for th in sub.themes.all %}
+      <option value="{{ th.id }}" {% if f_theme == th.id %}selected{% endif %}>{{ c.name }} — {{ sub.name }} — {{ th.name }}</option>
+      {% endfor %}{% endfor %}{% endfor %}
+    </select>
+  </div>
+  {% if f_kind or f_category or f_subcategory or f_theme %}
   <a href="{% url 'dashboard_questions' space.slug %}" class="chip">✕ Réinitialiser</a>
   {% endif %}
 </form>
@@ -59,11 +68,18 @@
     <option value="survey">Sondage (opinion)</option>
   </select>
   <label>{{ space.subcategory_label }} (optionnel)</label>
-  <select name="sub_category_id">
+  <select name="sub_category_id" class="subcat-select">
     <option value="">— Toutes / aucune —</option>
     {% for c in categories %}<optgroup label="{{ c.name }}">
       {% for sub in c.subcategories.all %}<option value="{{ sub.id }}">{{ sub.name }}</option>{% endfor %}
     </optgroup>{% endfor %}
+  </select>
+  <label>{{ space.theme_label }} (optionnel)</label>
+  <select name="theme_id" class="theme-select">
+    <option value="">— Aucune —</option>
+    {% for c in categories %}{% for sub in c.subcategories.all %}{% for th in sub.themes.all %}
+    <option value="{{ th.id }}" data-sub="{{ sub.id }}" hidden>{{ th.name }}</option>
+    {% endfor %}{% endfor %}{% endfor %}
   </select>
   <label>Difficulté</label>
   <select name="difficulty">
@@ -101,6 +117,7 @@
 <div class="card qcard">
   <p class="small" style="margin:0">
     {% if q.sub_category %}{{ q.sub_category.category.name }} — {{ q.sub_category.name }}{% else %}Sans {{ space.category_label|lower }}{% endif %}
+    {% if q.theme %} — {{ q.theme.name }}{% endif %}
     {% if not q.active %} · <span style="color:var(--rouge)">inactive</span>{% endif %}
   </p>
   <form method="post" onsubmit="return confirm('Enregistrer les modifications de cette question ?');">
@@ -113,11 +130,18 @@
     <option value="survey" {% if q.kind == "survey" %}selected{% endif %}>Sondage (opinion)</option>
   </select>
   <label>{{ space.subcategory_label }} (optionnel)</label>
-  <select name="sub_category_id">
+  <select name="sub_category_id" class="subcat-select">
     <option value="">— Toutes / aucune —</option>
     {% for c in categories %}<optgroup label="{{ c.name }}">
       {% for sub in c.subcategories.all %}<option value="{{ sub.id }}" {% if q.sub_category_id == sub.id %}selected{% endif %}>{{ sub.name }}</option>{% endfor %}
     </optgroup>{% endfor %}
+  </select>
+  <label>{{ space.theme_label }} (optionnel)</label>
+  <select name="theme_id" class="theme-select">
+    <option value="">— Aucune —</option>
+    {% for c in categories %}{% for sub in c.subcategories.all %}{% for th in sub.themes.all %}
+    <option value="{{ th.id }}" data-sub="{{ sub.id }}" {% if q.theme_id == th.id %}selected{% else %}hidden{% endif %}>{{ th.name }}</option>
+    {% endfor %}{% endfor %}{% endfor %}
   </select>
   <label>Difficulté</label>
   <select name="difficulty">
@@ -165,6 +189,25 @@ document.addEventListener('change', function(e){
 });
 document.querySelectorAll('.kind-select').forEach(function(sel){
   sel.dispatchEvent(new Event('change'));
+});
+
+function syncTheme(card){
+  var subSel = card.querySelector('.subcat-select');
+  var themeSel = card.querySelector('.theme-select');
+  if (!subSel || !themeSel) return;
+  for (var i = 0; i < themeSel.options.length; i++) {
+    var opt = themeSel.options[i];
+    if (!opt.value) continue;
+    opt.hidden = opt.dataset.sub !== subSel.value;
+  }
+  if (themeSel.selectedOptions[0] && themeSel.selectedOptions[0].hidden) themeSel.value = '';
+}
+document.addEventListener('change', function(e){
+  if (!e.target.classList.contains('subcat-select')) return;
+  syncTheme(e.target.closest('.qcard'));
+});
+document.querySelectorAll('.subcat-select').forEach(function(sel){
+  syncTheme(sel.closest('.qcard'));
 });
 </script>
 {% endblock %}

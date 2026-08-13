@@ -76,6 +76,14 @@
         {% endfor %}{% endfor %}
       </select>
 
+      <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">{{ space.theme_label }} (optionnel)</label>
+      <select name="theme_id" id="theme-select">
+        <option value="">— Aucune —</option>
+        {% for c in categories %}{% for sub in c.subcategories.all %}{% for th in sub.themes.all %}
+        <option value="{{ th.id }}" data-sub="{{ sub.id }}" hidden>{{ th.name }}</option>
+        {% endfor %}{% endfor %}{% endfor %}
+      </select>
+
       <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Questions par partie</label>
       <input type="number" name="question_count" min="1" max="50" value="{{ space.question_count }}">
 
@@ -116,6 +124,16 @@
 (function(){
   var catSel = document.getElementById('cat-select');
   var subSel = document.getElementById('sub-select');
+  var themeSel = document.getElementById('theme-select');
+  function syncTheme(){
+    if (!themeSel) return;
+    for (var i = 0; i < themeSel.options.length; i++) {
+      var opt = themeSel.options[i];
+      if (!opt.value) continue;
+      opt.hidden = opt.dataset.sub !== subSel.value;
+    }
+    if (themeSel.selectedOptions[0] && themeSel.selectedOptions[0].hidden) themeSel.value = '';
+  }
   function sync(){
     for (var i = 0; i < subSel.options.length; i++) {
       var opt = subSel.options[i];
@@ -123,8 +141,10 @@
       opt.hidden = opt.dataset.cat !== catSel.value;
     }
     if (subSel.selectedOptions[0] && subSel.selectedOptions[0].hidden) subSel.value = '';
+    syncTheme();
   }
   catSel.addEventListener('change', sync);
+  subSel.addEventListener('change', syncTheme);
   sync();
 })();
 </script>

@@ -17,6 +17,7 @@
   <div>
     <h1 style="margin:0;font-size:22px">{{ player.pseudo }}</h1>
     <p class="small" style="margin:0">{{ player.phone }} ·
+      <a href="{% url 'account_profile' %}">mon profil</a> ·
       <a href="{% url 'account_logout' %}">se déconnecter</a></p>
   </div>
 </div>

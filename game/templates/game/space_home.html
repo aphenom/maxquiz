@@ -27,20 +27,27 @@
   <div class="card" style="margin-top:12px">
     <p style="margin:0 0 10px;font-weight:700">🔎 {% if profile_filtered %}Ton quiz{% else %}Choisis ton quiz{% endif %}</p>
     {% if profile_filtered %}
-    <p class="small" style="margin:0 0 10px">🎯 Filtré sur ton profil ({{ space.category_label|default:"catégorie" }}/{{ space.subcategory_label|default:"sous-catégorie" }}) ·
-      <a href="?all=1">voir tout le catalogue</a></p>
-    {% elif show_all and player %}
-    <p class="small" style="margin:0 0 10px"><a href="{% url 'space_home' space.slug %}">← revenir à mon profil</a></p>
+    <p class="small" style="margin:0 0 10px">🎯 Filtré sur ton profil ({{ space.category_label|default:"catégorie" }}/{{ space.subcategory_label|default:"sous-catégorie" }})</p>
     {% endif %}
     {% if not categories and not orphan_quizzes %}
     <p class="small" style="margin:0">Aucun quiz ne correspond à ton profil pour l'instant ·
-      <a href="?all=1">voir tout le catalogue</a></p>
+      <a href="{% url 'account_home' %}">voir mon parcours</a></p>
     {% endif %}
     {% for c in categories %}
     <p class="small" style="margin:10px 0 4px;font-weight:700;text-transform:uppercase">{{ c.category.name }}</p>
     {% for s in c.subs %}
     <p class="small" style="margin:6px 0 2px;color:var(--brun)">{{ s.sub.name }}</p>
-    {% for q in s.quizzes %}
+    {% for t in s.themed %}
+    <p class="small" style="margin:4px 0 2px 10px;font-style:italic">{{ space.theme_label }} : {{ t.theme.name }}</p>
+    {% for q in t.quizzes %}
+    <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
+    {% endfor %}
+    {% endfor %}
+    {% if s.themed and s.general %}
+    <p class="small" style="margin:4px 0 2px 10px;font-style:italic">Général</p>
+    {% endif %}
+    {% for q in s.general %}
     <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
        href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
     {% endfor %}

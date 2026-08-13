@@ -1,0 +1,50 @@
+{% extends "game/base.html" %}
+{% block title %}Mon profil — MaxQuiz{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+  <span style="font-size:32px">🙂</span>
+  <div>
+    <h1 style="margin:0;font-size:22px">Mon profil</h1>
+    <p class="small" style="margin:0">{{ player.phone }} · <a href="{% url 'account_home' %}">← Mes quiz</a></p>
+  </div>
+</div>
+
+{% if saved %}
+<p class="small card" style="margin-top:14px;text-align:center;border:1.5px dashed var(--vert);color:var(--vert);font-weight:700">
+  ✅ Profil mis à jour.</p>
+{% endif %}
+{% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:14px">{{ error }}</p>{% endif %}
+
+<form method="post" class="card" style="margin-top:14px">
+  {% csrf_token %}
+  <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Pseudo (affiché dans les classements)</label>
+  <input type="text" name="pseudo" maxlength="30" required value="{{ player.pseudo }}">
+  <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Nom complet</label>
+  <input type="text" name="full_name" maxlength="80" value="{{ player.full_name }}"
+         placeholder="Ex. : Aya Koné">
+  <p class="small" style="margin:4px 0 0">Ton identité globale. Chaque établissement garde par ailleurs
+  sa propre fiche à ton sujet (nom, catégorie…) : la modifier ici ne change rien côté établissement,
+  et inversement.</p>
+  <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Ville (facultatif)</label>
+  <input type="text" name="city" maxlength="50" value="{{ player.city }}" placeholder="Ex. : Abidjan">
+  <button class="btn" type="submit" style="margin-top:14px">Enregistrer</button>
+</form>
+
+<h2 style="font-size:18px;margin:22px 0 8px">🏫 Mes établissements</h2>
+{% for m in establishments %}
+<div class="card" style="margin-bottom:8px;padding:12px 14px">
+  <p style="margin:0;font-weight:700">{{ m.space.emoji }} {{ m.space.name }}</p>
+  <p class="small" style="margin:4px 0 0">
+    {% if m.category or m.sub_category %}
+      {% if m.category %}{{ m.space.category_label }} : <strong>{{ m.category.name }}</strong>{% endif %}
+      {% if m.sub_category %} · {{ m.space.subcategory_label }} : <strong>{{ m.sub_category.name }}</strong>{% endif %}
+    {% else %}
+      Catégorie non déterminée
+    {% endif %}
+    {% if m.license %} · 🎫 {{ m.license.period_label }}{% endif %}
+  </p>
+</div>
+{% empty %}
+<p class="small">Pas encore rattaché à un établissement.</p>
+{% endfor %}
+{% endblock %}

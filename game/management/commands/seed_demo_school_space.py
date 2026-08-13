@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.text import slugify
-from game.models import Space, Category, SubCategory, Quiz, Question, Player, GameSession, Answer, License
+from game.models import Space, Category, SubCategory, Theme, Quiz, Question, Player, GameSession, Answer, License
 
 LEVELS = ["6ème", "5ème", "4ème", "3ème"]
 SUBJECTS = ["Mathématiques", "Français"]
@@ -76,6 +76,14 @@ QUESTIONS = {
         (4, "Quel est le sens du mot « lucide » ?", ["confus", "clairvoyant", "triste", "rapide"], 1),
     ],
 }
+CONJUGAISON_QUESTIONS = [
+    (1, "Quelle est la bonne conjugaison de « aller » au présent, 3ᵉ personne du singulier ?",
+     ["il va", "il vas", "il allait", "il ira"], 0),
+    (1, "Quelle est la terminaison du verbe « finir » au présent avec « nous » ?",
+     ["finissons", "finisont", "finissez", "finis"], 0),
+    (2, "À quel temps est conjugué « je mangeai » ?",
+     ["présent", "passé simple", "imparfait", "futur"], 1),
+]
 SURVEYS = [
     ("Quel est ton format de révision préféré ?",
      ["Fiches de révision", "Vidéos explicatives", "Exercices en ligne", "Cours particuliers"]),
@@ -113,12 +121,29 @@ class Command(BaseCommand):
                     Quiz.objects.create(
                         space=space, category=cat, sub_category=sub,
                         name=f"{level} · {subject}", slug=slugify(f"{level}-{subject}"),
-                        question_count=5, survey_every=5, elimination=False)
+                        question_count=5, survey_every=5, elimination=False,
+                        replay_policy="once")  # quiz d'évaluation : le score doit rester un signal fiable
                     for diff, text, opts, correct in QUESTIONS[(level, subject)]:
                         Question.objects.create(space=space, kind="quiz", category="ec", sub_category=sub,
                                                 difficulty=diff, text=text, option_a=opts[0],
                                                 option_b=opts[1], option_c=opts[2], option_d=opts[3],
                                                 correct=correct)
+                    if level == "6ème" and subject == "Français":
+                        # Exemple de thématique : un quiz plus précis qu'une matière entière,
+                        # avec ses propres questions taguées à cette thématique.
+                        theme = Theme.objects.create(sub_category=sub, name="Conjugaison",
+                                                     slug="conjugaison", order=0)
+                        Quiz.objects.create(
+                            space=space, category=cat, sub_category=sub, theme=theme,
+                            name="Entraînement conjugaison", slug=slugify(f"{level}-{subject}-conjugaison"),
+                            question_count=3, survey_every=0, elimination=False,
+                            replay_policy="once")
+                        for diff, text, opts, correct in CONJUGAISON_QUESTIONS:
+                            Question.objects.create(space=space, kind="quiz", category="ec",
+                                                    sub_category=sub, theme=theme,
+                                                    difficulty=diff, text=text, option_a=opts[0],
+                                                    option_b=opts[1], option_c=opts[2], option_d=opts[3],
+                                                    correct=correct)
             for text, opts in SURVEYS:
                 Question.objects.create(space=space, kind="survey", category="ec",
                                         difficulty=1, text=text, option_a=opts[0],

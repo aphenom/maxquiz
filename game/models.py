@@ -74,6 +74,9 @@ class Question(models.Model):
     sub_category = models.ForeignKey("SubCategory", null=True, blank=True, on_delete=models.SET_NULL,
                                      related_name="questions",
                                      verbose_name="Sous-catégorie (espace entreprise)")
+    theme = models.ForeignKey("Theme", null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name="questions",
+                              verbose_name="Thématique (optionnelle, au sein de la sous-catégorie)")
     difficulty = models.PositiveSmallIntegerField("Difficulté", choices=DIFFICULTIES, default=1)
     text = models.TextField("Question")
     option_a = models.CharField(max_length=200)
@@ -217,6 +220,10 @@ class Space(models.Model):
                                          blank=True, default="Sous-catégorie")
     subcategory_label_plural = models.CharField("Libellé des sous-catégories (pluriel)", max_length=30,
                                                  blank=True, default="Sous-catégories")
+    theme_label = models.CharField("Libellé d'une thématique (singulier)", max_length=30,
+                                   blank=True, default="Thématique")
+    theme_label_plural = models.CharField("Libellé des thématiques (pluriel)", max_length=30,
+                                          blank=True, default="Thématiques")
     logo_url = models.URLField("Logo (URL image, vide = emoji)", blank=True, default="")
     cover_url = models.URLField("Image de couverture (URL, vide = dégradé de couleur)", blank=True, default="")
     consent_required = models.BooleanField(
@@ -343,6 +350,23 @@ class SubCategory(models.Model):
         return f"{self.category.name} · {self.name}"
 
 
+class Theme(models.Model):
+    """Thématique au sein d'une sous-catégorie (ex : point précis d'une matière)."""
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="themes")
+    name = models.CharField("Nom", max_length=80)
+    slug = models.SlugField("Identifiant d'URL", max_length=60)
+    order = models.PositiveSmallIntegerField("Ordre", default=0)
+
+    class Meta:
+        verbose_name = "Thématique"
+        verbose_name_plural = "Thématiques"
+        unique_together = [("sub_category", "slug")]
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return f"{self.sub_category} · {self.name}"
+
+
 class Quiz(models.Model):
     """Quiz partageable par lien direct, rattaché à une catégorie/sous-catégorie."""
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="quizzes")
@@ -350,6 +374,9 @@ class Quiz(models.Model):
                                  related_name="quizzes")
     sub_category = models.ForeignKey(SubCategory, null=True, blank=True, on_delete=models.SET_NULL,
                                      related_name="quizzes")
+    theme = models.ForeignKey(Theme, null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name="quizzes",
+                              verbose_name="Thématique (optionnelle, au sein de la sous-catégorie)")
     name = models.CharField("Nom du quiz", max_length=100)
     slug = models.SlugField("Identifiant d'URL", max_length=60)
     question_count = models.PositiveSmallIntegerField("Questions par partie", default=10)

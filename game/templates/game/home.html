@@ -38,6 +38,17 @@
   {% if player %}
   <p class="small" style="margin-top:14px">👋 Bienvenue {{ player.pseudo }} !
     <a href="{% url 'account_home' %}">Mon compte</a></p>
+
+  {% if pending_quizzes %}
+  <p class="small" style="margin:12px 0 4px;font-weight:700">📌 Quiz en attente ({{ pending_quizzes|length }})</p>
+  {% for pq in pending_quizzes %}
+  <a href="{% url 'quiz_home' pq.space.slug pq.quiz.slug %}" class="card" style="display:block;margin-bottom:6px;padding:10px 14px;text-decoration:none;color:inherit">
+    <p style="margin:0;font-weight:700">{{ pq.quiz.name }}</p>
+    <p class="small" style="margin:4px 0 0">{{ pq.space.emoji }} {{ pq.space.name }} · pas encore joué →</p>
+  </a>
+  {% endfor %}
+  {% endif %}
+
   <form method="post" action="/start/" style="margin-top:6px">
     {% csrf_token %}
     <div style="display:flex;flex-direction:column;gap:10px">

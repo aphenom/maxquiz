@@ -79,15 +79,26 @@ tableau de bord immédiatement parlant en rendez-vous.
 
 Le jeu public MaxQuiz (défi du jour, cagnotte, jokers) reste inchangé et coexiste.
 
-### Catégories, sous-catégories & quiz (B2C comme B2B, multi-vertical)
+### Catégories, sous-catégories, thématiques & quiz (B2C comme B2B, multi-vertical)
 
 Au-delà du pool de questions à plat (toujours disponible via le lien générique
 `/e/slug/`), une entreprise peut structurer ses questions en **catégories** →
 **sous-catégories** → **quiz**, avec un **lien direct par quiz**
 (`/e/slug/q/quiz-slug/`) à distribuer au bon public — par exemple un niveau scolaire
 et une matière pour une école, une famille de produits et une gamme pour une banque.
-Les libellés « Catégorie »/« Sous-catégorie » sont personnalisables par espace
-(`category_label`/`subcategory_label`, ex. « Niveau »/« Matière » pour une école).
+Les libellés « Catégorie »/« Sous-catégorie »/« Thématique » sont personnalisables
+par espace (`category_label`/`subcategory_label`/`theme_label`, ex. « Niveau »/
+« Matière »/« Thématique » pour une école, ou tout autre triplet pertinent hors
+scolaire).
+
+Un quiz peut en plus être rattaché à une **thématique**, un point plus précis à
+l'intérieur d'une sous-catégorie (ex. « Conjugaison » au sein de « Français ») —
+optionnel : un quiz sans thématique reste simplement classé au niveau de la
+sous-catégorie (« Général »). Les questions elles-mêmes peuvent être taguées à
+une thématique ; le quiz correspondant pioche en priorité dedans, avec un **repli
+automatique** sur le reste de la sous-catégorie si pas assez de questions taguées
+— jamais de blocage. Sur la page de l'établissement (`/e/slug/`), les quiz d'une
+sous-catégorie sont groupés par thématique, avec les quiz généraux à part.
 
 Ce système est **entièrement optionnel par espace** : un espace sans quiz créé (ex.
 Banque Horizon aujourd'hui) continue de fonctionner exactement comme avant, avec le
@@ -95,25 +106,31 @@ lien unique et le pool de questions à plat.
 
 **Tableau de bord client étendu**, accessible via les onglets Vue d'ensemble /
 Catégories / Quiz :
-- `/e/slug/tableau-de-bord/categories/` : créer/renommer/supprimer catégories et
-  sous-catégories.
+- `/e/slug/tableau-de-bord/categories/` : créer/renommer/supprimer catégories,
+  sous-catégories et thématiques (imbriquées sous leur sous-catégorie).
 - `/e/slug/tableau-de-bord/quiz/` : créer un quiz (nom, catégorie, sous-catégorie,
-  nombre de questions, fréquence des sondages, mode survie, **rejouabilité** —
-  une fois par jour / une seule fois jamais rejouable / illimité, réglable par
-  quiz : adapté à un quiz d'évaluation type école (« une seule fois », pour que
-  le taux de maîtrise affiché reste un signal fiable) comme à un quiz
-  d'engagement type banque (« illimité » ou « une fois par jour »)), récupérer
-  son lien partageable, l'activer/désactiver ou le supprimer.
-- Vue d'ensemble : arbre catégorie → sous-catégorie → quiz avec participations et
-  taux de complétion, jusqu'au détail par quiz (taux de bonne réponse par question,
-  sondages, meilleurs participants) sur `/e/slug/tableau-de-bord/quiz/quiz-slug/`.
+  thématique optionnelle, nombre de questions, fréquence des sondages, mode
+  survie, **rejouabilité** — une fois par jour / une seule fois jamais rejouable /
+  illimité, réglable par quiz : adapté à un quiz d'évaluation type école (« une
+  seule fois », pour que le taux de maîtrise affiché reste un signal fiable)
+  comme à un quiz d'engagement type banque (« illimité » ou « une fois par
+  jour »)), récupérer son lien partageable, l'activer/désactiver ou le supprimer.
+- Vue d'ensemble : arbre catégorie → sous-catégorie → quiz (thématique affichée à
+  côté du nom) avec participations et taux de complétion, jusqu'au détail par quiz
+  (taux de bonne réponse par question, sondages, meilleurs participants) sur
+  `/e/slug/tableau-de-bord/quiz/quiz-slug/`.
 
 **Démo commerciale école incluse** : `python manage.py seed_demo_school_space` crée
 l'espace « Collège La Réussite » (`/e/college-la-reussite/`, tableau de bord avec le
 code `REUSSITE2026`) avec 4 niveaux (6ème à 3ème) × 2 matières (Mathématiques,
 Français) = 8 quiz avec lien direct (ex. `/e/college-la-reussite/q/5eme-mathematiques/`),
-40 questions et des dizaines de participations simulées avec un taux de maîtrise
-différent par quiz, pour un tableau de bord immédiatement parlant en rendez-vous.
+plus un exemple de thématique (« Conjugaison » sous 6ème · Français, avec son
+propre quiz « Entraînement conjugaison » et ses questions dédiées), 40+ questions
+et des dizaines de participations simulées avec un taux de maîtrise différent par
+quiz, pour un tableau de bord immédiatement parlant en rendez-vous. Tous ces
+quiz sont en rejouabilité « une seule fois » (évaluation scolaire), pas
+« une fois par jour » — cohérent avec le fait qu'ici le score doit rester un
+signal fiable, pas une invitation à retenter jusqu'à un meilleur résultat.
 
 ### Comptes utilisateurs (téléphone + OTP comme parcours standard) & branding enrichi
 
@@ -137,6 +154,22 @@ Une fois connecté, `/compte/` (« Mes quiz ») liste l'historique du joueur —
 public et chaque espace joué, avec score et rang — et une connexion initiée depuis
 le lien d'un établissement atterrit sur une page de confirmation brandée
 (`/e/slug/connecte/`) plutôt que l'accueil générique.
+
+À la 1ère connexion (`/compte/inscription/`), seules les infos **manquantes**
+sont demandées — le nom n'est pas redemandé s'il est déjà connu (fourni par
+l'établissement via lequel la connexion a eu lieu), pour ne pas faire perdre de
+temps à l'utilisateur avec une info que l'établissement a déjà donnée. Cette
+identité reste éditable à tout moment ensuite sur `/compte/profil/` (pseudo,
+nom, ville), qui
+liste aussi, pour chaque établissement où le joueur a une adhésion, sa
+catégorie/sous-catégorie et sa licence en cours. Ce profil global (`Player`)
+est indépendant de la fiche que chaque établissement tient sur lui
+(`Membership.full_name`, propre à chaque espace) : si un même numéro est membre
+de plusieurs établissements sous des identités différentes (ex. saisies via
+deux imports CSV distincts), chacun garde la sienne — modifier son profil
+public ne touche à aucune fiche établissement, et inversement. Le
+préremplissage à l'inscription privilégie d'ailleurs l'établissement via
+lequel la connexion a eu lieu, pas un autre choisi arbitrairement.
 
 Pour un élève, la valeur n'est pas juste le score : `/compte/` calcule, par
 établissement, un **taux de maîtrise par catégorie/sous-catégorie** (matière) —
@@ -181,11 +214,21 @@ aussi les **quiz assignés non encore joués** d'après la catégorie/sous-caté
 licences passées (ex. un quiz de 6ème non terminé reste proposé même une fois passé
 en 5ème, étiqueté avec sa période) — pas seulement l'historique des parties déjà
 jouées. Un lien « Parcourir tous les quiz » renvoie en plus vers l'arbre de
-l'établissement (`/e/slug/`), qui applique le même filtre : un membre au profil
-connu n'y voit que les quiz de sa/ses catégorie(s)/sous-catégorie(s), avec un lien
-explicite « voir tout le catalogue » (`?all=1`) pour sortir du filtre s'il le
-souhaite. Un visiteur pas encore identifié (ou sans catégorie/sous-catégorie
-renseignée) voit le catalogue complet par défaut, faute de profil à filtrer.
+l'établissement (`/e/slug/`), qui filtre lui aussi par profil — mais uniquement
+sur l'**adhésion en cours** (licence active), pas l'historique : parcourir le
+catalogue doit refléter le niveau actuel de l'élève, pas mélanger d'anciennes
+années (celles-ci restent proposées, étiquetées, dans « Quiz à faire »
+ci-dessus, pas dans l'arbre de découverte). Le filtre est strict, sans
+échappatoire « voir tout le catalogue » : voir des niveaux qui ne le
+concernent pas n'apporte rien à l'élève, ce qui lui est utile (son parcours,
+son historique) est sur `/compte/`. Un visiteur pas encore identifié (ou sans
+catégorie/sous-catégorie renseignée) voit le catalogue complet par défaut,
+faute de profil à filtrer.
+
+Sur l'accueil (`/`), un membre connecté voit ses **quiz en attente** (tous
+établissements confondus) mis en avant, avant même le défi public du jour et
+l'entraînement libre — l'accueil reste unique pour tout le monde, pas de
+redirection séparée vers `/compte/` qui masquerait les options du jeu public.
 
 ### Récompenses et jokers : optionnels, plus le cœur du système
 

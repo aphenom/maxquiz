@@ -34,14 +34,14 @@
   <p class="small" style="margin:8px 0 2px;font-weight:700">{{ s.sub.name }} · {{ s.total }} participation{{ s.total|pluralize }}</p>
   {% for r in s.rows %}
   <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit;padding:4px 0">
-    <span class="small">{{ r.quiz.name }}</span>
+    <span class="small">{{ r.quiz.name }}{% if r.quiz.theme %} · {{ r.quiz.theme.name }}{% endif %}</span>
     <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
   </a>
   {% endfor %}
   {% endfor %}
   {% for r in c.direct_rows %}
   <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit;padding:4px 0">
-    <span class="small">{{ r.quiz.name }}</span>
+    <span class="small">{{ r.quiz.name }}{% if r.quiz.theme %} · {{ r.quiz.theme.name }}{% endif %}</span>
     <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
   </a>
   {% endfor %}
@@ -50,7 +50,7 @@
 {% for r in orphan_rows %}
 <div class="card" style="margin-bottom:8px;padding:12px 14px">
   <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit">
-    <span style="font-weight:600;font-size:14px">{{ r.quiz.name }}</span>
+    <span style="font-weight:600;font-size:14px">{{ r.quiz.name }}{% if r.quiz.theme %} · {{ r.quiz.theme.name }}{% endif %}</span>
     <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
   </a>
 </div>

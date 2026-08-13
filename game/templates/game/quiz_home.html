@@ -12,6 +12,7 @@
   <p class="small" style="margin:0 0 8px;text-align:center">
     {% if quiz.category %}{{ space.category_label }} : <strong>{{ quiz.category.name }}</strong>{% endif %}
     {% if quiz.sub_category %} · {{ space.subcategory_label }} : <strong>{{ quiz.sub_category.name }}</strong>{% endif %}
+    {% if quiz.theme %} · {{ space.theme_label }} : <strong>{{ quiz.theme.name }}</strong>{% endif %}
   </p>
   {% endif %}
 

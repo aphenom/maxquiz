@@ -58,13 +58,29 @@ def _build_deck(cfg, total):
     return deck
 
 
-def home(request):
-    """Routeur d'accueil : un membre d'établissement connecté atterrit sur son
-    espace personnel ; sinon, défi public du jour (voir aussi public_daily)."""
-    verified_id = request.session.get("verified_player_id")
-    if verified_id and Membership.objects.filter(player_id=verified_id).exists():
-        return redirect("account_home")
-    return public_daily(request)
+def _pending_quizzes(player):
+    """Quiz assignés (catégorie/sous-catégorie de l'adhésion en cours) pas
+    encore joués, tous établissements confondus — mis en avant sur l'accueil,
+    avant le défi public, pour un membre connecté."""
+    if not player:
+        return []
+    pending = []
+    space_ids = Membership.objects.filter(player=player).values_list("space_id", flat=True)
+    for sp in Space.objects.filter(id__in=set(space_ids), active=True):
+        current_license = _current_license(sp)
+        memberships = list(Membership.objects.filter(space=sp, player=player).order_by("-created_at"))
+        membership = next((m for m in memberships if current_license and m.license_id == current_license.id), None) \
+            or (memberships[0] if memberships else None)
+        if not membership or not (membership.sub_category_id or membership.category_id):
+            continue
+        played_ids = set(Quiz.objects.filter(sessions__player=player, space=sp).values_list("id", flat=True))
+        qs = Quiz.objects.filter(space=sp, active=True)
+        qs = qs.filter(sub_category=membership.sub_category) if membership.sub_category_id \
+            else qs.filter(category=membership.category, sub_category__isnull=True)
+        for q in qs:
+            if q.id not in played_ids:
+                pending.append({"space": sp, "quiz": q})
+    return pending
 
 
 def public_daily(request):
@@ -78,6 +94,7 @@ def public_daily(request):
     return render(request, "game/home.html", {
         "cfg": cfg, "player": player, "session": session,
         "finishers": finishers, "tab": "home",
+        "pending_quizzes": _pending_quizzes(player),
     })
 
 
@@ -340,7 +357,7 @@ import csv
 from django.http import HttpResponse
 from django.db.models import Count, Q
 from django.utils.text import slugify
-from .models import Space, Category, SubCategory, Quiz, Membership, OTPCode, License, REWARD_TYPES
+from .models import Space, Category, SubCategory, Theme, Quiz, Membership, OTPCode, License, REWARD_TYPES
 
 
 def _space(slug):
@@ -417,38 +434,55 @@ def space_home(request, slug):
     already = bool(player and space.one_per_day and GameSession.objects.filter(
         player=player, space=space, day=today).exists())
 
-    # Catégorie/sous-catégorie du profil du joueur dans cet espace : union de
-    # toutes ses adhésions (licence en cours ou passée) — (category_id, sub_category_id)
-    # avec sub_category_id=None pour un membre affecté à une catégorie sans détail.
-    my_pairs = set()
+    # Catégorie/sous-catégorie du profil du joueur dans cet espace : seulement
+    # l'adhésion EN COURS (licence active), pas l'historique — parcourir le
+    # catalogue doit refléter le niveau actuel, pas mélanger d'anciennes années
+    # (celles-ci restent visibles, étiquetées, dans « Quiz à faire » sur /compte/).
+    current_license = _current_license(space)
+    current_membership = None
     if player:
-        for m in Membership.objects.filter(space=space, player=player):
-            if m.sub_category_id:
-                my_pairs.add((m.category_id, m.sub_category_id))
-            elif m.category_id:
-                my_pairs.add((m.category_id, None))
-    show_all = request.GET.get("all") == "1" or not my_pairs
+        memberships = list(Membership.objects.filter(space=space, player=player).order_by("-created_at"))
+        current_membership = next((m for m in memberships if current_license and m.license_id == current_license.id), None) \
+            or (memberships[0] if memberships else None)
+    my_pairs = set()
+    if current_membership:
+        if current_membership.sub_category_id:
+            my_pairs.add((current_membership.category_id, current_membership.sub_category_id))
+        elif current_membership.category_id:
+            my_pairs.add((current_membership.category_id, None))
+    # Sans profil déterminé (visiteur, ou membre sans catégorie renseignée), on
+    # n'a rien à filtrer : le catalogue complet reste le seul repli possible.
+    # Avec un profil, le filtre est strict — voir d'autres niveaux ne sert à
+    # rien à l'élève, ce qui lui est utile (son parcours) est sur /compte/.
+    no_profile = not my_pairs
 
-    # Arbre de découverte des quiz (facultatif) : catégorie > sous-catégorie > quiz.
-    # Un membre au profil connu (catégorie/sous-catégorie) ne voit que ce qui le
-    # concerne, pas tout le catalogue — sauf s'il demande explicitement à tout voir.
     categories, orphan_quizzes = [], []
     has_catalog = space.quizzes.filter(active=True).exists()
     if has_catalog:
         for cat in space.categories.prefetch_related("subcategories"):
             subs = []
             for sub in cat.subcategories.all():
-                if not show_all and (cat.id, sub.id) not in my_pairs:
+                if not no_profile and (cat.id, sub.id) not in my_pairs:
                     continue
-                qs = list(sub.quizzes.filter(active=True))
-                if qs:
-                    subs.append({"sub": sub, "quizzes": qs})
+                qs = list(sub.quizzes.filter(active=True).select_related("theme"))
+                if not qs:
+                    continue
+                # À l'intérieur d'une matière, regrouper les quiz par thématique
+                # (ex. « Conjugaison ») ; ceux sans thématique restent « généraux ».
+                themed, seen = [], set()
+                for q in qs:
+                    if not q.theme_id or q.theme_id in seen:
+                        continue
+                    seen.add(q.theme_id)
+                    themed.append({"theme": q.theme, "quizzes": [x for x in qs if x.theme_id == q.theme_id]})
+                general = [q for q in qs if not q.theme_id]
+                subs.append({"sub": sub, "themed": themed, "general": general})
             direct = []
-            if show_all or (cat.id, None) in my_pairs:
+            if no_profile or (cat.id, None) in my_pairs:
                 direct = list(cat.quizzes.filter(active=True, sub_category__isnull=True))
             if subs or direct:
                 categories.append({"category": cat, "subs": subs, "direct": direct})
-        if show_all:
+        if no_profile:
             orphan_quizzes = list(space.quizzes.filter(active=True, category__isnull=True))
 
     played_quiz_ids = set()
@@ -461,8 +495,7 @@ def space_home(request, slug):
         "space": space, "player": player, "already": already,
         "categories": categories, "orphan_quizzes": orphan_quizzes,
         "reward_text": reward_text, "reward_type": reward_type,
-        "profile_filtered": bool(my_pairs) and not show_all,
-        "show_all": show_all,
+        "profile_filtered": bool(my_pairs),
         "has_catalog": has_catalog,
         "played_quiz_ids": played_quiz_ids,
     })
@@ -582,15 +615,27 @@ def quiz_start(request, slug, quiz_slug):
     if _quiz_locked(player, quiz, today):
         return redirect("quiz_home", slug=slug, quiz_slug=quiz_slug)
 
-    # Deck scopé à la sous-catégorie (ou catégorie) du quiz + sondages de l'espace
+    # Deck scopé à la thématique (si renseignée), sinon sous-catégorie ou
+    # catégorie du quiz + sondages de l'espace. Repli automatique si pas assez
+    # de questions taguées à la thématique : on complète avec le reste de la
+    # matière plutôt que de bloquer le quiz (même philosophie que _build_deck
+    # pour la difficulté).
     if quiz.sub_category_id:
-        quiz_pool = list(Question.objects.filter(
-            space=space, active=True, kind="quiz", sub_category=quiz.sub_category))
+        fallback_pool = Question.objects.filter(
+            space=space, active=True, kind="quiz", sub_category=quiz.sub_category)
     elif quiz.category_id:
-        quiz_pool = list(Question.objects.filter(
-            space=space, active=True, kind="quiz", sub_category__category=quiz.category))
+        fallback_pool = Question.objects.filter(
+            space=space, active=True, kind="quiz", sub_category__category=quiz.category)
     else:
-        quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz"))
+        fallback_pool = Question.objects.filter(space=space, active=True, kind="quiz")
+
+    if quiz.theme_id:
+        quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz", theme=quiz.theme))
+        if len(quiz_pool) < quiz.question_count:
+            themed_ids = {q.id for q in quiz_pool}
+            quiz_pool += [q for q in fallback_pool if q.id not in themed_ids]
+    else:
+        quiz_pool = list(fallback_pool)
     surveys = list(Question.objects.filter(space=space, active=True, kind="survey"))
     random.shuffle(quiz_pool)
     random.shuffle(surveys)
@@ -722,7 +767,7 @@ def _quiz_row(sessions, quiz):
 def _build_quiz_tree(space, sessions):
     """Arbre Catégorie > Sous-catégorie > Quiz avec compteurs de participation,
     pour la vue d'ensemble du tableau de bord."""
-    quizzes = list(space.quizzes.select_related("category", "sub_category").filter(active=True))
+    quizzes = list(space.quizzes.select_related("category", "sub_category", "theme").filter(active=True))
     rows = [_quiz_row(sessions, qz) for qz in quizzes]
     tree = []
     for cat in space.categories.all():
@@ -826,9 +871,27 @@ def dashboard_categories(request, slug):
         elif action == "delete_subcategory":
             SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
                                        category__space=space).delete()
+        elif action == "add_theme":
+            sub = SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
+                                             category__space=space).first()
+            name = request.POST.get("name", "").strip()[:80]
+            if sub and name:
+                theme_slug = _unique_slug(sub.themes, name)
+                Theme.objects.create(sub_category=sub, name=name, slug=theme_slug,
+                                     order=sub.themes.count())
+        elif action == "rename_theme":
+            theme = Theme.objects.filter(id=_post_int(request.POST, "theme_id"),
+                                         sub_category__category__space=space).first()
+            name = request.POST.get("name", "").strip()[:80]
+            if theme and name:
+                theme.name = name
+                theme.save(update_fields=["name"])
+        elif action == "delete_theme":
+            Theme.objects.filter(id=_post_int(request.POST, "theme_id"),
+                                 sub_category__category__space=space).delete()
         return redirect("dashboard_categories", slug=slug)
 
-    categories = space.categories.prefetch_related("subcategories")
+    categories = space.categories.prefetch_related("subcategories__themes")
     return render(request, "game/dashboard_categories.html", {
         "space": space, "categories": categories,
     })
@@ -847,13 +910,14 @@ def dashboard_quizzes(request, slug):
             name = request.POST.get("name", "").strip()[:100]
             cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
             sub = cat.subcategories.filter(id=_post_int(request.POST, "subcategory_id")).first() if cat else None
+            theme = sub.themes.filter(id=_post_int(request.POST, "theme_id")).first() if sub else None
             if name:
                 quiz_slug = _unique_slug(space.quizzes, name)
                 replay_policy = request.POST.get("replay_policy")
                 if replay_policy not in dict(Quiz.REPLAY_POLICIES):
                     replay_policy = "daily"
                 Quiz.objects.create(
-                    space=space, category=cat, sub_category=sub, slug=quiz_slug, name=name,
+                    space=space, category=cat, sub_category=sub, theme=theme, slug=quiz_slug, name=name,
                     question_count=int(request.POST.get("question_count") or space.question_count),
                     survey_every=int(request.POST.get("survey_every") or space.survey_every),
                     elimination=request.POST.get("elimination") == "on",
@@ -869,10 +933,10 @@ def dashboard_quizzes(request, slug):
         return redirect("dashboard_quizzes", slug=slug)
 
     base_sessions = GameSession.objects.filter(space=space, flagged=False).exclude(status="playing")
-    quizzes = list(space.quizzes.select_related("category", "sub_category"))
+    quizzes = list(space.quizzes.select_related("category", "sub_category", "theme"))
     for qz in quizzes:
         qz.total = base_sessions.filter(quiz=qz).count()
-    categories = space.categories.prefetch_related("subcategories")
+    categories = space.categories.prefetch_related("subcategories__themes")
     current_license = _current_license(space)
     return render(request, "game/dashboard_quizzes.html", {
         "space": space, "quizzes": quizzes, "categories": categories,
@@ -896,10 +960,12 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
             name = request.POST.get("name", "").strip()[:100]
             cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
             sub = cat.subcategories.filter(id=_post_int(request.POST, "subcategory_id")).first() if cat else None
+            theme = sub.themes.filter(id=_post_int(request.POST, "theme_id")).first() if sub else None
             if name:
                 quiz.name = name
                 quiz.category = cat
                 quiz.sub_category = sub
+                quiz.theme = theme
                 quiz.question_count = int(request.POST.get("question_count") or space.question_count)
                 quiz.survey_every = int(request.POST.get("survey_every") or space.survey_every)
                 quiz.elimination = request.POST.get("elimination") == "on"
@@ -954,7 +1020,7 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
     finished = sessions.filter(status="finished").count()
     quiz_stats, survey_stats = _quiz_dashboard_stats(space, sessions)
     top = _ranked(sessions.select_related("player"))[:10]
-    categories = space.categories.prefetch_related("subcategories")
+    categories = space.categories.prefetch_related("subcategories__themes")
     current_license = _current_license(space)
     reward_text, reward_type = _effective_reward(space, quiz)
     return render(request, "game/dashboard_quiz_detail.html", {
@@ -971,9 +1037,11 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
 def _question_fields_from_post(space, post):
     kind = post.get("kind") if post.get("kind") in ("quiz", "survey") else "quiz"
     sub = SubCategory.objects.filter(id=_post_int(post, "sub_category_id"), category__space=space).first()
+    theme = sub.themes.filter(id=_post_int(post, "theme_id")).first() if sub else None
     return dict(
         kind=kind,
         sub_category=sub,
+        theme=theme,
         difficulty=int(post.get("difficulty") or 1),
         text=post.get("text", "").strip(),
         option_a=post.get("option_a", "").strip()[:200],
@@ -1014,21 +1082,25 @@ def dashboard_questions(request, slug):
 
     cat_id = _post_int(request.GET, "category_id")
     sub_id = _post_int(request.GET, "subcategory_id")
+    theme_id = _post_int(request.GET, "theme_id")
     kind = request.GET.get("kind") or ""
 
-    questions = Question.objects.filter(space=space).select_related("sub_category", "sub_category__category")
+    questions = Question.objects.filter(space=space).select_related(
+        "sub_category", "sub_category__category", "theme")
     if kind in ("quiz", "survey"):
         questions = questions.filter(kind=kind)
-    if sub_id:
+    if theme_id:
+        questions = questions.filter(theme_id=theme_id)
+    elif sub_id:
         questions = questions.filter(sub_category_id=sub_id)
     elif cat_id:
         questions = questions.filter(sub_category__category_id=cat_id)
     questions = questions.order_by("sub_category__category__order", "sub_category__order", "-id")
 
-    categories = space.categories.prefetch_related("subcategories")
+    categories = space.categories.prefetch_related("subcategories__themes")
     return render(request, "game/dashboard_questions.html", {
         "space": space, "questions": questions, "categories": categories,
-        "f_category": cat_id, "f_subcategory": sub_id, "f_kind": kind,
+        "f_category": cat_id, "f_subcategory": sub_id, "f_theme": theme_id, "f_kind": kind,
     })
 
 
@@ -1279,8 +1351,17 @@ def account_verify(request):
             Membership.objects.filter(phone=phone, player__isnull=True).update(
                 player=player, matched_at=timezone.now())
             if not player.full_name:
-                matched = Membership.objects.filter(player=player).exclude(
-                    full_name="").order_by("-created_at").first()
+                # Priorité à l'établissement via lequel la connexion a lieu — chaque
+                # établissement garde sa propre fiche (Membership.full_name) ; on ne
+                # pioche dans les autres qu'à défaut, juste pour préremplir le champ
+                # (l'utilisateur reste libre de le modifier sur l'écran suivant).
+                matched = None
+                if space_slug:
+                    matched = Membership.objects.filter(player=player, space__slug=space_slug).exclude(
+                        full_name="").order_by("-created_at").first()
+                if not matched:
+                    matched = Membership.objects.filter(player=player).exclude(
+                        full_name="").order_by("-created_at").first()
                 if matched:
                     player.full_name = matched.full_name
                     player.save(update_fields=["full_name"])
@@ -1303,8 +1384,10 @@ def account_verify(request):
 
 def account_register(request):
     """Complète le profil lors de la 1ère vérification OTP — uniquement les infos
-    manquantes : le nom complet est déjà connu s'il vient d'une fiche membre
-    d'établissement appariée par téléphone (voir account_verify)."""
+    manquantes : le nom complet est sauté s'il est déjà connu (fourni par
+    l'établissement via lequel la connexion a eu lieu, voir account_verify).
+    Il reste modifiable ensuite à tout moment sur account_profile — inutile de
+    redemander à l'inscription une info déjà donnée par l'établissement."""
     player_id = request.session.get("verified_player_id")
     player = Player.objects.filter(id=player_id).first() if player_id else None
     if not player:
@@ -1334,6 +1417,48 @@ def account_register(request):
 
     return render(request, "game/account_register.html", {
         "player": player, "error": error, "need_name": need_name,
+    })
+
+
+def account_profile(request):
+    """Profil du joueur, modifiable à tout moment (pas seulement à l'inscription) :
+    pseudo/nom/ville sont globaux au joueur, jamais synchronisés avec la fiche
+    qu'un établissement tient sur lui (Membership.full_name reste propre à chaque
+    espace — voir dashboard_member_detail). Affiche aussi, pour info, la
+    catégorie/sous-catégorie et la licence en cours dans chaque établissement."""
+    player_id = request.session.get("verified_player_id")
+    player = Player.objects.filter(id=player_id).first() if player_id else None
+    if not player:
+        return redirect("account_login")
+    if not player.pseudo:
+        return redirect("account_register")
+
+    error = None
+    saved = False
+    if request.method == "POST":
+        pseudo = request.POST.get("pseudo", "").strip()[:30]
+        full_name = request.POST.get("full_name", "").strip()[:80]
+        city = request.POST.get("city", "").strip()[:50]
+        if not pseudo:
+            error = "Le pseudo est obligatoire."
+        else:
+            player.pseudo = pseudo
+            player.full_name = full_name
+            player.city = city
+            player.save(update_fields=["pseudo", "full_name", "city"])
+            saved = True
+
+    establishments, seen_spaces = [], set()
+    for m in (Membership.objects.filter(player=player)
+             .select_related("space", "category", "sub_category", "license")
+             .order_by("space__name", "-created_at")):
+        if m.space_id in seen_spaces:
+            continue  # une ligne par établissement : son adhésion la plus récente
+        seen_spaces.add(m.space_id)
+        establishments.append(m)
+
+    return render(request, "game/account_profile.html", {
+        "player": player, "error": error, "saved": saved, "establishments": establishments,
     })
 
 

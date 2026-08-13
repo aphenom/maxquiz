@@ -3,7 +3,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
-                     Category, SubCategory, Quiz, Membership, License)
+                     Category, SubCategory, Theme, Quiz, Membership, License)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -64,9 +64,16 @@ class CategoryAdmin(admin.ModelAdmin):
     inlines = [SubCategoryInline]
 
 
+@admin.register(Theme)
+class ThemeAdmin(admin.ModelAdmin):
+    list_display = ("name", "sub_category", "order")
+    list_filter = ("sub_category__category__space",)
+    prepopulated_fields = {"slug": ("name",)}
+
+
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ("name", "space", "category", "sub_category", "replay_policy",
+    list_display = ("name", "space", "category", "sub_category", "theme", "replay_policy",
                     "reward_type", "joker_enabled", "active", "created_at")
     list_filter = ("space", "category", "replay_policy", "joker_enabled", "active")
     prepopulated_fields = {"slug": ("name",)}
@@ -74,7 +81,7 @@ class QuizAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ("text", "space", "kind", "category", "sub_category", "difficulty", "active")
+    list_display = ("text", "space", "kind", "category", "sub_category", "theme", "difficulty", "active")
     list_filter = ("space", "kind", "category", "sub_category", "difficulty", "active")
     list_editable = ("difficulty", "active")
     search_fields = ("text",)
