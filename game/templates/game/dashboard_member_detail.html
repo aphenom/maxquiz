@@ -7,6 +7,12 @@
 .mcard label{font-weight:700;display:block;margin:10px 0 4px;font-size:13px}
 .kpi{flex:1;text-align:center;background:#fff;border-radius:14px;padding:12px 6px;box-shadow:0 1px 4px rgba(34,26,18,.08)}
 .kpi b{font-size:24px;display:block;color:var(--orange)}
+.bar{height:10px;border-radius:6px;background:var(--sable);overflow:hidden;position:relative;margin-top:4px}
+.bar>div{height:100%;border-radius:6px}
+.qrow summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.qrow summary::-webkit-details-marker{display:none}
+.qrow summary::after{content:'▾';color:var(--brun);flex:none}
+.qrow[open] summary::after{content:'▴'}
 </style>
 <a href="{% url 'dashboard_members' space.slug %}" class="small">← Retour aux membres</a>
 
@@ -39,33 +45,91 @@
   <div>
     <div style="display:flex;gap:8px" class="stagger">
       <div class="kpi"><b>{{ sessions_stats|length }}</b><span class="small">quiz joués</span></div>
+      <div class="kpi"><b>{% if overall_pct is not None %}{{ overall_pct }}%{% else %}—{% endif %}</b><span class="small">réussite</span></div>
+      <div class="kpi"><b>{{ assigned_quizzes|length }}</b><span class="small">quiz à faire</span></div>
     </div>
 
-    <h2 style="font-size:16px;margin:18px 0 8px">🎮 Historique & réponses</h2>
-    {% for r in sessions_stats %}
-    <div class="card" style="margin-bottom:10px;padding:12px 14px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div>
-          <p style="margin:0;font-weight:700">{% if r.session.quiz %}{{ r.session.quiz.name }}{% else %}Jeu à plat de l'espace{% endif %}</p>
-          <p class="small" style="margin:2px 0 0">{{ r.session.started_at|date:"d/m/Y H:i" }} ·
-            Q{{ r.session.reached }} · {{ r.session.get_status_display }}
-            {% if r.rank %} · Rang {{ r.rank }} / {{ r.total }}{% endif %}</p>
-        </div>
-      </div>
-      {% if r.answers %}
-      <div style="margin-top:10px">
-        {% for a in r.answers %}
-        <p class="small" style="margin:4px 0;display:flex;justify-content:space-between;gap:8px">
-          <span>{% if a.is_correct %}✅{% else %}❌{% endif %} {{ a.question.text|truncatechars:60 }}</span>
-          <span style="white-space:nowrap;color:var(--brun)">{{ a.time_ms }} ms</span>
+    {% if sub_breakdown|length > 1 or theme_breakdown %}
+    <details class="dash-accordion" style="margin-top:14px">
+      <summary style="font-size:14px">📊 Points forts / à travailler</summary>
+      <div class="accordion-body">
+        {% if sub_breakdown|length > 1 %}
+        <p style="margin:0 0 8px;font-weight:700;font-size:14px">Par {{ space.subcategory_label|default:"matière"|lower }}</p>
+        {% for r in sub_breakdown %}
+        <p class="small" style="margin:6px 0 0;display:flex;justify-content:space-between">
+          <span>{{ r.sub_category.name }}</span>
+          <span style="font-weight:700;color:{% if r.pct < 50 %}var(--rouge){% elif r.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}">{{ r.pct }}%</span>
         </p>
+        <div class="bar" style="margin:2px 0 8px"><div style="width:{{ r.pct }}%;background:{% if r.pct < 50 %}var(--rouge){% elif r.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
+        {% endfor %}
+        {% endif %}
+        {% if theme_breakdown %}
+        <p style="margin:12px 0 8px;font-weight:700;font-size:14px">Par {{ space.theme_label|default:"thématique"|lower }}</p>
+        {% for r in theme_breakdown %}
+        <p class="small" style="margin:6px 0 0;display:flex;justify-content:space-between">
+          <span>{{ r.theme.sub_category.name }} · {{ r.theme.name }}</span>
+          <span style="font-weight:700;color:{% if r.pct < 50 %}var(--rouge){% elif r.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}">{{ r.pct }}%</span>
+        </p>
+        <div class="bar" style="margin:2px 0 8px"><div style="width:{{ r.pct }}%;background:{% if r.pct < 50 %}var(--rouge){% elif r.pct < 75 %}var(--orange){% else %}var(--vert){% endif %}"></div></div>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </details>
+    {% endif %}
+
+    {% if assigned_quizzes %}
+    <p class="small" style="margin:14px 0 4px;font-weight:700">📌 Quiz à faire ({{ assigned_quizzes|length }})</p>
+    {% for aq in assigned_quizzes %}
+    <a href="{% url 'dashboard_quiz_detail' space.slug aq.quiz.slug %}" class="card" style="display:block;margin-bottom:6px;padding:10px 14px;text-decoration:none;color:inherit">
+      <p style="margin:0;font-weight:700">{{ aq.quiz.name }}</p>
+      <p class="small" style="margin:4px 0 0">
+        {% if aq.quiz.level_name %}{{ aq.quiz.level_name }}{% endif %}{% if aq.quiz.subject_name %} · {{ aq.quiz.subject_name }}{% endif %}
+        {% if aq.quiz.theme %} · {{ aq.quiz.theme.name }}{% endif %}
+        {% if aq.period_label %} · {{ aq.period_label }}{% endif %} · pas encore joué</p>
+      {% if aq.days_left is not None and aq.days_left <= 7 %}
+      <p class="small" style="margin:4px 0 0;font-weight:700;color:var(--rouge)">
+        ⏳ {% if aq.days_left == 0 %}Dernier jour{% else %}Plus que {{ aq.days_left }} jour{{ aq.days_left|pluralize }}{% endif %}</p>
+      {% endif %}
+    </a>
+    {% endfor %}
+    {% endif %}
+
+    <details class="dash-accordion" style="margin-top:14px">
+      <summary style="font-size:14px">🎮 Historique ({{ sessions_stats|length }})</summary>
+      <div class="accordion-body">
+        {% for r in sessions_stats %}
+        <details class="card qrow" style="margin-bottom:6px;padding:10px 14px">
+          <summary>
+            <span>
+              <span style="font-weight:700">{% if r.session.quiz %}{{ r.session.quiz.name }}{% else %}Jeu à plat de l'espace{% endif %}</span><br>
+              <span class="small">{{ r.session.started_at|date:"d/m/Y H:i" }}
+                {% if r.rank %} · Rang {{ r.rank }} / {{ r.total }}{% endif %}
+                {% if r.session.quiz %} · <a href="{% url 'dashboard_quiz_detail' space.slug r.session.quiz.slug %}" onclick="event.stopPropagation()">voir le quiz</a>{% endif %}</span>
+            </span>
+            <span style="font-weight:800;color:{% if r.session.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
+              {% if r.pct is not None %}{{ r.pct }}%{% elif r.session.status == "finished" %}FINALISTE{% else %}Q{{ r.session.reached }}{% endif %}</span>
+          </summary>
+          {% if r.reward_text %}
+          <p class="small" style="margin:8px 0 0;font-weight:700;color:{% if r.reward_eligible %}var(--vert){% else %}var(--brun){% endif %}">
+            {% if r.reward_eligible %}🎁 Éligible à la récompense{% else %}🎁 Quiz à récompense — non éligible cette fois{% endif %}
+            <span class="small" style="font-weight:400">({{ r.reward_text }})</span></p>
+          {% endif %}
+          {% if r.answers %}
+          <div style="margin-top:10px">
+            {% for a in r.answers %}
+            <p class="small" style="margin:4px 0;display:flex;justify-content:space-between;gap:8px">
+              <span>{% if a.is_correct %}✅{% else %}❌{% endif %} {{ a.question.text|truncatechars:60 }}</span>
+              <span style="white-space:nowrap;color:var(--brun)">{{ a.time_ms }} ms</span>
+            </p>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </details>
+        {% empty %}
+        <p class="small">Ce membre n'a pas encore participé à un quiz.</p>
         {% endfor %}
       </div>
-      {% endif %}
-    </div>
-    {% empty %}
-    <p class="small">Ce membre n'a pas encore participé à un quiz.</p>
-    {% endfor %}
+    </details>
   </div>
 
   <div>

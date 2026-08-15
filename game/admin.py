@@ -6,7 +6,7 @@ from django.utils.html import format_html, escape
 from django.utils.safestring import mark_safe
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
-                     Category, SubCategory, Theme, Quiz, Membership, License)
+                     Category, SubCategory, Theme, Quiz, Membership, License, AuditLog)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -33,8 +33,8 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Space)
 class SpaceAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "active", "consent_required", "question_count", "elimination",
-                    "playful_fx", "dashboard_code")
+    list_display = ("name", "slug", "dashboard_username", "dashboard_code", "active",
+                    "consent_required", "question_count", "elimination", "playful_fx")
     prepopulated_fields = {"slug": ("name",)}
 
 
@@ -192,3 +192,17 @@ class WithdrawalAdmin(admin.ModelAdmin):
     list_display = ("player", "amount", "momo_number", "status", "created_at")
     list_filter = ("status",)
     list_editable = ("status",)
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "space", "actor", "action", "model_name", "object_repr")
+    list_filter = ("action", "model_name", "space")
+    search_fields = ("object_repr", "actor", "details")
+    readonly_fields = [f.name for f in AuditLog._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

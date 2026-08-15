@@ -1,6 +1,7 @@
 import json
 import random
 
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.http import JsonResponse, Http404
@@ -425,10 +426,16 @@ def wallet(request):
 # ESPACES ENTREPRISES (multi-tenant)
 # ============================================================
 import csv
+import io
+
+import openpyxl
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 from django.http import HttpResponse
 from django.db.models import Count, Q
 from django.utils.text import slugify
-from .models import Space, Category, SubCategory, Theme, Quiz, Membership, OTPCode, License, REWARD_TYPES
+from .models import Space, Category, SubCategory, Theme, Quiz, Membership, OTPCode, License, REWARD_TYPES, AuditLog
 
 
 def _space(slug):
@@ -523,39 +530,109 @@ def _unique_slug(scoped_qs, name):
 
 
 def _dashboard_gate(request, space):
-    """Vérifie le code d'accès au tableau de bord client. Renvoie une réponse à
-    retourner directement si l'accès n'est pas encore accordé, sinon None."""
-    code = request.GET.get("code") or request.session.get(f"dash_{space.id}")
-    if code != space.dashboard_code:
-        if request.method == "POST" and request.POST.get("code") == space.dashboard_code:
+    """Vérifie que la session est authentifiée pour ce tableau de bord (voir
+    dashboard_login_common, page de connexion commune à tous les
+    établissements). Renvoie une redirection vers cette connexion si ce n'est
+    pas le cas, sinon None."""
+    if request.session.get(f"dash_{space.id}") == space.dashboard_code:
+        return None
+    login_url = f"{reverse('dashboard_login_common')}?next={request.path}"
+    return redirect(login_url)
+
+
+def dashboard_login_common(request):
+    """Connexion unique à tous les tableaux de bord établissement : un
+    identifiant et un mot de passe, créés par MQ Technologies et communiqués
+    à l'établissement — modifiables ensuite par celui-ci depuis son tableau
+    de bord (dashboard_change_password). L'identifiant est volontairement
+    distinct du slug de l'espace (public, visible dans les liens `/e/slug/`)."""
+    next_url = request.GET.get("next") or request.POST.get("next") or ""
+    error = None
+    if request.method == "POST":
+        identifiant = request.POST.get("identifiant", "").strip()
+        password = request.POST.get("password", "")
+        space = Space.objects.filter(dashboard_username=identifiant, active=True).first()
+        if not space or password != space.dashboard_code:
+            error = "Identifiant ou mot de passe incorrect."
+        else:
             request.session[f"dash_{space.id}"] = space.dashboard_code
-            return redirect(request.path)
-        return render(request, "game/dashboard_login.html", {"space": space})
-    request.session[f"dash_{space.id}"] = space.dashboard_code
-    return None
+            if next_url:
+                return redirect(next_url)
+            return redirect("space_dashboard", slug=space.slug)
+    return render(request, "game/dashboard_login.html", {
+        "next": next_url, "error": error,
+    })
+
+
+def dashboard_change_password(request, slug):
+    """Permet à l'établissement de changer lui-même le mot de passe de son
+    tableau de bord (créé initialement par l'admin) — l'ancien mot de passe
+    doit être confirmé avant d'en enregistrer un nouveau. L'admin reste par
+    ailleurs libre de le réinitialiser à tout moment depuis l'admin Django."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+    error = None
+    saved = False
+    if request.method == "POST":
+        current = request.POST.get("current_password", "")
+        pw1 = request.POST.get("password1", "")
+        pw2 = request.POST.get("password2", "")
+        if current != space.dashboard_code:
+            error = "Mot de passe actuel incorrect."
+        elif len(pw1) < 4:
+            error = "Le nouveau mot de passe doit contenir au moins 4 caractères."
+        elif pw1 != pw2:
+            error = "Les deux mots de passe ne correspondent pas."
+        else:
+            space.dashboard_code = pw1
+            space.save(update_fields=["dashboard_code"])
+            request.session[f"dash_{space.id}"] = space.dashboard_code
+            saved = True
+    return render(request, "game/dashboard_change_password.html", {
+        "space": space, "error": error, "saved": saved,
+    })
+
+
+def dashboard_logout(request, slug):
+    """Déconnecte uniquement ce tableau de bord établissement — n'affecte pas
+    une éventuelle session élève active en parallèle dans le même navigateur."""
+    space = _space(slug)
+    request.session.pop(f"dash_{space.id}", None)
+    return redirect("dashboard_login_common")
 
 
 def _quiz_dashboard_stats(space, sessions):
     """Taux de bonne réponse par question quiz (pires en premier) et répartition
-    des sondages, pour un ensemble de sessions donné."""
+    des sondages, pour un ensemble de sessions donné — deux requêtes groupées
+    au total plutôt qu'une (ou plusieurs) par question (N+1), pour rester
+    rapide sur un espace avec une grosse banque de questions."""
+    quiz_questions = list(Question.objects.filter(space=space, kind="quiz", active=True))
+    quiz_agg = (Answer.objects.filter(question__in=quiz_questions, session__in=sessions)
+               .values("question_id")
+               .annotate(n=Count("id"), ok=Count("id", filter=Q(is_correct=True))))
+    quiz_agg_by_q = {a["question_id"]: a for a in quiz_agg}
     quiz_stats = []
-    for q in Question.objects.filter(space=space, kind="quiz", active=True):
-        agg = Answer.objects.filter(question=q, session__in=sessions).aggregate(
-            n=Count("id"), ok=Count("id", filter=Q(is_correct=True)))
-        if agg["n"]:
-            quiz_stats.append({"q": q, "n": agg["n"],
-                               "pct": round(100 * agg["ok"] / agg["n"])})
+    for q in quiz_questions:
+        a = quiz_agg_by_q.get(q.id)
+        if a and a["n"]:
+            quiz_stats.append({"q": q, "n": a["n"], "pct": round(100 * a["ok"] / a["n"])})
     quiz_stats.sort(key=lambda x: x["pct"])
 
+    survey_questions = list(Question.objects.filter(space=space, kind="survey", active=True))
+    survey_agg = (Answer.objects.filter(question__in=survey_questions, session__in=sessions, choice__gte=0)
+                 .values("question_id", "choice").annotate(c=Count("id")))
+    counts_by_q = {}
+    for row in survey_agg:
+        counts_by_q.setdefault(row["question_id"], {})[row["choice"]] = row["c"]
     survey_stats = []
-    for q in Question.objects.filter(space=space, kind="survey", active=True):
-        answers = Answer.objects.filter(question=q, session__in=sessions, choice__gte=0)
-        n = answers.count()
+    for q in survey_questions:
+        qcounts = counts_by_q.get(q.id, {})
+        n = sum(qcounts.values())
         if n:
-            dist = []
-            for i, opt in enumerate(q.options()):
-                c = answers.filter(choice=i).count()
-                dist.append({"opt": opt, "n": c, "pct": round(100 * c / n)})
+            dist = [{"opt": opt, "n": qcounts.get(i, 0), "pct": round(100 * qcounts.get(i, 0) / n)}
+                    for i, opt in enumerate(q.options())]
             survey_stats.append({"q": q, "n": n, "dist": dist})
     return quiz_stats, survey_stats
 
@@ -976,10 +1053,17 @@ def space_answer(request):
     return JsonResponse(resp)
 
 
-def _quiz_row(sessions, quiz):
-    qs = sessions.filter(quiz=quiz)
-    t = qs.count()
-    f = qs.filter(status="finished").count()
+def _quiz_participation_counts(sessions):
+    """Total et terminé par quiz en une seule requête groupée — évite une paire
+    de requêtes par quiz (N+1) sur les pages qui en listent beaucoup."""
+    rows = (sessions.exclude(quiz__isnull=True).values("quiz_id")
+            .annotate(total=Count("id"), finished=Count("id", filter=Q(status="finished"))))
+    return {r["quiz_id"]: r for r in rows}
+
+
+def _quiz_row(counts, quiz):
+    c = counts.get(quiz.id, {"total": 0, "finished": 0})
+    t, f = c["total"], c["finished"]
     return {"quiz": quiz, "total": t, "finished": f,
             "completion": round(100 * f / t) if t else 0}
 
@@ -990,6 +1074,7 @@ def _build_quiz_tree(space, sessions):
     quiz partagés (admin, sans espace) dont le niveau/matière correspond,
     inclus en lecture seule pour que l'établissement suive la participation
     de ses membres même à un contenu qu'il ne gère pas lui-même."""
+    counts = _quiz_participation_counts(sessions)
     quizzes = list(space.quizzes.select_related("category", "sub_category", "theme").filter(active=True))
     tree = []
     for cat in space.categories.prefetch_related("subcategories"):
@@ -1000,16 +1085,16 @@ def _build_quiz_tree(space, sessions):
                 + list(_global_quizzes_for(cat, sub))
             if not sub_quizzes:
                 continue
-            sub_rows = [_quiz_row(sessions, q) for q in sub_quizzes]
+            sub_rows = [_quiz_row(counts, q) for q in sub_quizzes]
             subs.append({"sub": sub, "rows": sub_rows,
                         "total": sum(x["total"] for x in sub_rows)})
         direct_quizzes = [q for q in cat_quizzes if q.sub_category_id is None] + list(_global_quizzes_for(cat))
-        direct_rows = [_quiz_row(sessions, q) for q in direct_quizzes]
+        direct_rows = [_quiz_row(counts, q) for q in direct_quizzes]
         if subs or direct_rows:
             tree.append({"category": cat, "subs": subs, "direct_rows": direct_rows,
                         "total": sum(r["total"] for s in subs for r in s["rows"])
                                 + sum(r["total"] for r in direct_rows)})
-    orphan_rows = [_quiz_row(sessions, q) for q in quizzes if q.category_id is None]
+    orphan_rows = [_quiz_row(counts, q) for q in quizzes if q.category_id is None]
     return tree, orphan_rows
 
 
@@ -1023,6 +1108,7 @@ def space_dashboard(request, slug):
     sessions = GameSession.objects.filter(space=space, flagged=False).exclude(status="playing")
     total = sessions.count()
     finished = sessions.filter(status="finished").count()
+    unique_participants = sessions.values("player").distinct().count()
     consented = sessions.filter(consent=True).values("player").distinct().count()
 
     tree, orphan_rows = _build_quiz_tree(space, sessions)
@@ -1046,13 +1132,38 @@ def space_dashboard(request, slug):
             w.writerow([p.pseudo, p.phone or "", best, ps.count()])
         return resp
 
-    top = _ranked(sessions.select_related("player"))[:10]
+    # « Meilleurs participants » n'a de sens comme classement par score que si
+    # tout le monde affronte le même jeu (pool à plat, ex. Banque Horizon) —
+    # comparer la question atteinte entre des quiz de longueurs différentes
+    # (courant dès qu'il y a plusieurs quiz) n'aurait pas de sens. Dès qu'il y a
+    # des quiz structurés, on bascule sur un classement par assiduité
+    # (nombre de participations), comparable quel que soit le quiz joué ; le
+    # score par quiz reste consultable sur la page de détail de chaque quiz.
+    if has_quizzes:
+        top_active = (Player.objects.filter(sessions__space=space, sessions__flagged=False)
+                     .exclude(sessions__status="playing")
+                     .annotate(n=Count("sessions", filter=Q(sessions__space=space, sessions__flagged=False)
+                                       & ~Q(sessions__status="playing")))
+                     .order_by("-n")[:10])
+        consenting_ids = set(Player.objects.filter(sessions__space=space, sessions__consent=True)
+                             .values_list("id", flat=True))
+        top = [{"player": p, "n": p.n, "consent": p.id in consenting_ids} for p in top_active]
+        top_mode = "active"
+    else:
+        top = _ranked(sessions.select_related("player"))[:10]
+        for s in top:
+            s.pct = _session_pct(s)
+        top_mode = "score"
+
+    avg_participation = round(total / unique_participants, 1) if unique_participants else 0
     return render(request, "game/dashboard.html", {
         "space": space, "total": total, "finished": finished,
         "completion": round(100 * finished / total) if total else 0,
+        "unique_participants": unique_participants, "avg_participation": avg_participation,
         "consented": consented, "has_quizzes": has_quizzes,
         "tree": tree, "orphan_rows": orphan_rows,
-        "quiz_stats": quiz_stats, "survey_stats": survey_stats, "top": top,
+        "quiz_stats": quiz_stats, "survey_stats": survey_stats,
+        "top": top, "top_mode": top_mode,
     })
 
 
@@ -1069,56 +1180,76 @@ def dashboard_categories(request, slug):
             name = request.POST.get("name", "").strip()[:80]
             if name:
                 cat_slug = _unique_slug(space.categories, name)
-                Category.objects.create(space=space, name=name, slug=cat_slug,
-                                        order=space.categories.count())
+                cat = Category.objects.create(space=space, name=name, slug=cat_slug,
+                                              order=space.categories.count())
+                _log_action(space, "create", cat)
         elif action == "rename_category":
             cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
             name = request.POST.get("name", "").strip()[:80]
             if cat and name:
+                old_name = cat.name
                 cat.name = name
                 cat.save(update_fields=["name"])
+                _log_action(space, "update", cat, f"renommée depuis « {old_name} »")
         elif action == "delete_category":
-            space.categories.filter(id=_post_int(request.POST, "category_id")).delete()
+            cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
+            if cat:
+                _soft_delete_category(space, cat)
         elif action == "add_subcategory":
             cat = space.categories.filter(id=_post_int(request.POST, "category_id")).first()
             name = request.POST.get("name", "").strip()[:80]
             if cat and name:
                 sub_slug = _unique_slug(cat.subcategories, name)
-                SubCategory.objects.create(category=cat, name=name, slug=sub_slug,
-                                           order=cat.subcategories.count())
+                sub = SubCategory.objects.create(category=cat, name=name, slug=sub_slug,
+                                                 order=cat.subcategories.count())
+                _log_action(space, "create", sub)
         elif action == "rename_subcategory":
             sub = SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
                                              category__space=space).first()
             name = request.POST.get("name", "").strip()[:80]
             if sub and name:
+                old_name = sub.name
                 sub.name = name
                 sub.save(update_fields=["name"])
+                _log_action(space, "update", sub, f"renommée depuis « {old_name} »")
         elif action == "delete_subcategory":
-            SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
-                                       category__space=space).delete()
+            sub = SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
+                                             category__space=space).first()
+            if sub:
+                _soft_delete_subcategory(space, sub)
         elif action == "add_theme":
             sub = SubCategory.objects.filter(id=_post_int(request.POST, "subcategory_id"),
                                              category__space=space).first()
             name = request.POST.get("name", "").strip()[:80]
             if sub and name:
                 theme_slug = _unique_slug(sub.themes, name)
-                Theme.objects.create(sub_category=sub, name=name, slug=theme_slug,
-                                     order=sub.themes.count())
+                theme = Theme.objects.create(sub_category=sub, name=name, slug=theme_slug,
+                                             order=sub.themes.count())
+                _log_action(space, "create", theme)
         elif action == "rename_theme":
             theme = Theme.objects.filter(id=_post_int(request.POST, "theme_id"),
                                          sub_category__category__space=space).first()
             name = request.POST.get("name", "").strip()[:80]
             if theme and name:
+                old_name = theme.name
                 theme.name = name
                 theme.save(update_fields=["name"])
+                _log_action(space, "update", theme, f"renommée depuis « {old_name} »")
         elif action == "delete_theme":
-            Theme.objects.filter(id=_post_int(request.POST, "theme_id"),
-                                 sub_category__category__space=space).delete()
+            theme = Theme.objects.filter(id=_post_int(request.POST, "theme_id"),
+                                         sub_category__category__space=space).first()
+            if theme:
+                _soft_delete_theme(space, theme)
         return redirect("dashboard_categories", slug=slug)
 
-    categories = space.categories.prefetch_related("subcategories__themes")
+    q = request.GET.get("q", "").strip()
+    categories_qs = space.categories.prefetch_related("subcategories__themes")
+    if q:
+        categories_qs = categories_qs.filter(name__icontains=q)
+    paginator = Paginator(categories_qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page"))
     return render(request, "game/dashboard_categories.html", {
-        "space": space, "categories": categories,
+        "space": space, "page_obj": page_obj, "total_matching": paginator.count, "q": q,
     })
 
 
@@ -1141,30 +1272,43 @@ def dashboard_quizzes(request, slug):
                 replay_policy = request.POST.get("replay_policy")
                 if replay_policy not in dict(Quiz.REPLAY_POLICIES):
                     replay_policy = "daily"
-                Quiz.objects.create(
+                quiz = Quiz.objects.create(
                     space=space, category=cat, sub_category=sub, theme=theme, slug=quiz_slug, name=name,
                     question_count=int(request.POST.get("question_count") or space.question_count),
                     survey_every=int(request.POST.get("survey_every") or space.survey_every),
                     elimination=request.POST.get("elimination") == "on",
                     replay_policy=replay_policy,
                     **_quiz_reward_joker_fields(request.POST))
+                _log_action(space, "create", quiz)
         elif action == "toggle_quiz":
             qz = space.quizzes.filter(id=_post_int(request.POST, "quiz_id")).first()
             if qz:
                 qz.active = not qz.active
                 qz.save(update_fields=["active"])
+                _log_action(space, "toggle", qz, "activé" if qz.active else "désactivé")
         elif action == "delete_quiz":
-            space.quizzes.filter(id=_post_int(request.POST, "quiz_id")).delete()
+            qz = space.quizzes.filter(id=_post_int(request.POST, "quiz_id")).first()
+            if qz:
+                _soft_delete_quiz(space, qz)
         return redirect("dashboard_quizzes", slug=slug)
 
+    q = request.GET.get("q", "").strip()
+    quizzes_qs = space.quizzes.select_related("category", "sub_category", "theme").order_by("-id")
+    if q:
+        quizzes_qs = quizzes_qs.filter(name__icontains=q)
+    paginator = Paginator(quizzes_qs, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
     base_sessions = GameSession.objects.filter(space=space, flagged=False).exclude(status="playing")
-    quizzes = list(space.quizzes.select_related("category", "sub_category", "theme"))
-    for qz in quizzes:
-        qz.total = base_sessions.filter(quiz=qz).count()
+    counts = _quiz_participation_counts(base_sessions)
+    for qz in page_obj:
+        qz.total = counts.get(qz.id, {"total": 0})["total"]
+
     categories = space.categories.prefetch_related("subcategories__themes")
     current_license = _current_license(space)
     return render(request, "game/dashboard_quizzes.html", {
-        "space": space, "quizzes": quizzes, "categories": categories,
+        "space": space, "page_obj": page_obj, "total_matching": paginator.count, "q": q,
+        "categories": categories,
         "jokers_allowed": bool(current_license and current_license.jokers_allowed),
         "reward_types": REWARD_TYPES, "replay_policies": Quiz.REPLAY_POLICIES,
     })
@@ -1209,11 +1353,13 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
                 for field, value in _quiz_reward_joker_fields(request.POST).items():
                     setattr(quiz, field, value)
                 quiz.save()
+                _log_action(space, "update", quiz)
         elif action == "toggle_quiz":
             quiz.active = not quiz.active
             quiz.save(update_fields=["active"])
+            _log_action(space, "toggle", quiz, "activé" if quiz.active else "désactivé")
         elif action == "delete_quiz":
-            quiz.delete()
+            _soft_delete_quiz(space, quiz)
             return redirect("dashboard_quizzes", slug=slug)
         return redirect("dashboard_quiz_detail", slug=slug, quiz_slug=quiz.slug)
 
@@ -1254,6 +1400,8 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
     finished = sessions.filter(status="finished").count()
     quiz_stats, survey_stats = _quiz_dashboard_stats(space, sessions)
     top = _ranked(sessions.select_related("player"))[:10]
+    for s in top:
+        s.pct = _session_pct(s)
     categories = space.categories.prefetch_related("subcategories__themes")
     current_license = _current_license(space)
     reward_text, reward_type = _effective_reward(space, quiz)
@@ -1303,22 +1451,46 @@ def dashboard_questions(request, slug):
             fields = _question_fields_from_post(space, request.POST)
             if fields["text"] and fields["option_a"] and fields["option_b"]:
                 if action == "add_question":
-                    Question.objects.create(space=space, category="cg", **fields)
+                    q = Question.objects.create(space=space, category="cg", **fields)
+                    _log_action(space, "create", q)
                 else:
-                    Question.objects.filter(id=question_id, space=space).update(**fields)
+                    q = Question.objects.filter(id=question_id, space=space).first()
+                    if q:
+                        Question.objects.filter(id=question_id, space=space).update(**fields)
+                        _log_action(space, "update", q)
         elif action == "toggle_question":
             q = Question.objects.filter(id=question_id, space=space).first()
             if q:
                 q.active = not q.active
                 q.save(update_fields=["active"])
+                _log_action(space, "toggle", q, "activée" if q.active else "désactivée")
         elif action == "delete_question":
-            Question.objects.filter(id=question_id, space=space).delete()
+            q = Question.objects.filter(id=question_id, space=space).first()
+            if q:
+                _soft_delete_one(space, q)
+        elif action in ("bulk_activate", "bulk_deactivate", "bulk_delete"):
+            selected = request.POST.getlist("selected_ids")
+            selected_qs = list(Question.objects.filter(space=space, id__in=selected))
+            if action == "bulk_activate":
+                for q in selected_qs:
+                    q.active = True
+                    q.save(update_fields=["active"])
+                    _log_action(space, "toggle", q, "activée (lot)")
+            elif action == "bulk_deactivate":
+                for q in selected_qs:
+                    q.active = False
+                    q.save(update_fields=["active"])
+                    _log_action(space, "toggle", q, "désactivée (lot)")
+            else:
+                for q in selected_qs:
+                    _soft_delete_one(space, q, action="bulk_delete")
         return redirect(f"{request.path}?{request.GET.urlencode()}")
 
     cat_id = _post_int(request.GET, "category_id")
     sub_id = _post_int(request.GET, "subcategory_id")
     theme_id = _post_int(request.GET, "theme_id")
     kind = request.GET.get("kind") or ""
+    q = request.GET.get("q", "").strip()
 
     questions = Question.objects.filter(space=space).select_related(
         "sub_category", "sub_category__category", "theme")
@@ -1330,13 +1502,51 @@ def dashboard_questions(request, slug):
         questions = questions.filter(sub_category_id=sub_id)
     elif cat_id:
         questions = questions.filter(sub_category__category_id=cat_id)
+    if q:
+        questions = questions.filter(text__icontains=q)
     questions = questions.order_by("sub_category__category__order", "sub_category__order", "-id")
+
+    # Chaque question s'affiche en carte-formulaire complète (4 options,
+    # difficulté...) : nettement plus lourd qu'une carte membre, d'où une
+    # pagination plus serrée dès qu'il y a une grosse banque de questions.
+    paginator = Paginator(questions, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
 
     categories = space.categories.prefetch_related("subcategories__themes")
     return render(request, "game/dashboard_questions.html", {
-        "space": space, "questions": questions, "categories": categories,
+        "space": space, "page_obj": page_obj, "total_matching": paginator.count,
+        "categories": categories, "q": q,
         "f_category": cat_id, "f_subcategory": sub_id, "f_theme": theme_id, "f_kind": kind,
     })
+
+
+def _rows_from_upload(f):
+    """Normalise un fichier d'import (.xlsx généré par dashboard_members_template,
+    ou .csv classique) en lignes de valeurs texte — pour que le reste de l'import
+    n'ait pas à se soucier du format d'origine."""
+    if (f.name or "").lower().endswith(".xlsx"):
+        wb = openpyxl.load_workbook(f, data_only=True)
+        ws = wb["Import"] if "Import" in wb.sheetnames else wb.worksheets[0]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and any(v is not None for v in row):
+                yield ["" if v is None else str(v).strip() for v in row]
+    else:
+        raw = f.read().decode("utf-8-sig", errors="ignore")
+        for row in csv.reader(raw.splitlines()):
+            yield row
+
+
+def _resolve_category_by_name(space, cat_name, sub_name):
+    """Résout catégorie/sous-catégorie par nom (import CSV/Excel) plutôt que par
+    id (formulaire) — comparaison insensible à la casse et aux espaces, pour
+    tolérer les petites variations de saisie dans un fichier rempli à la main."""
+    cat_name = (cat_name or "").strip()
+    sub_name = (sub_name or "").strip()
+    category = space.categories.filter(name__iexact=cat_name).first() if cat_name else None
+    sub_category = None
+    if category and sub_name:
+        sub_category = category.subcategories.filter(name__iexact=sub_name).first()
+    return category, sub_category
 
 
 def _member_fields(post, space):
@@ -1410,6 +1620,193 @@ def _seat_check(space, license_obj):
     return None
 
 
+# ============================================================
+# JOURNAL D'ACTIVITÉ ET SUPPRESSION DOUCE
+# ============================================================
+# Rien n'est jamais réellement effacé par une action du tableau de bord
+# établissement : chaque modèle géré ici (Category, SubCategory, Theme, Quiz,
+# Question, Membership) utilise SoftDeleteManager (voir models.py) — une
+# « suppression » ne fait que renseigner deleted_at, la ligne reste en base et
+# reste restaurable. Chaque action est en plus journalisée (AuditLog) pour
+# pouvoir toujours remonter à ce qui a été fait, quand, par quel tableau de
+# bord — ni panne (pas de cascade réelle qui casserait des données liées), ni
+# perte d'information.
+RESTORABLE_MODELS = {"Category": Category, "SubCategory": SubCategory, "Theme": Theme,
+                     "Quiz": Quiz, "Question": Question, "Membership": Membership}
+
+
+def _log_action(space, action, obj, details=""):
+    AuditLog.objects.create(
+        space=space, actor=space.dashboard_username, action=action,
+        model_name=obj.__class__.__name__, object_id=obj.id,
+        object_repr=str(obj)[:200], details=details[:300])
+
+
+def _soft_delete_one(space, obj, action="delete", details=""):
+    """Marque un objet supprimé (sans l'effacer) et journalise l'action."""
+    _log_action(space, action, obj, details)
+    obj.deleted_at = timezone.now()
+    obj.save(update_fields=["deleted_at"])
+
+
+def _soft_delete_theme(space, theme, action="delete"):
+    _soft_delete_one(space, theme, action)
+
+
+def _soft_delete_subcategory(space, sub, action="delete"):
+    for theme in sub.themes.all():
+        _soft_delete_theme(space, theme, action)
+    _soft_delete_one(space, sub, action)
+
+
+def _soft_delete_category(space, category, action="delete"):
+    for sub in category.subcategories.all():
+        _soft_delete_subcategory(space, sub, action)
+    _soft_delete_one(space, category, action)
+
+
+def _soft_delete_quiz(space, quiz, action="delete"):
+    # Un quiz partagé (space=None) a sa propre banque de questions dédiée
+    # (Question.quiz) — la CASCADE réelle les aurait effacées avec le quiz ;
+    # en douceur, on les marque supprimées avec lui pour rester cohérent.
+    for q in quiz.own_questions.all():
+        _soft_delete_one(space, q, action)
+    _soft_delete_one(space, quiz, action)
+
+
+def dashboard_restore(request, slug):
+    """Annule une suppression (douce) : remet deleted_at à vide sur l'objet visé,
+    retrouvé par type + id depuis une entrée du journal d'activité. Toujours
+    possible puisque la suppression n'a jamais réellement effacé la ligne."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+    if request.method == "POST":
+        model_name = request.POST.get("model_name", "")
+        object_id = _post_int(request.POST, "object_id")
+        model = RESTORABLE_MODELS.get(model_name)
+        if model:
+            obj = model.all_objects.filter(id=object_id).first()
+            # Vérification d'appartenance à cet espace avant de restaurer,
+            # propre à chaque modèle (Membership/Category/Quiz ont un champ
+            # space direct, SubCategory/Theme remontent par leur parent).
+            belongs = False
+            if obj is not None:
+                if hasattr(obj, "space_id"):
+                    belongs = obj.space_id == space.id
+                elif model is SubCategory:
+                    belongs = obj.category.space_id == space.id
+                elif model is Theme:
+                    belongs = obj.sub_category.category.space_id == space.id
+            if obj is not None and belongs:
+                obj.deleted_at = None
+                obj.save(update_fields=["deleted_at"])
+                _log_action(space, "restore", obj)
+    return redirect(f"{reverse('dashboard_audit_log', args=[slug])}?{request.GET.urlencode()}")
+
+
+def dashboard_audit_log(request, slug):
+    """Journal d'activité de l'espace : toutes les actions du tableau de bord,
+    les plus récentes d'abord, avec restauration en un clic pour les
+    suppressions (l'objet reste en base — voir SoftDeleteManager)."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    logs = AuditLog.objects.filter(space=space).order_by("-created_at")
+    action_filter = request.GET.get("action") or ""
+    if action_filter:
+        logs = logs.filter(action=action_filter)
+    paginator = Paginator(logs, 40)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    # Pour chaque entrée de suppression affichée, sait-on si l'objet est
+    # toujours supprimé (bouton « Restaurer » utile) ou déjà restauré depuis
+    # (bouton inutile, l'objet est de nouveau actif) ?
+    for log in page_obj:
+        log.can_restore = False
+        if log.action in ("delete", "bulk_delete") and log.object_id:
+            model = RESTORABLE_MODELS.get(log.model_name)
+            if model:
+                obj = model.all_objects.filter(id=log.object_id).first()
+                log.can_restore = bool(obj and obj.deleted_at is not None)
+
+    return render(request, "game/dashboard_audit_log.html", {
+        "space": space, "page_obj": page_obj, "total_matching": paginator.count,
+        "action_filter": action_filter, "actions": AuditLog.ACTIONS,
+    })
+
+
+def dashboard_members_template(request, slug):
+    """Modèle de fichier d'import (Excel), personnalisé à l'établissement :
+    colonnes aux libellés propres à l'espace, listes déroulantes de vérification
+    pour la catégorie/sous-catégorie (évite les fautes de frappe qui
+    empêcheraient l'appariement au bon niveau/matière à l'import), et une feuille
+    de référence listant les catégories/sous-catégories valides."""
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate is not None:
+        return gate
+
+    categories = list(space.categories.prefetch_related("subcategories").order_by("order", "name"))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Import"
+    headers = ["Nom complet*", "Téléphone*", "Référence externe",
+              space.category_label or "Catégorie", space.subcategory_label or "Sous-catégorie"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for i, width in enumerate([26, 18, 20, 22, 22], start=1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+    ws.freeze_panes = "A2"
+
+    ref_name = "Catégories disponibles"
+    ref = wb.create_sheet(ref_name)
+    ref.append([space.category_label or "Catégorie", space.subcategory_label or "Sous-catégorie"])
+    for cell in ref[1]:
+        cell.font = Font(bold=True)
+    row_i = 2
+    for cat in categories:
+        subs = list(cat.subcategories.all())
+        if subs:
+            for sub in subs:
+                ref.cell(row=row_i, column=1, value=cat.name)
+                ref.cell(row=row_i, column=2, value=sub.name)
+                row_i += 1
+        else:
+            ref.cell(row=row_i, column=1, value=cat.name)
+            row_i += 1
+    ref.column_dimensions["A"].width = 22
+    ref.column_dimensions["B"].width = 22
+    last_row = max(row_i - 1, 2)
+
+    if categories:
+        cat_dv = DataValidation(type="list", formula1=f"'{ref_name}'!$A$2:$A${last_row}",
+                                allow_blank=True, showDropDown=False)
+        cat_dv.error = "Choisis une valeur dans la liste (feuille « Catégories disponibles »)."
+        cat_dv.errorTitle = "Valeur invalide"
+        ws.add_data_validation(cat_dv)
+        cat_dv.add("D2:D500")
+
+        sub_dv = DataValidation(type="list", formula1=f"'{ref_name}'!$B$2:$B${last_row}",
+                                allow_blank=True, showDropDown=False)
+        sub_dv.error = "Choisis une valeur dans la liste (feuille « Catégories disponibles »)."
+        sub_dv.errorTitle = "Valeur invalide"
+        ws.add_data_validation(sub_dv)
+        sub_dv.add("E2:E500")
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    resp = HttpResponse(buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = f'attachment; filename="modele-import-{space.slug}.xlsx"'
+    return resp
+
+
 def dashboard_members(request, slug):
     """Base des personnes identifiées par l'établissement : liste + import CSV + ajout.
     L'édition détaillée d'un membre se fait sur sa fiche (dashboard_member_detail)."""
@@ -1423,23 +1820,29 @@ def dashboard_members(request, slug):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "import_csv" and request.FILES.get("csv_file"):
-            raw = request.FILES["csv_file"].read().decode("utf-8-sig", errors="ignore")
             created, matched, skipped = 0, 0, 0
-            for row in csv.reader(raw.splitlines()):
+            for row in _rows_from_upload(request.FILES["csv_file"]):
                 if not row or len(row) < 2:
                     continue
-                full_name, phone = row[0].strip()[:120], row[1].strip()[:20]
-                external_ref = row[2].strip()[:60] if len(row) > 2 else ""
+                full_name = (row[0] or "").strip()[:120]
+                phone = (row[1] or "").strip()[:20]
+                external_ref = (row[2] or "").strip()[:60] if len(row) > 2 else ""
+                cat_name = row[3] if len(row) > 3 else ""
+                sub_name = row[4] if len(row) > 4 else ""
                 if not full_name or not phone or not phone[0].isdigit():
                     continue  # ignore l'en-tête éventuelle et les lignes vides
+                category, sub_category = _resolve_category_by_name(space, cat_name, sub_name)
                 existing = Membership.objects.filter(space=space, phone=phone, license=current_license).first()
                 if not existing and _seat_check(space, current_license):
                     skipped += 1
                     continue
                 member, is_new = Membership.objects.get_or_create(
                     space=space, phone=phone, license=current_license,
-                    defaults={"full_name": full_name, "external_ref": external_ref})
-                created += is_new
+                    defaults={"full_name": full_name, "external_ref": external_ref,
+                             "category": category, "sub_category": sub_category})
+                if is_new:
+                    created += 1
+                    _log_action(space, "create", member, "import")
                 existing_player = Player.objects.filter(phone=phone).first()
                 if existing_player and not member.player_id:
                     member.player = existing_player
@@ -1466,16 +1869,52 @@ def dashboard_members(request, slug):
                     if not created:
                         messages.error(request, f"Un membre existe déjà avec le téléphone {f['phone']}.")
                     else:
+                        _log_action(space, "create", member)
                         existing_player = Player.objects.filter(phone=f["phone"]).first()
                         if existing_player:
                             member.player = existing_player
                             member.matched_at = timezone.now()
                             member.save(update_fields=["player", "matched_at"])
+        elif action == "bulk_delete":
+            selected = request.POST.getlist("selected_ids")
+            for m in space.members.filter(id__in=selected):
+                _soft_delete_one(space, m, action="bulk_delete")
+            return redirect(f"{request.path}?{request.GET.urlencode()}")
         return redirect("dashboard_members", slug=slug)
 
-    members = space.members.select_related("player", "category", "sub_category").order_by("-matched_at", "full_name")
+    q = request.GET.get("q", "").strip()
+    # Le compteur de sièges ne porte que sur la licence en cours : par défaut la
+    # liste s'y limite aussi (pour rester la réponse directe à « qui compte dans
+    # ces sièges »), avec un sélecteur pour voir une autre période ou tout le
+    # monde — plutôt qu'une liste à plat mélangeant toutes les années, illisible
+    # dès qu'il y a beaucoup de membres.
+    license_filter = request.GET.get("periode") or ("current" if current_license else "all")
+
+    members = space.members.select_related("player", "category", "sub_category", "license")
+    if license_filter == "current" and current_license:
+        members = members.filter(license=current_license)
+    elif license_filter == "none":
+        members = members.filter(license__isnull=True)
+    elif license_filter not in ("current", "all"):
+        members = members.filter(license_id=license_filter)
+    # "all" (ou licence courante absente) : pas de filtre par période.
+    members = members.order_by("-matched_at", "full_name")
+
+    if q:
+        members = members.filter(Q(full_name__icontains=q) | Q(phone__icontains=q)
+                                 | Q(external_ref__icontains=q))
+
+    paginator = Paginator(members, 30)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    other_licenses = space.licenses.exclude(id=current_license.id if current_license else None).order_by(
+        "-start_date")
+    has_unlicensed = space.members.filter(license__isnull=True).exists()
+
     return render(request, "game/dashboard_members.html", {
-        "space": space, "members": members, "current_license": current_license,
+        "space": space, "current_license": current_license, "page_obj": page_obj,
+        "total_matching": paginator.count, "q": q, "license_filter": license_filter,
+        "other_licenses": other_licenses, "has_unlicensed": has_unlicensed,
     })
 
 
@@ -1502,34 +1941,100 @@ def dashboard_member_detail(request, slug, member_id):
                 member.category = f["category"]
                 member.sub_category = f["sub_category"]
                 member.save()
+                _log_action(space, "update", member)
         elif action == "delete_member":
-            member.delete()
+            _soft_delete_one(space, member)
             return redirect("dashboard_members", slug=slug)
         return redirect("dashboard_member_detail", slug=slug, member_id=member.id)
 
     sessions_stats = []
     history = []
+    overall_pct = None
+    sub_breakdown, theme_breakdown, assigned_quizzes = [], [], []
     if member.player_id:
         sessions = (GameSession.objects.filter(space=space, player_id=member.player_id, flagged=False)
                     .exclude(status="playing").select_related("quiz")
                     .prefetch_related("answers__question").order_by("-started_at"))
+        played_quiz_ids = set()
         for s in sessions:
             rank, total = None, None
             if s.quiz_id:
+                played_quiz_ids.add(s.quiz_id)
                 ranked = _ranked(GameSession.objects.filter(
                     quiz_id=s.quiz_id, flagged=False).exclude(status="playing"))
                 if s in ranked:
                     rank, total = ranked.index(s) + 1, len(ranked)
-            sessions_stats.append({"session": s, "rank": rank, "total": total, "answers": s.answers.all()})
+            reward_text, reward_type = _effective_reward(space, s.quiz) if s.quiz_id else (None, None)
+            sessions_stats.append({
+                "session": s, "rank": rank, "total": total, "answers": s.answers.all(),
+                "pct": _session_pct(s), "reward_text": reward_text,
+                "reward_eligible": bool(reward_text) and s.status == "finished",
+            })
 
         history = (Membership.objects.filter(space=space, player_id=member.player_id)
                   .exclude(id=member.id).select_related("license", "category", "sub_category")
                   .order_by("license__start_date"))
 
+        # Points forts / à travailler par matière puis par thématique — même
+        # calcul que sur /compte/ côté élève, ici scopé à ce membre précis :
+        # utile pour un enseignant qui veut savoir où cet élève a besoin d'aide.
+        space_answers = Answer.objects.filter(session__player_id=member.player_id, session__space=space,
+                                              question__kind="quiz")
+        overall_n = space_answers.count()
+        overall_pct = round(100 * space_answers.filter(is_correct=True).count() / overall_n) if overall_n else None
+
+        sub_totals = {}
+        for a in space_answers.select_related("question__sub_category__category"):
+            sub = a.question.sub_category
+            if not sub:
+                continue
+            row = sub_totals.setdefault(sub.id, {"sub": sub, "n": 0, "correct": 0})
+            row["n"] += 1
+            row["correct"] += 1 if a.is_correct else 0
+        sub_breakdown = sorted((
+            {"sub_category": r["sub"], "n": r["n"], "pct": round(100 * r["correct"] / r["n"])}
+            for r in sub_totals.values()
+        ), key=lambda r: r["pct"])
+
+        theme_totals = {}
+        for a in space_answers.select_related("question__theme"):
+            th = a.question.theme
+            if not th:
+                continue
+            row = theme_totals.setdefault(th.id, {"theme": th, "n": 0, "correct": 0})
+            row["n"] += 1
+            row["correct"] += 1 if a.is_correct else 0
+        theme_breakdown = sorted((
+            {"theme": r["theme"], "n": r["n"], "pct": round(100 * r["correct"] / r["n"])}
+            for r in theme_totals.values()
+        ), key=lambda r: r["pct"])
+
+        # Quiz encore à faire pour ce membre, toutes ses adhésions confondues
+        # (licence en cours comme passées) — même logique que /compte/, pour
+        # que l'établissement voie ce qu'il reste à cet élève sans lui demander.
+        all_memberships = list(Membership.objects.filter(space=space, player_id=member.player_id)
+                               .select_related("license", "category", "sub_category"))
+        seen_quiz_ids = set()
+        for m in all_memberships:
+            if not m.category_id or _license_expired(m.license):
+                continue
+            days_left = _license_days_left(m.license)
+            for q in _quizzes_for_membership(space, m):
+                if q.id in played_quiz_ids or q.id in seen_quiz_ids:
+                    continue
+                seen_quiz_ids.add(q.id)
+                assigned_quizzes.append({
+                    "quiz": q, "period_label": m.license.period_label if m.license_id else "",
+                    "days_left": days_left,
+                })
+        assigned_quizzes.sort(key=lambda a: a["days_left"] if a["days_left"] is not None else 9999)
+
     categories = space.categories.prefetch_related("subcategories")
     return render(request, "game/dashboard_member_detail.html", {
         "space": space, "member": member, "sessions_stats": sessions_stats,
-        "categories": categories, "history": history,
+        "categories": categories, "history": history, "overall_pct": overall_pct,
+        "sub_breakdown": sub_breakdown, "theme_breakdown": theme_breakdown,
+        "assigned_quizzes": assigned_quizzes,
     })
 
 

@@ -8,6 +8,12 @@
 .qcard .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .qcard .correct-group{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 .qcard .correct-group label{display:flex;align-items:center;gap:4px;font-weight:400;margin:0;font-size:13px}
+.q-select-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--sable);font-size:13px;color:var(--brun)}
+#bulk-bar{position:sticky;top:8px;z-index:40;background:var(--encre);color:#fff;border-radius:12px;
+  padding:10px 14px;display:none;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 14px rgba(34,26,18,.28);margin-top:10px}
+#bulk-bar.show{display:flex}
+#bulk-bar .chip:not(.rouge){background:rgba(255,255,255,.16);color:#fff}
+#bulk-bar .chip.rouge{background:var(--rouge);color:#fff}
 </style>
 <div style="display:flex;align-items:center;gap:10px">
   <span style="font-size:30px">{{ space.emoji }}</span>
@@ -17,7 +23,20 @@
 {% include "game/_dashboard_nav.html" with active="questions" %}
 <a href="#add-form" class="dash-fab" aria-label="Ajouter une question">+</a>
 
-<form method="get" class="card" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
+<form id="bulk-form" method="post">{% csrf_token %}</form>
+<div id="bulk-bar">
+  <span id="bulk-count" class="small" style="color:#fff;font-weight:700">0 sélectionnée(s)</span>
+  <button type="submit" form="bulk-form" name="action" value="bulk_activate" class="chip">✓ Activer</button>
+  <button type="submit" form="bulk-form" name="action" value="bulk_deactivate" class="chip">⏸ Désactiver</button>
+  <button type="submit" form="bulk-form" name="action" value="bulk_delete" class="chip rouge" id="bulk-delete-btn">🗑️ Supprimer</button>
+  <button type="button" class="chip" id="bulk-clear" style="margin-left:auto">✕ Tout désélectionner</button>
+</div>
+
+<form method="get" id="question-filters" class="card" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
+  <div style="flex:2;min-width:180px">
+    <label class="small" style="font-weight:700;display:block;margin-bottom:4px">🔎 Rechercher</label>
+    <input type="text" name="q" value="{{ q }}" placeholder="Texte de la question…" id="question-search">
+  </div>
   <div style="flex:1;min-width:140px">
     <label class="small" style="font-weight:700;display:block;margin-bottom:4px">Type</label>
     <select name="kind" onchange="this.form.submit()">
@@ -51,7 +70,7 @@
       {% endfor %}{% endfor %}{% endfor %}
     </select>
   </div>
-  {% if f_kind or f_category or f_subcategory or f_theme %}
+  {% if f_kind or f_category or f_subcategory or f_theme or q %}
   <a href="{% url 'dashboard_questions' space.slug %}" class="chip">✕ Réinitialiser</a>
   {% endif %}
 </form>
@@ -111,10 +130,14 @@
 </div>
 </details>
 
-<h2 style="font-size:16px;margin:22px 0 8px">{{ questions|length }} question{{ questions|length|pluralize }}</h2>
+<h2 style="font-size:16px;margin:22px 0 8px">{{ total_matching }} question{{ total_matching|pluralize }}</h2>
 <div class="dash-grid wide">
-{% for q in questions %}
+{% for q in page_obj %}
 <div class="card qcard">
+  <label class="q-select-row">
+    <input type="checkbox" name="selected_ids" value="{{ q.id }}" form="bulk-form" class="q-select">
+    Sélectionner
+  </label>
   <p class="small" style="margin:0">
     {% if q.sub_category %}{{ q.sub_category.category.name }} — {{ q.sub_category.name }}{% else %}Sans {{ space.category_label|lower }}{% endif %}
     {% if q.theme %} — {{ q.theme.name }}{% endif %}
@@ -178,9 +201,58 @@
 <p class="small">Aucune question ne correspond à ces filtres.</p>
 {% endfor %}
 </div>
+
+{% if page_obj.has_other_pages %}
+<div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:14px">
+  {% if page_obj.has_previous %}
+  <a class="chip" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if f_kind %}kind={{ f_kind }}&{% endif %}{% if f_category %}category_id={{ f_category }}&{% endif %}{% if f_subcategory %}subcategory_id={{ f_subcategory }}&{% endif %}{% if f_theme %}theme_id={{ f_theme }}&{% endif %}page={{ page_obj.previous_page_number }}">← Précédent</a>
+  {% endif %}
+  <span class="small">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a class="chip" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if f_kind %}kind={{ f_kind }}&{% endif %}{% if f_category %}category_id={{ f_category }}&{% endif %}{% if f_subcategory %}subcategory_id={{ f_subcategory }}&{% endif %}{% if f_theme %}theme_id={{ f_theme }}&{% endif %}page={{ page_obj.next_page_number }}">Suivant →</a>
+  {% endif %}
+</div>
+{% endif %}
 {% endblock %}
 {% block js %}
 <script>
+(function(){
+  var bar = document.getElementById('bulk-bar');
+  var count = document.getElementById('bulk-count');
+  var checkboxes = document.querySelectorAll('.q-select');
+  var deleteBtn = document.getElementById('bulk-delete-btn');
+  function refresh(){
+    var n = document.querySelectorAll('.q-select:checked').length;
+    count.textContent = n + ' sélectionnée' + (n > 1 ? 's' : '');
+    bar.classList.toggle('show', n > 0);
+  }
+  checkboxes.forEach(function(cb){ cb.addEventListener('change', refresh); });
+  document.getElementById('bulk-clear').addEventListener('click', function(){
+    checkboxes.forEach(function(cb){ cb.checked = false; });
+    refresh();
+  });
+  deleteBtn.addEventListener('click', function(e){
+    var n = document.querySelectorAll('.q-select:checked').length;
+    if (!confirm('Supprimer ' + n + ' question(s) sélectionnée(s) ? Cette action est irréversible.')) {
+      e.preventDefault();
+    }
+  });
+})();
+
+(function(){
+  var input = document.getElementById('question-search');
+  var form = document.getElementById('question-filters');
+  var t = null;
+  input.addEventListener('input', function(){
+    clearTimeout(t);
+    t = setTimeout(function(){ form.submit(); }, 450);
+  });
+  if (input.value) {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+})();
+
 document.addEventListener('change', function(e){
   if (!e.target.classList.contains('kind-select')) return;
   var card = e.target.closest('.qcard');

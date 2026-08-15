@@ -67,15 +67,113 @@ l'entreprise, la participation reste gratuite.
 non) une case de **consentement marketing** explicite : l'entreprise est responsable de
 traitement de ses données first-party, MaxQuiz est le sous-traitant technique.
 
-**Tableau de bord client** sur `/e/slug/tableau-de-bord/` (protégé par code) :
-participations, taux de complétion, contacts consentants avec export CSV, taux de bonne
-réponse par question trié des produits **les moins maîtrisés** aux mieux connus (l'outil
-d'étude de marché), et répartition des réponses aux sondages.
+**Tableau de bord client** sur `/e/slug/tableau-de-bord/` (protégé par identifiant +
+mot de passe) : participants uniques et participations (avec la moyenne par
+participant, pour distinguer portée et engagement), taux de complétion, contacts
+consentants **rapportés au total de participants** (le consentement conditionne
+l'export avec numéro — sans ce contexte, le chiffre brut ne veut rien dire), export
+CSV, taux de bonne réponse par question trié des produits **les moins maîtrisés** aux
+mieux connus (l'outil d'étude de marché), et répartition des réponses aux sondages.
+Les résultats par catégorie (niveau, gamme de produits...) sont **repliés dans des
+accordions**, un par catégorie — utile dès qu'il y a plusieurs niveaux/matières à
+parcourir.
+
+Le classement « Meilleurs participants » s'adapte à la structure de l'espace : dès
+qu'il y a des **quiz distincts** (longueurs différentes), comparer la question
+atteinte n'a pas de sens d'un quiz à l'autre — le tableau de bord bascule alors sur un
+classement par **assiduité** (nombre de participations, comparable quel que soit le
+quiz), le score par quiz restant sur sa page de détail (`dashboard_quiz_detail`, avec
+le même repère en % qu'ailleurs sur le site plutôt qu'un numéro de question brut). Un
+espace à pool unique (sans quiz structuré, ex. Banque Horizon) garde le classement par
+score, puisque tout le monde y affronte le même jeu.
+
+**Connexion** : une page unique, `/tableau-de-bord/connexion/`, sert **tous** les
+établissements — pas besoin de distribuer une URL différente par client. L'identifiant
+(`Space.dashboard_username`) est **généré automatiquement à la création de l'espace**,
+volontairement distinct du slug d'URL (public, visible dans les liens `/e/slug/...` —
+un identifiant de connexion ne doit pas être devinable à partir d'une URL publique) ;
+le mot de passe (`Space.dashboard_code`) est créé par MQ Technologies dans l'admin
+Django. Les deux sont communiqués à l'établissement, qui peut ensuite changer son mot
+de passe lui-même depuis son tableau de bord (« 🔒 Mot de passe » dans le menu, ancien
+mot de passe requis pour confirmer), sans repasser par l'admin. Toute visite directe
+d'une page de tableau de bord sans session valide redirige vers cette connexion
+commune (avec retour automatique sur la page demandée une fois connecté), sans jamais
+révéler ni pré-remplir l'identifiant. Le menu propose aussi « 🚪 Déconnexion »
+(`dashboard_logout`), qui ne retire que la session de **ce** tableau de bord — sans
+affecter une éventuelle session élève active en parallèle dans le même navigateur.
+
+Une session élève et une session établissement peuvent être actives **en même temps
+dans le même navigateur** : elles vivent dans des clés de session distinctes
+(`player_id`/`verified_player_id` côté élève, `dash_<id espace>` côté établissement),
+sans interférence — se déconnecter de l'une n'affecte pas l'autre.
 
 **Démo commerciale incluse** : `python manage.py seed_demo_space` crée l'espace
-« Banque Horizon » (`/e/banque-horizon/`, tableau de bord avec le code `HORIZON2026`)
-avec 10 questions produits bancaires, 2 sondages et 40 participations simulées pour un
-tableau de bord immédiatement parlant en rendez-vous.
+« Banque Horizon » (`/e/banque-horizon/`, identifiant tableau de bord `HORIZON-ADMIN`,
+mot de passe `HORIZON2026`) avec 10 questions produits bancaires, 2 sondages et 40 participations
+simulées pour un tableau de bord immédiatement parlant en rendez-vous.
+
+### Performance et confort du tableau de bord à grande échelle
+
+Les pages Questions, Quiz, Catégories et Membres sont **paginées côté serveur** avec
+une **recherche fluide** (auto-soumission après une courte pause de frappe, focus
+restauré après chaque rechargement) — nécessaire dès qu'un espace accumule des
+centaines de questions, de quiz ou de membres, une liste à plat ne tiendrait pas la
+charge.
+
+Les pages Questions et Membres proposent aussi une **sélection multiple** : une case
+à cocher par carte (rattachée à un formulaire dédié via l'attribut HTML `form=`,
+sans imbriquer de formulaire dans un autre puisque chaque carte a déjà les siens),
+une barre d'actions groupées qui apparaît dès qu'au moins une carte est cochée
+(nombre sélectionné, tout désélectionner), et des actions par lot — activer/
+désactiver/supprimer plusieurs questions à la fois, supprimer plusieurs membres à la
+fois — chacune confirmée avant exécution vu leur caractère impactant (la suppression,
+elle, reste réversible — voir ci-dessous).
+
+### Suppression douce et journal d'activité
+
+Aucune action de suppression du tableau de bord établissement (catégorie,
+sous-catégorie, thématique, quiz, question, membre — individuelle ou en lot)
+**n'efface réellement une ligne en base**. `SoftDeleteManager` (le manager par défaut
+de ces six modèles) renseigne simplement `deleted_at` et filtre ces lignes de tout
+accès normal — y compris les relations inverses (`categorie.subcategories.all()`,
+`space.quizzes.all()`...), puisque Django utilise le manager par défaut du modèle
+pour celles-ci : aucun appel existant n'a eu besoin d'être modifié pour respecter ce
+filtre. Deux raisons à ce choix plutôt qu'un vrai `DELETE` :
+- **Robustesse** : la cascade réelle de Django (`on_delete=CASCADE`) sur ces modèles
+  aurait sinon effacé des données historiques (ex. supprimer une question détruit
+  ses réponses (`Answer`), supprimer une catégorie détruit ses sous-catégories et
+  thématiques) sans possibilité de retour en arrière ni de trace.
+- **Traçabilité** : chaque création/modification/activation/suppression est
+  journalisée (`AuditLog`, un enregistrement par objet même pour une action groupée)
+  et consultable sur `/e/slug/tableau-de-bord/journal/` — qui, quoi, quand, avec un
+  bouton « ♻️ Restaurer » en un clic sur toute entrée de suppression (l'objet étant
+  toujours en base, la restauration ne fait que vider `deleted_at`).
+
+Les contraintes d'unicité concernées (slug de catégorie/sous-catégorie/thématique/
+quiz, couple téléphone+licence d'un membre) sont **conditionnelles**
+(`UniqueConstraint(..., condition=Q(deleted_at__isnull=True))`) plutôt que globales :
+sans ça, recréer un élément avec le même nom après une suppression douce heurterait
+la ligne masquée mais toujours présente en base et ferait échouer l'enregistrement —
+exactement le genre de blocage que la suppression douce doit éviter. Vérifié en
+direct : supprimer puis recréer une catégorie ou un membre avec les mêmes
+identifiants fonctionne sans erreur.
+
+Limite connue, assumée par simplicité : la suppression cascade proprement (supprimer
+une catégorie masque aussi ses sous-catégories et thématiques, supprimer un quiz
+masque sa banque de questions dédiée), mais la **restauration ne cascade pas** —
+restaurer une catégorie ne restaure pas automatiquement ses sous-catégories, il faut
+les restaurer individuellement depuis le journal si besoin.
+
+Les calculs qui alimentent la vue d'ensemble et le détail d'un quiz (taux de bonne
+réponse par question, répartition des sondages, participations par quiz dans l'arbre
+catégorie/sous-catégorie) sont construits sur des **requêtes groupées** plutôt
+qu'une requête par question ou par quiz (évite le classique problème N+1) — un
+espace avec une grosse banque de questions ou beaucoup de quiz ne ralentit pas le
+chargement du tableau de bord.
+
+Chaque lien de quiz partageable (`/e/slug/tableau-de-bord/quiz/`) a un bouton
+« 📋 Copier » (presse-papiers du navigateur, repli sur la sélection de texte si
+indisponible) — plus besoin de sélectionner puis Ctrl+C à la main.
 
 Le jeu public MaxQuiz (défi du jour, cagnotte, jokers) reste inchangé et coexiste.
 
@@ -121,8 +219,8 @@ Catégories / Quiz :
   `/e/slug/tableau-de-bord/quiz/quiz-slug/`.
 
 **Démo commerciale école incluse** : `python manage.py seed_demo_school_space` crée
-l'espace « Collège La Réussite » (`/e/college-la-reussite/`, tableau de bord avec le
-code `REUSSITE2026`) avec 4 niveaux (6ème à 3ème) × 2 matières (Mathématiques,
+l'espace « Collège La Réussite » (`/e/college-la-reussite/`, identifiant tableau de
+bord `REUSSITE-ADMIN`, mot de passe `REUSSITE2026`) avec 4 niveaux (6ème à 3ème) × 2 matières (Mathématiques,
 Français) = 8 quiz avec lien direct (ex. `/e/college-la-reussite/q/5eme-mathematiques/`),
 plus un exemple de thématique (« Conjugaison » sous 6ème · Français, avec son
 propre quiz « Entraînement conjugaison » et ses questions dédiées), 40+ questions
@@ -231,9 +329,23 @@ un quiz partagé (sans espace), c'est l'admin qui active ce réglage, pas de
 tableau de bord établissement pour ce cas.
 
 Un établissement peut aussi faire correspondre les participants à sa propre base
-(élèves, employés…) : import CSV (`nom,telephone[,reference]`) depuis l'onglet
-« Membres » du tableau de bord, avec appariement automatique par téléphone — à
-l'import si le numéro a déjà joué, ou dès sa première participation sinon.
+(élèves, employés…) : import en masse depuis l'onglet « Membres » du tableau de
+bord, avec appariement automatique par téléphone — à l'import si le numéro a déjà
+joué, ou dès sa première participation sinon.
+
+**Modèle de fichier personnalisé** (`dashboard_members_template`, bouton
+« ⬇️ Télécharger le modèle » au-dessus du formulaire d'import) : un `.xlsx` généré à
+la volée avec les colonnes déjà aux libellés de l'espace (ex. « Niveau »/« Matière »
+pour une école), et des **listes déroulantes de vérification** sur les colonnes
+catégorie/sous-catégorie — une feuille « Catégories disponibles » liste toutes les
+paires valides et sert de source à ces listes, pour qu'on ne puisse pas taper une
+valeur qui ne matchera rien à l'import (faute de frappe, variante non reconnue).
+L'import accepte aussi bien ce `.xlsx` rempli que l'ancien format CSV
+(`nom,telephone,reference,categorie,sous_categorie` — seuls nom et téléphone sont
+obligatoires, les colonnes suivantes optionnelles, résolues par nom insensible à la
+casse). Le seul étage de complexité volontairement pas géré : la sous-catégorie
+n'est pas filtrée dynamiquement selon la catégorie choisie (pas de liste en cascade)
+— la feuille de référence reste la source de vérité à consulter en cas de doute.
 
 Chaque espace peut aussi définir un logo et une image de couverture (`logo_url`/
 `cover_url` dans l'admin) affichés en bannière façon page Facebook sur ses pages ;
@@ -251,6 +363,17 @@ concept vaut pour tout type d'établissement, pas seulement les écoles :
   établissement non scolaire où limiter les participants n'a pas de sens
   (ex. une banque en campagne d'engagement).
 
+Sur `/e/slug/tableau-de-bord/membres/`, le compteur de sièges ne porte que sur la
+licence **en cours** — la liste des membres s'y limite donc **par défaut** pour que
+ce chiffre reste traçable (« ce sont eux qui comptent dans les sièges ci-dessus »),
+avec un sélecteur pour basculer sur une période précédente, « sans licence » ou
+toutes les périodes ; la carte de chaque membre n'affiche sa période que quand la vue
+n'est pas déjà filtrée dessus, pour ne rien répéter inutilement. La liste est
+**paginée côté serveur** (30 par page) et une **recherche** (nom, téléphone,
+référence) filtre par requête serveur avec auto-soumission après une courte pause de
+frappe (debounce ~450 ms) plutôt qu'à chaque touche — nécessaire dès qu'il y a
+beaucoup de membres, un simple filtre côté client ne tiendrait pas la charge.
+
 Une licence est **optionnelle par espace** : sans licence active, un espace
 continue de fonctionner exactement comme avant, sans aucune limite.
 
@@ -258,7 +381,16 @@ Chaque adhésion (`Membership`) est rattachée à la licence active au moment de
 création — un même téléphone peut ainsi avoir **une ligne par période**, ce qui
 conserve l'historique d'une année sur l'autre (ex. 5ème en 2026-2027 puis 4ème en
 2027-2028) au lieu de l'écraser. Ce parcours est visible sur la fiche membre du
-tableau de bord et sur la page « Mes quiz » (`/compte/`) du joueur, qui affiche
+tableau de bord (`dashboard_member_detail`), qui reprend côté établissement les
+mêmes insights que la page « Mes quiz » du joueur : taux de réussite global, points
+forts/à travailler par matière puis par thématique (accordion, replié par défaut),
+quiz encore à faire pour ce membre (avec avertissement d'expiration de licence), et
+historique en accordion imbriqué — une ligne par quiz, avec % de réussite (ou
+FINALISTE) plutôt qu'un numéro de question brut, éligibilité à la récompense, et un
+lien direct vers la page de détail de ce quiz. Le tout construit sur les mêmes
+requêtes que côté joueur, juste reciblées sur ce membre précis.
+
+La page « Mes quiz » (`/compte/`) du joueur affiche
 aussi les **quiz assignés non encore joués** d'après la catégorie/sous-catégorie de
 **chacune** des adhésions du joueur dans cet établissement — licence en cours comme
 licences passées (ex. un quiz de 6ème non terminé reste proposé même une fois passé

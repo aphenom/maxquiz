@@ -51,7 +51,8 @@ class Command(BaseCommand):
             welcome="Testez vos connaissances sur nos produits et services, "
                     "donnez votre avis, et tentez de gagner des lots !",
             reward_text="10 000 F de crédit téléphonique pour les 3 meilleurs de la semaine",
-            dashboard_code="HORIZON2026", question_count=10, survey_every=4,
+            dashboard_username="HORIZON-ADMIN", dashboard_code="HORIZON2026",
+            question_count=10, survey_every=4,
             elimination=False))
 
         License.objects.get_or_create(space=space, period_label="2026", defaults=dict(
@@ -103,5 +104,6 @@ class Command(BaseCommand):
                 sess.save()
         self.stdout.write(self.style.SUCCESS(
             f"Espace « {space.name} » prêt : /e/{space.slug}/ · "
-            f"tableau de bord : /e/{space.slug}/tableau-de-bord/ (code {space.dashboard_code}) · "
+            f"tableau de bord : /tableau-de-bord/connexion/ (identifiant {space.dashboard_username}, "
+            f"mot de passe {space.dashboard_code}) · "
             f"{GameSession.objects.filter(space=space).count()} participations simulées."))

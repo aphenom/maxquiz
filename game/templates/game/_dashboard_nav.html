@@ -6,6 +6,8 @@
     {% elif active == "quizzes" %}📝 Quiz
     {% elif active == "questions" %}❓ Questions
     {% elif active == "members" %}🪪 Membres
+    {% elif active == "password" %}🔒 Mot de passe
+    {% elif active == "journal" %}📜 Journal
     {% endif %} ▾
   </button>
   <div class="dash-nav-menu" id="dash-nav-menu">
@@ -14,6 +16,9 @@
     <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
     <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
     <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">🪪 Membres</a>
+    <a href="{% url 'dashboard_audit_log' space.slug %}" class="chip {% if active == 'journal' %}orange{% endif %}">📜 Journal</a>
+    <a href="{% url 'dashboard_change_password' space.slug %}" class="chip {% if active == 'password' %}orange{% endif %}">🔒 Mot de passe</a>
+    <a href="{% url 'dashboard_logout' space.slug %}" class="chip rouge">🚪 Déconnexion</a>
   </div>
 </nav>
 <script>

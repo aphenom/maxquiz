@@ -12,9 +12,15 @@
 {% include "game/_dashboard_nav.html" with active="categories" %}
 <a href="#add-form" class="dash-fab" aria-label="Ajouter : {{ space.category_label|lower }}">+</a>
 
+<form method="get" id="category-filters" class="card" style="margin-top:8px">
+  <label class="small" style="font-weight:700;display:block;margin-bottom:4px">🔎 Rechercher : {{ space.category_label|lower }}</label>
+  <input type="text" name="q" value="{{ q }}" placeholder="{{ space.category_label }}…" id="category-search">
+</form>
+<p class="small" style="margin:8px 0 0">{{ total_matching }} {{ space.category_label_plural|lower }}{% if q %} pour « {{ q }} »{% endif %}.</p>
+
 <div class="dash-split" style="margin-top:8px">
   <div class="dash-grid">
-    {% for c in categories %}
+    {% for c in page_obj %}
     <div class="card" style="padding:14px">
       <form method="post" style="display:flex;gap:6px;align-items:center"
             onsubmit="return confirm('Renommer « {{ c.name }} » ? Le nom est visible par tous les participants.');">
@@ -90,8 +96,20 @@
       </form>
     </div>
     {% empty %}
-    <p class="small">Pas encore de {{ space.category_label|lower }} — utilise le formulaire ci-contre.</p>
+    <p class="small">{% if q %}Aucun {{ space.category_label|lower }} ne correspond à cette recherche.{% else %}Pas encore de {{ space.category_label|lower }} — utilise le formulaire ci-contre.{% endif %}</p>
     {% endfor %}
+
+    {% if page_obj.has_other_pages %}
+    <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:6px">
+      {% if page_obj.has_previous %}
+      <a class="chip" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">← Précédent</a>
+      {% endif %}
+      <span class="small">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+      <a class="chip" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">Suivant →</a>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 
   <details class="dash-accordion" id="add-form">
@@ -111,4 +129,21 @@
     </div>
   </details>
 </div>
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  var input = document.getElementById('category-search');
+  var form = document.getElementById('category-filters');
+  var t = null;
+  input.addEventListener('input', function(){
+    clearTimeout(t);
+    t = setTimeout(function(){ form.submit(); }, 450);
+  });
+  if (input.value) {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+})();
+</script>
 {% endblock %}

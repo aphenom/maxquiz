@@ -1,5 +1,20 @@
+import random
+
 from django.db import models
 from django.utils import timezone
+
+
+class SoftDeleteManager(models.Manager):
+    """Manager par défaut d'un modèle « suppression douce » : exclut les lignes
+    marquées supprimées (deleted_at renseigné) de tout accès normal — y compris
+    les relations inverses (ex. category.subcategories.all()), Django utilisant
+    le manager par défaut du modèle pour celles-ci. Rien n'est donc jamais
+    réellement effacé par les actions du tableau de bord établissement : la
+    ligne reste en base, récupérable (voir AuditLog et la restauration), juste
+    filtrée de l'affichage normal. Utiliser `all_objects` pour tout voir
+    (administration, audit, restauration)."""
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
 
 
 class GameConfig(models.Model):
@@ -89,6 +104,10 @@ class Question(models.Model):
     correct = models.PositiveSmallIntegerField("Bonne réponse (0-3)")
     explanation = models.TextField("Explication", blank=True, default="")
     active = models.BooleanField("Active", default=True)
+    deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = "Question"
@@ -199,10 +218,29 @@ class Withdrawal(models.Model):
 REWARD_TYPES = [("monetaire", "Monétaire"), ("nature", "En nature"), ("autre", "Autre")]
 
 
+def _generate_dashboard_username():
+    """Identifiant de connexion au tableau de bord, généré à la création de
+    l'espace — volontairement distinct du slug (public, utilisé dans les
+    liens `/e/slug/...`) : un identifiant de connexion ne doit pas être
+    devinable à partir d'une URL publique. Alphabet sans caractères ambigus
+    à l'oral/à l'écrit (pas de 0/O ni de 1/I/l)."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    while True:
+        candidate = "".join(random.choices(alphabet, k=8))
+        if not Space.objects.filter(dashboard_username=candidate).exists():
+            return candidate
+
+
 class Space(models.Model):
     """Espace cloisonné d'une entreprise cliente (multi-tenant)."""
     name = models.CharField("Nom de l'entreprise", max_length=80)
     slug = models.SlugField("Identifiant d'URL", unique=True)
+    dashboard_username = models.CharField(
+        "Identifiant du tableau de bord", max_length=30, unique=True,
+        default=_generate_dashboard_username,
+        help_text="Généré automatiquement à la création, distinct du slug d'URL — modifiable si besoin. "
+                  "Avec le mot de passe ci-dessous, sert à se connecter sur la page de connexion commune "
+                  "à tous les établissements.")
     emoji = models.CharField("Logo (emoji/texte)", max_length=10, default="🏢")
     color_primary = models.CharField("Couleur principale", max_length=9, default="#F2790F")
     color_accent = models.CharField("Couleur secondaire", max_length=9, default="#0B9A5C")
@@ -213,7 +251,11 @@ class Space(models.Model):
                                    blank=True, default="")
     access_code = models.CharField("Code d'accès joueurs (vide = lien public)",
                                    max_length=20, blank=True, default="")
-    dashboard_code = models.CharField("Code d'accès au tableau de bord client", max_length=20)
+    dashboard_code = models.CharField(
+        "Mot de passe du tableau de bord", max_length=20,
+        help_text="Avec l'identifiant du tableau de bord ci-dessus, sert à se connecter sur la page de "
+                  "connexion commune à tous les établissements. Modifiable ensuite par l'établissement "
+                  "lui-même depuis son tableau de bord (l'ancien mot de passe lui sera demandé).")
     question_count = models.PositiveSmallIntegerField("Questions par partie", default=10)
     survey_every = models.PositiveSmallIntegerField("Un sondage toutes les N questions (0 = jamais)", default=4)
     elimination = models.BooleanField("Mode survie (élimination)", default=False)
@@ -303,10 +345,18 @@ class Membership(models.Model):
     external_ref = models.CharField("Référence externe (matricule...)", max_length=60, blank=True, default="")
     matched_at = models.DateTimeField("Apparié le", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField("Supprimé le", null=True, blank=True, default=None)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = "Membre de l'espace"
-        unique_together = [("space", "phone", "license")]
+        constraints = [
+            models.UniqueConstraint(fields=["space", "phone", "license"],
+                                    condition=models.Q(deleted_at__isnull=True),
+                                    name="unique_active_membership"),
+        ]
 
     def __str__(self):
         return f"{self.space} · {self.full_name}"
@@ -333,12 +383,19 @@ class Category(models.Model):
     name = models.CharField("Nom", max_length=80)
     slug = models.SlugField("Identifiant d'URL", max_length=60)
     order = models.PositiveSmallIntegerField("Ordre", default=0)
+    deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = "Catégorie"
         verbose_name_plural = "Catégories"
-        unique_together = [("space", "slug")]
         ordering = ["order", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["space", "slug"], condition=models.Q(deleted_at__isnull=True),
+                                    name="unique_active_category_slug"),
+        ]
 
     def __str__(self):
         return f"{self.space} · {self.name}"
@@ -350,12 +407,19 @@ class SubCategory(models.Model):
     name = models.CharField("Nom", max_length=80)
     slug = models.SlugField("Identifiant d'URL", max_length=60)
     order = models.PositiveSmallIntegerField("Ordre", default=0)
+    deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = "Sous-catégorie"
         verbose_name_plural = "Sous-catégories"
-        unique_together = [("category", "slug")]
         ordering = ["order", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["category", "slug"], condition=models.Q(deleted_at__isnull=True),
+                                    name="unique_active_subcategory_slug"),
+        ]
 
     def __str__(self):
         return f"{self.category.name} · {self.name}"
@@ -367,12 +431,19 @@ class Theme(models.Model):
     name = models.CharField("Nom", max_length=80)
     slug = models.SlugField("Identifiant d'URL", max_length=60)
     order = models.PositiveSmallIntegerField("Ordre", default=0)
+    deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = "Thématique"
         verbose_name_plural = "Thématiques"
-        unique_together = [("sub_category", "slug")]
         ordering = ["order", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["sub_category", "slug"], condition=models.Q(deleted_at__isnull=True),
+                                    name="unique_active_theme_slug"),
+        ]
 
     def __str__(self):
         return f"{self.sub_category} · {self.name}"
@@ -425,16 +496,22 @@ class Quiz(models.Model):
                                    blank=True, default="")
     active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField("Supprimé le", null=True, blank=True, default=None)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = "Quiz"
         verbose_name_plural = "Quiz"
-        unique_together = [("space", "slug")]
+        ordering = ["category__order", "sub_category__order", "name"]
         constraints = [
-            models.UniqueConstraint(fields=["slug"], condition=models.Q(space__isnull=True),
+            models.UniqueConstraint(fields=["space", "slug"], condition=models.Q(deleted_at__isnull=True),
+                                    name="unique_active_quiz_slug"),
+            models.UniqueConstraint(fields=["slug"],
+                                    condition=models.Q(space__isnull=True, deleted_at__isnull=True),
                                     name="unique_global_quiz_slug"),
         ]
-        ordering = ["category__order", "sub_category__order", "name"]
 
     def __str__(self):
         if self.space_id:
@@ -450,3 +527,38 @@ class Quiz(models.Model):
     def subject_name(self):
         """Nom de la matière, même logique que level_name()."""
         return self.sub_category.name if self.sub_category_id else self.shared_subject_name
+
+
+class AuditLog(models.Model):
+    """Journal d'activité du tableau de bord établissement : trace chaque
+    création/modification/suppression pour qu'on puisse toujours remonter à ce
+    qui a été fait, quand, et pourquoi un élément a disparu de l'affichage
+    (suppression douce — voir SoftDeleteManager, rien n'est réellement effacé).
+    Une entrée « delete »/« bulk_delete » peut être annulée (restauration) tant
+    que l'objet visé existe toujours en base (ce qui est garanti par le
+    principe même de la suppression douce)."""
+    ACTIONS = [
+        ("create", "Création"), ("update", "Modification"),
+        ("toggle", "Activation/désactivation"),
+        ("delete", "Suppression"), ("bulk_delete", "Suppression groupée"),
+        ("restore", "Restauration"),
+    ]
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="audit_logs")
+    actor = models.CharField(
+        "Auteur", max_length=60, blank=True, default="",
+        help_text="Identifiant du tableau de bord ayant effectué l'action (pas de comptes "
+                  "individuels par employé à ce stade — un seul identifiant par établissement).")
+    action = models.CharField("Action", max_length=15, choices=ACTIONS)
+    model_name = models.CharField("Type d'objet", max_length=40)
+    object_id = models.PositiveIntegerField("Identifiant de l'objet", null=True, blank=True)
+    object_repr = models.CharField("Aperçu", max_length=200, blank=True, default="")
+    details = models.CharField("Détails", max_length=300, blank=True, default="")
+    created_at = models.DateTimeField("Date", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Entrée du journal d'activité"
+        verbose_name_plural = "Journal d'activité"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.created_at:%d/%m/%Y %H:%M} · {self.get_action_display()} · {self.model_name} · {self.object_repr}"

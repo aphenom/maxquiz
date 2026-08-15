@@ -17,19 +17,25 @@
 {% include "game/_dashboard_nav.html" with active="overview" %}
 
 <div style="display:flex;gap:8px;margin-top:14px" class="stagger">
-  <div class="kpi"><b>{{ total }}</b><span class="small">participations</span></div>
+  <div class="kpi"><b>{{ unique_participants }}</b><span class="small">participants uniques</span></div>
+  <div class="kpi"><b>{{ total }}</b><span class="small">participations{% if avg_participation %} ({{ avg_participation }}/participant){% endif %}</span></div>
   <div class="kpi"><b>{{ completion }}%</b><span class="small">complétion</span></div>
-  <div class="kpi"><b>{{ consented }}</b><span class="small">contacts consentants</span></div>
 </div>
+<p class="small" style="margin-top:10px">
+  <strong>{{ consented }}</strong> contact{{ consented|pluralize }} sur {{ unique_participants }} ont accepté d'être
+  recontactés (case de consentement) — ce sont les seuls exportés ci-dessous avec leur numéro.</p>
 <a class="btn vert" href="?export=contacts" style="margin-top:10px;width:auto;display:inline-block;padding:12px 20px">⬇️ Exporter les contacts (CSV)</a>
 
 {% if tree or orphan_rows %}
 <h2 style="font-size:18px;margin:22px 0 4px">🗂️ Résultats par {{ space.category_label|lower }} / quiz</h2>
-<p class="small" style="margin:0 0 10px">Participations et complétion, jusqu'au détail de chaque quiz.</p>
+<p class="small" style="margin:0 0 10px">Participations et complétion, jusqu'au détail de chaque quiz —
+  {{ space.category_label_plural|default:"catégories"|lower }} repliées, cliquez pour déplier.</p>
 <div class="dash-grid">
 {% for c in tree %}
-<div class="card" style="margin-bottom:8px;padding:12px 14px">
-  <p style="margin:0 0 6px;font-weight:800">{{ c.category.name }} <span class="small" style="font-weight:400">· {{ c.total }} participation{{ c.total|pluralize }}</span></p>
+<details class="dash-accordion" style="margin-bottom:8px">
+  <summary style="padding:12px 14px;font-weight:800">{{ c.category.name }}
+    <span class="small" style="font-weight:400">· {{ c.total }} participation{{ c.total|pluralize }}</span></summary>
+  <div class="accordion-body">
   {% for s in c.subs %}
   <p class="small" style="margin:8px 0 2px;font-weight:700">{{ s.sub.name }} · {{ s.total }} participation{{ s.total|pluralize }}</p>
   {% for r in s.rows %}
@@ -45,16 +51,23 @@
     <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
   </a>
   {% endfor %}
-</div>
+  </div>
+</details>
 {% endfor %}
-{% for r in orphan_rows %}
-<div class="card" style="margin-bottom:8px;padding:12px 14px">
-  <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit">
-    <span style="font-weight:600;font-size:14px">{{ r.quiz.name }}{% if r.quiz.theme %} · {{ r.quiz.theme.name }}{% endif %}</span>
+{% if orphan_rows %}
+<details class="dash-accordion" style="margin-bottom:8px">
+  <summary style="padding:12px 14px;font-weight:800">Sans {{ space.category_label|lower }}
+    <span class="small" style="font-weight:400">· {{ orphan_rows|length }} quiz</span></summary>
+  <div class="accordion-body">
+  {% for r in orphan_rows %}
+  <a href="{% url 'dashboard_quiz_detail' space.slug r.quiz.slug %}" style="display:flex;justify-content:space-between;text-decoration:none;color:inherit;padding:4px 0">
+    <span class="small">{{ r.quiz.name }}{% if r.quiz.theme %} · {{ r.quiz.theme.name }}{% endif %}</span>
     <span class="small" style="font-weight:700;color:var(--orange)">{{ r.total }} · {{ r.completion }}%</span>
   </a>
-</div>
-{% endfor %}
+  {% endfor %}
+  </div>
+</details>
+{% endif %}
 </div>
 {% endif %}
 
@@ -84,14 +97,33 @@ c'est là que votre communication a le plus d'impact.</p>
 {% empty %}<p class="small">Pas encore de sondage actif.</p>{% endfor %}
 </div>
 
-<h2 style="font-size:18px;margin:22px 0 4px">🏅 Meilleurs participants</h2>
+{% if top_mode == "active" %}
+<h2 style="font-size:18px;margin:22px 0 4px">🏃 Participants les plus assidus</h2>
+<p class="small" style="margin:0 0 10px">Classés par nombre de participations, tous quiz confondus — comparer un
+  score entre des quiz de longueurs différentes n'aurait pas de sens ; le classement par score de chaque quiz
+  est sur sa page de détail.</p>
 {% for s in top %}
 <div class="card" style="display:flex;justify-content:space-between;margin-bottom:6px;padding:10px 14px">
   <span style="font-weight:700">{{ forloop.counter }}. {{ s.player.pseudo }}
     {% if s.consent %}<span class="small">📞 {{ s.player.phone|default:"—" }}</span>{% endif %}</span>
-  <span style="font-weight:800;color:var(--orange)">Q{{ s.reached }}</span>
+  <span style="font-weight:800;color:var(--orange)">{{ s.n }} participation{{ s.n|pluralize }}</span>
 </div>
-{% endfor %}
+{% empty %}<p class="small">Pas encore de participation.</p>{% endfor %}
+{% else %}
+<h2 style="font-size:18px;margin:22px 0 4px">🏅 Meilleurs participants</h2>
+{% for s in top %}
+<div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:10px 14px">
+  <span>
+    <span style="font-weight:700">{{ forloop.counter }}. {{ s.player.pseudo }}
+      {% if s.consent %}<span class="small">📞 {{ s.player.phone|default:"—" }}</span>{% endif %}</span><br>
+    {% if s.status != "finished" %}<span class="small">Éliminé à la question {{ s.reached }}</span>{% endif %}
+    {% if s.pct is not None %}<span class="small">{{ s.pct }}% de bonnes réponses</span>{% endif %}
+  </span>
+  <span style="font-weight:800;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
+    {% if s.status == "finished" %}FINALISTE{% else %}Q{{ s.reached }}{% endif %}</span>
+</div>
+{% empty %}<p class="small">Pas encore de participation.</p>{% endfor %}
+{% endif %}
 <p class="small" style="margin-top:16px;text-align:center">Seuls les contacts ayant coché la case de
 consentement apparaissent avec leur numéro et dans l'export CSV.</p>
 {% endblock %}

@@ -12,9 +12,15 @@
 {% include "game/_dashboard_nav.html" with active="quizzes" %}
 <a href="#add-form" class="dash-fab" aria-label="Ajouter un quiz">+</a>
 
+<form method="get" id="quiz-filters" class="card" style="margin-top:8px">
+  <label class="small" style="font-weight:700;display:block;margin-bottom:4px">🔎 Rechercher un quiz</label>
+  <input type="text" name="q" value="{{ q }}" placeholder="Nom du quiz…" id="quiz-search">
+</form>
+<p class="small" style="margin:8px 0 0">{{ total_matching }} quiz{{ total_matching|pluralize }}{% if q %} pour « {{ q }} »{% endif %}.</p>
+
 <div class="dash-split" style="margin-top:8px">
   <div class="dash-grid">
-    {% for q in quizzes %}
+    {% for q in page_obj %}
     <div class="card" style="padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div>
@@ -29,8 +35,9 @@
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;align-items:center">
         <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'quiz_home' space.slug q.slug %}"
-               style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid var(--sable);font-size:12px;background:var(--ivoire)"
+               class="quiz-link" style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid var(--sable);font-size:12px;background:var(--ivoire)"
                onclick="this.select()">
+        <button type="button" class="chip copy-link-btn" style="white-space:nowrap">📋 Copier</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <form method="post" onsubmit="return confirm('{% if q.active %}Désactiver{% else %}Réactiver{% endif %} le quiz « {{ q.name }} » ?');">
@@ -48,8 +55,20 @@
       </div>
     </div>
     {% empty %}
-    <p class="small">Aucun quiz pour l'instant — crée le premier ci-contre.</p>
+    <p class="small">{% if q %}Aucun quiz ne correspond à cette recherche.{% else %}Aucun quiz pour l'instant — crée le premier ci-contre.{% endif %}</p>
     {% endfor %}
+
+    {% if page_obj.has_other_pages %}
+    <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:6px">
+      {% if page_obj.has_previous %}
+      <a class="chip" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">← Précédent</a>
+      {% endif %}
+      <span class="small">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+      <a class="chip" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">Suivant →</a>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 
   <details class="dash-accordion" id="add-form">
@@ -121,6 +140,35 @@
 {% endblock %}
 {% block js %}
 <script>
+(function(){
+  var input = document.getElementById('quiz-search');
+  var form = document.getElementById('quiz-filters');
+  var t = null;
+  input.addEventListener('input', function(){
+    clearTimeout(t);
+    t = setTimeout(function(){ form.submit(); }, 450);
+  });
+  if (input.value) {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+})();
+
+document.querySelectorAll('.copy-link-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var input = btn.previousElementSibling;
+    var reset = function(label, ms){ setTimeout(function(){ btn.textContent = '📋 Copier'; }, ms); };
+    var done = function(){ btn.textContent = '✅ Copié'; reset(null, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(input.value).then(done, function(){
+        input.select(); document.execCommand('copy'); done();
+      });
+    } else {
+      input.select(); document.execCommand('copy'); done();
+    }
+  });
+});
+
 (function(){
   var catSel = document.getElementById('cat-select');
   var subSel = document.getElementById('sub-select');

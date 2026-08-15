@@ -145,7 +145,8 @@ class Command(BaseCommand):
             color_primary="#0B9A5C", color_accent="#F2790F",
             welcome="Teste tes connaissances par niveau et par matière, et défie tes camarades !",
             reward_text="Un diplôme numérique et des bons points pour les meilleurs de chaque quiz",
-            dashboard_code="REUSSITE2026", question_count=5, survey_every=5,
+            dashboard_username="REUSSITE-ADMIN", dashboard_code="REUSSITE2026",
+            question_count=5, survey_every=5,
             elimination=False, category_label="Niveau", category_label_plural="Niveaux",
             subcategory_label="Matière", subcategory_label_plural="Matières",
             consent_required=False))
@@ -226,6 +227,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             f"Espace « {space.name} » prêt : /e/{space.slug}/ · "
-            f"tableau de bord : /e/{space.slug}/tableau-de-bord/ (code {space.dashboard_code}) · "
+            f"tableau de bord : /tableau-de-bord/connexion/ (identifiant {space.dashboard_username}, "
+            f"mot de passe {space.dashboard_code}) · "
             f"{Quiz.objects.filter(space=space).count()} quiz · "
             f"{GameSession.objects.filter(space=space).count()} participations simulées."))
