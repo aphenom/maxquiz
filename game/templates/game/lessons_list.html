@@ -13,7 +13,7 @@
   {% for c in g.chapters %}
   <p class="small" style="margin:10px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">{{ c.name }}</p>
   {% for l in c.lessons %}
-  <a class="card les" href="{% url 'lesson_detail' space.slug l.id %}">
+  <a class="card les reveal" href="{% url 'lesson_detail' space.slug l.id %}">
     <span style="width:40px;height:40px;border-radius:10px;background:var(--sable);display:flex;align-items:center;justify-content:center;flex-shrink:0">
       {% if l.video_id %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
       {% else %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>{% endif %}

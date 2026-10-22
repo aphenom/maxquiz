@@ -2,7 +2,8 @@
 {% block title %}{{ s.title }} — {{ space.name }}{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
-.plan{display:flex;gap:10px;align-items:center;padding:12px 14px;margin-bottom:8px;cursor:pointer}.plan input{width:auto;margin:0}</style>
+.plan{display:flex;gap:10px;align-items:center;padding:12px 14px;margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:border-color .15s ease,transform .2s cubic-bezier(.34,1.56,.64,1)}
+.plan:has(input:checked){border-color:var(--vert);transform:scale(1.02)}.plan input{width:auto;margin:0}</style>
 <div class="stagger">
   <p class="small" style="margin:8px 0 0"><a href="{% url 'sessions_list' space.slug %}">← Séances</a></p>
   <h1 style="font-size:24px;margin:8px 0 2px">{{ s.title }}</h1>
@@ -12,7 +13,7 @@
   {% if s.description %}<div class="card" style="margin-top:12px"><p style="margin:0;white-space:pre-line">{{ s.description }}</p></div>{% endif %}
 
   {% if rights.live_open %}
-    <p style="margin:14px 0 8px;font-weight:800;color:var(--rouge)">● En direct</p>
+    <p style="margin:14px 0 8px;font-weight:800;color:var(--rouge);display:flex;align-items:center;gap:8px"><span class="live-dot"></span>En direct</p>
     {% if s.provider == "youtube" and s.live_video_id %}
       {% include "game/_yt.html" with vid=s.live_video_id title=s.title %}
       <iframe src="https://www.youtube.com/live_chat?v={{ s.live_video_id }}&embed_domain={{ chat_domain }}" title="Questions en direct"

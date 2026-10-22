@@ -484,3 +484,40 @@ class LearningTests(TestCase):
         r = self.client.get(reverse("session_detail", args=[self.space.slug, s.id]))
         self.assertContains(r, f"https://meet.jit.si/{s.jitsi_room}")
         self.assertContains(r, "Kouassi%20Aya")
+
+
+class SmokeTests(TestCase):
+    """Les pages principales s'affichent, avec ou sans école, connecté ou non."""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.school = Space.objects.create(name="Collège", slug="college", dashboard_code="secret123",
+                                           members_only=True, subscription_required=True, consent_required=False)
+        self.biz = Space.objects.create(name="Banque", slug="banque", dashboard_code="secret456")
+        lic = License.objects.create(space=self.school, period_label="2026-2027", seat_count=10,
+                                     start_date=self.today, end_date=self.today + timedelta(days=200))
+        cat = Category.objects.create(space=self.school, name="3ème", slug="3eme")
+        self.player = Player.objects.create(pseudo="Aya", phone="0707070707")
+        Membership.objects.create(space=self.school, license=lic, full_name="Kouassi Aya", phone="0707070707",
+                                  external_ref="M1", category=cat, player=self.player)
+
+    def test_public_and_student_pages(self):
+        for url in ("/", "/classement/", "/e/college/", "/e/college/connexion-eleve/", "/e/banque/"):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        s = self.client.session
+        s["player_id"] = s["verified_player_id"] = self.player.id
+        s.save()
+        for url in ("/compte/", "/e/college/", "/e/college/cours/", "/e/college/seances/", "/e/college/abonnement/"):
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+        self.assertContains(self.client.get("/compte/"), "Navigation élève")   # barre élève aussi sur le compte
+
+    def test_dashboard_menu_fits_the_client(self):
+        for space, school in ((self.school, True), (self.biz, False)):
+            s = self.client.session
+            s[f"dash_{space.id}"] = space.dashboard_code
+            s.save()
+            r = self.client.get(f"/e/{space.slug}/tableau-de-bord/")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual("Codes PIN" in r.content.decode(), school)
+            self.assertEqual("À traiter" in r.content.decode(), school)

@@ -1,56 +1,65 @@
-<nav class="dash-burger-bar">
+{% comment %}Menu du tableau de bord, regroupé par usage. Les rubriques propres
+à l'offre école (élèves, contenu pédagogique, séances, abonnements) n'apparaissent
+que pour une école ; un client entreprise ne voit que ce qui le concerne.{% endcomment %}
+{% with school=space.members_only %}
+<nav class="dash-burger-bar" aria-label="Menu du tableau de bord">
   <button type="button" class="chip orange dash-burger" id="dash-nav-toggle"
           aria-expanded="false" aria-controls="dash-nav-menu">
-    {% if active == "overview" %}📊 Vue d'ensemble
-    {% elif active == "categories" %}🗂️ {{ space.category_label_plural }}
-    {% elif active == "quizzes" %}📝 Quiz
-    {% elif active == "questions" %}❓ Questions
-    {% elif active == "members" %}🪪 Membres
-    {% elif active == "subscriptions" %}💳 Abonnements
-    {% elif active == "shares" %}🤝 Reversements
-    {% elif active == "team" %}👩‍🏫 Équipe
-    {% elif active == "resources" %}📚 Ressources
-    {% elif active == "pins" %}🔑 Codes PIN
-    {% elif active == "reports" %}📨 Bilans parents
-    {% elif active == "lessons" %}📘 Cours
-    {% elif active == "sessions" %}🎥 Séances
-    {% elif active == "password" %}🔒 Mot de passe
-    {% elif active == "journal" %}📜 Journal
-    {% endif %} ▾
+    {% if active == "overview" %}Accueil
+    {% elif active == "members" %}Élèves{% elif active == "pins" %}Codes PIN{% elif active == "reports" %}Bilans parents
+    {% elif active == "quizzes" %}Quiz{% elif active == "questions" %}Questions{% elif active == "categories" %}{{ space.category_label_plural }}
+    {% elif active == "resources" %}Exercices des profs{% elif active == "lessons" %}Cours
+    {% elif active == "sessions" %}Séances{% elif active == "subscriptions" %}Abonnements{% elif active == "shares" %}Reversements
+    {% elif active == "team" %}Équipe{% elif active == "journal" %}Journal{% elif active == "password" %}Mot de passe
+    {% endif %}
+    <svg class="burger-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
   </button>
   <div class="dash-nav-menu" id="dash-nav-menu">
-    <a href="{% url 'space_dashboard' space.slug %}" class="chip {% if active == 'overview' %}orange{% endif %}">📊 Vue d'ensemble</a>
-    <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">🗂️ {{ space.category_label_plural }}</a>
-    <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
-    <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
-    <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">🪪 Membres</a>
-    <a href="{% url 'dashboard_team' space.slug %}" class="chip {% if active == 'team' %}orange{% endif %}">👩‍🏫 Équipe</a>
-    <a href="{% url 'school_resources' space.slug %}" class="chip {% if active == 'resources' %}orange{% endif %}">📚 Ressources</a>
-    <a href="{% url 'staff_lessons' space.slug %}" class="chip {% if active == 'lessons' %}orange{% endif %}">📘 Cours</a>
-    <a href="{% url 'dashboard_sessions' space.slug %}" class="chip {% if active == 'sessions' %}orange{% endif %}">🎥 Séances</a>
-    <a href="{% url 'dashboard_pins' space.slug %}" class="chip {% if active == 'pins' %}orange{% endif %}">🔑 Codes PIN</a>
-    <a href="{% url 'dashboard_reports' space.slug %}" class="chip {% if active == 'reports' %}orange{% endif %}">📨 Bilans parents</a>
-    {% if space.subscription_required %}<a href="{% url 'dashboard_subscriptions' space.slug %}" class="chip {% if active == 'subscriptions' %}orange{% endif %}">💳 Abonnements</a>
-    <a href="{% url 'dashboard_shares' space.slug %}" class="chip {% if active == 'shares' %}orange{% endif %}">🤝 Reversements</a>{% endif %}
-    <a href="{% url 'dashboard_audit_log' space.slug %}" class="chip {% if active == 'journal' %}orange{% endif %}">📜 Journal</a>
-    <a href="{% url 'dashboard_change_password' space.slug %}" class="chip {% if active == 'password' %}orange{% endif %}">🔒 Mot de passe</a>
-    <a href="{% url 'dashboard_logout' space.slug %}" class="chip rouge">🚪 Déconnexion</a>
+    <a href="{% url 'space_dashboard' space.slug %}" class="chip {% if active == 'overview' %}orange{% endif %}">Accueil</a>
+    {% if school %}
+    <p class="nav-group">Élèves</p>
+    <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">Liste des élèves</a>
+    <a href="{% url 'dashboard_pins' space.slug %}" class="chip {% if active == 'pins' %}orange{% endif %}">Codes PIN</a>
+    <a href="{% url 'dashboard_reports' space.slug %}" class="chip {% if active == 'reports' %}orange{% endif %}">Bilans parents</a>
+    <p class="nav-group">Contenu</p>
+    <a href="{% url 'staff_lessons' space.slug %}" class="chip {% if active == 'lessons' %}orange{% endif %}">Cours</a>
+    <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">Quiz</a>
+    <a href="{% url 'school_resources' space.slug %}" class="chip {% if active == 'resources' %}orange{% endif %}">Exercices des profs</a>
+    <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">{{ space.category_label_plural }} et matières</a>
+    <p class="nav-group">Séances et paiements</p>
+    <a href="{% url 'dashboard_sessions' space.slug %}" class="chip {% if active == 'sessions' %}orange{% endif %}">Séances</a>
+    {% if space.subscription_required %}
+    <a href="{% url 'dashboard_subscriptions' space.slug %}" class="chip {% if active == 'subscriptions' %}orange{% endif %}">Abonnements</a>
+    <a href="{% url 'dashboard_shares' space.slug %}" class="chip {% if active == 'shares' %}orange{% endif %}">Reversements</a>
+    {% endif %}
+    <p class="nav-group">Réglages</p>
+    <a href="{% url 'dashboard_team' space.slug %}" class="chip {% if active == 'team' %}orange{% endif %}">Équipe</a>
+    {% else %}
+    <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">Quiz</a>
+    <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">Questions</a>
+    <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">{{ space.category_label_plural }}</a>
+    <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">Membres</a>
+    <p class="nav-group">Réglages</p>
+    {% endif %}
+    <a href="{% url 'dashboard_audit_log' space.slug %}" class="chip {% if active == 'journal' %}orange{% endif %}">Journal</a>
+    <a href="{% url 'dashboard_change_password' space.slug %}" class="chip {% if active == 'password' %}orange{% endif %}">Mot de passe</a>
+    <a href="{% url 'dashboard_logout' space.slug %}" class="chip rouge">Déconnexion</a>
   </div>
 </nav>
+{% endwith %}
 <script>
 (function(){
   var btn = document.getElementById('dash-nav-toggle');
   var menu = document.getElementById('dash-nav-menu');
+  function close(){ menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
   btn.addEventListener('click', function(e){
     e.stopPropagation();
     var open = menu.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
   document.addEventListener('click', function(e){
-    if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) {
-      menu.classList.remove('open');
-      btn.setAttribute('aria-expanded', 'false');
-    }
+    if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) close();
   });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && menu.classList.contains('open')) { close(); btn.focus(); } });
 })();
 </script>

@@ -1,21 +1,42 @@
 {% extends "game/base.html" %}
 {% block title %}{{ space.name }} — Connexion élève{% endblock %}
 {% block content %}
-<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.pin-input{font-size:22px;letter-spacing:10px;text-align:center}
+.pin-dots{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.pin-dots i{width:10px;height:10px;border-radius:50%;background:var(--sable);transition:background .15s ease,transform .25s cubic-bezier(.34,1.56,.64,1)}
+.pin-dots i.on{background:var(--vert);transform:scale(1.3)}
+.shake{animation:shake .45s}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+</style>
 {% include "game/_space_banner.html" with subtitle="Connexion élève" %}
 <div class="stagger">
-  {% if error %}<p class="card" style="color:var(--rouge);text-align:center;font-weight:700;margin-top:12px">{{ error }}</p>{% endif %}
-  <form method="post" class="card" style="margin-top:14px">
+  {% if error %}<p class="card flash" role="alert" style="color:var(--rouge);text-align:center;font-weight:700;margin-top:12px">{{ error }}</p>{% endif %}
+  <form method="post" class="card{% if error %} shake{% endif %}" style="margin-top:14px">
     {% csrf_token %}
     <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Matricule</label>
     <input type="text" name="matricule" required autocomplete="username" placeholder="Ex. : M3-014" autofocus>
     <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Code PIN (6 chiffres)</label>
     <input type="password" name="pin" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
-           autocomplete="current-password" placeholder="••••••">
+           autocomplete="current-password" placeholder="••••••" class="pin-input">
+    <div class="pin-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <button class="btn" type="submit" style="margin-top:14px">Se connecter</button>
   </form>
   <p class="small" style="text-align:center;margin-top:12px">Ton code PIN est sur le coupon remis par ton professeur principal.
     Code perdu ? Demande-lui d'en générer un nouveau.</p>
   <p class="small" style="text-align:center"><a href="{% url 'account_login' %}?space={{ space.slug }}">Se connecter avec un numéro de téléphone</a></p>
 </div>
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  var input = document.querySelector('.pin-input'), dots = document.querySelectorAll('.pin-dots i');
+  if (!input) return;
+  input.addEventListener('input', function(){
+    input.value = input.value.replace(/\D/g, '').slice(0, 6);
+    dots.forEach(function(d, i){ d.classList.toggle('on', i < input.value.length); });
+    if (input.value.length === 6 && input.form.matricule.value.trim()) input.form.requestSubmit();
+  });
+})();
+</script>
 {% endblock %}

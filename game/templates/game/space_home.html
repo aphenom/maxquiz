@@ -2,33 +2,49 @@
 {% block title %}{{ space.name }} × MaxQuiz{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
-{% include "game/_space_banner.html" with subtitle="Quiz interactif propulsé par MaxQuiz" %}
+{% if level_label %}{% include "game/_space_banner.html" with subtitle=level_label %}{% else %}{% include "game/_space_banner.html" with subtitle="Quiz interactif propulsé par MaxQuiz" %}{% endif %}
 <div class="stagger">
+  {% if not player %}
   <p class="small" style="text-align:right;margin:8px 0 0">
-    {% if player %}<a href="{% url 'account_home' %}">📋 Mes résultats</a>
-    {% elif space.members_only %}<a href="{% url 'student_login' space.slug %}">🔑 Connexion élève (matricule + code)</a>
+    {% if space.members_only %}<a href="{% url 'student_login' space.slug %}">🔑 Connexion élève (matricule + code)</a>
     {% else %}<a href="{% url 'account_login' %}?space={{ space.slug }}">🔑 Se connecter / mes résultats</a>{% endif %}</p>
+  {% elif not space.members_only %}
+  <p class="small" style="text-align:right;margin:8px 0 0"><a href="{% url 'account_home' %}">📋 Mes résultats</a></p>
+  {% endif %}
 
-  {% if space.welcome %}
+  {% if player and space.members_only %}
+  <p style="margin:14px 0 0;font-size:22px;font-weight:800">Bonjour {{ player.pseudo|default:"" }} <span class="wiggle" aria-hidden="true">👋</span></p>
+  {% elif space.welcome %}
   <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
   {% endif %}
   {% include "game/_access_banner.html" %}
-  {% if player %}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-    <a class="btn encre" href="{% url 'lessons_list' space.slug %}" style="padding:12px;font-size:15px">📘 Mes cours</a>
-    <a class="btn encre" href="{% url 'sessions_list' space.slug %}" style="padding:12px;font-size:15px">🎥 Séances en direct</a>
+
+  {% if next_quiz or new_lesson %}
+  <div class="card" style="margin-top:12px;background:var(--encre);color:var(--ivoire)">
+    <p style="margin:0;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--or)">À faire maintenant</p>
+    {% if next_quiz %}
+    <p style="margin:6px 0 10px;font-size:19px;font-weight:800;line-height:1.25">{{ next_quiz.name }}</p>
+    <a class="btn" href="{% url 'quiz_home' space.slug next_quiz.slug %}">Lancer le quiz</a>
+    {% endif %}
+    {% if new_lesson %}
+    <a href="{% url 'lesson_detail' space.slug new_lesson.id %}" style="display:flex;gap:10px;align-items:center;margin-top:{% if next_quiz %}10px{% else %}6px{% endif %};color:var(--ivoire);text-decoration:none;font-size:14px">
+      <span style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex:none" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg></span>
+      <span>Nouveau cours : <strong>{{ new_lesson.title }}</strong></span></a>
+    {% endif %}
   </div>
   {% endif %}
 
+  {% if reward_text or space.elimination %}
   <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
     {% if reward_text %}
     <p style="margin:0;font-weight:700">
       {% if reward_type == "monetaire" %}💰{% elif reward_type == "autre" %}🏅{% else %}🎁{% endif %}
       {{ reward_text }}</p>
     {% endif %}
-    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">{% if space.subscription_required %}Inclus dans l'abonnement{% else %}Participation gratuite{% endif %} · {{ space.question_count }} questions
-    {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
+    {% if space.elimination %}<p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">Mode survie : une erreur et c'est fini !</p>{% endif %}
   </div>
+  {% endif %}
 
   {% if can_declare_level %}
   <div class="card" style="margin-top:12px">
@@ -63,8 +79,8 @@
 
   {% if has_catalog %}
   <div class="card" style="margin-top:12px">
-    <p style="margin:0 0 10px;font-weight:700">🔎 {% if profile_filtered %}Ton quiz{% else %}Choisis ton quiz{% endif %}</p>
-    {% if profile_filtered %}
+    <p style="margin:0 0 10px;font-weight:700">{% if space.members_only %}Mes matières{% else %}🔎 {% if profile_filtered %}Ton quiz{% else %}Choisis ton quiz{% endif %}{% endif %}</p>
+    {% if profile_filtered and not space.members_only %}
     <p class="small" style="margin:0 0 10px">🎯 Filtré sur ton profil ({{ space.category_label|default:"catégorie" }}/{{ space.subcategory_label|default:"sous-catégorie" }})</p>
     {% endif %}
     {% if not categories and not orphan_quizzes %}
@@ -103,11 +119,15 @@
 
   {% if has_catalog %}
   {% if player %}
+  {% if not space.members_only %}
   <div class="card" style="margin-top:14px">
     <p style="margin:0;font-weight:700">👋 Bienvenue {{ player.pseudo }} !</p>
     <p class="small" style="margin:4px 0 0">Choisis un quiz ci-dessus pour commencer ·
       <a href="{% url 'account_home' %}">Mes quiz & résultats</a></p>
   </div>
+  {% endif %}
+  {% elif space.members_only %}
+  <a class="btn" href="{% url 'student_login' space.slug %}" style="margin-top:14px">Me connecter avec mon matricule</a>
   {% else %}
   <p class="small" style="text-align:center;margin-top:14px">👆 Choisis un quiz ci-dessus : la connexion
   (téléphone + code) te sera demandée sur sa page.</p>

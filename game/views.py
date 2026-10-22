@@ -847,7 +847,30 @@ def space_home(request, slug):
     # déclarer lui-même — seulement s'il y a un niveau à choisir, et seulement
     # tant que l'établissement n'a rien réglé pour lui (no_profile).
     can_declare_level = bool(player and no_profile and all_categories and not space.members_only)
+
+    # « À faire maintenant » : un seul quiz à lancer (le premier pas encore
+    # joué) et le dernier cours publié, pour que l'élève n'ait pas à chercher.
+    next_quiz, new_lesson = None, None
+    if player:
+        ordered = []
+        for c in categories:
+            for sub in c["subs"]:
+                for th in sub["themed"]:
+                    ordered += th["quizzes"]
+                ordered += sub["general"]
+            ordered += c["direct"]
+        ordered += orphan_quizzes
+        next_quiz = next((q for q in ordered if q.id not in played_quiz_ids), None)
+        if space.members_only:
+            from .learning import lessons_by_subject
+            lessons = [l for g in lessons_by_subject(space, current_membership)
+                       for ch in g["chapters"] for l in ch["lessons"]]
+            new_lesson = max(lessons, key=lambda l: l.created_at, default=None)
     return render(request, "game/space_home.html", {
+        "next_quiz": next_quiz, "new_lesson": new_lesson,
+        "level_label": (" · ".join(x for x in (current_membership.category.name if current_membership and current_membership.category_id else "",
+                                              current_membership.sub_category.name if current_membership and current_membership.sub_category_id else "") if x)
+                        if space.members_only and player else ""),
         "space": space, "player": player, "already": already,
         "categories": categories, "orphan_quizzes": orphan_quizzes,
         "reward_text": reward_text, "reward_type": reward_type,
@@ -1301,7 +1324,15 @@ def space_dashboard(request, slug):
         "tree": tree, "orphan_rows": orphan_rows,
         "quiz_stats": quiz_stats, "survey_stats": survey_stats,
         "top": top, "top_mode": top_mode,
+        "todo": _school_todo(space),
     })
+
+
+def _school_todo(space):
+    if not space.members_only:
+        return None
+    from .school import todo_items
+    return todo_items(space)
 
 
 def dashboard_categories(request, slug):

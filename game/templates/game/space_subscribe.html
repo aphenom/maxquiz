@@ -5,6 +5,8 @@
 .plan{display:flex;gap:10px;align-items:center;padding:12px 14px;margin-bottom:8px;cursor:pointer}
 .plan input{width:auto;margin:0}
 .plan b{font-size:18px;color:var(--orange)}
+.plan{border:2px solid transparent;transition:border-color .15s ease,transform .2s cubic-bezier(.34,1.56,.64,1)}
+.plan:has(input:checked){border-color:var(--vert);transform:scale(1.02)}
 </style>
 {% include "game/_space_banner.html" with subtitle="Mon abonnement" %}
 <div class="stagger">

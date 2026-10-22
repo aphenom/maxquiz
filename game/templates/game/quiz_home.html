@@ -1,13 +1,23 @@
 {% extends "game/base.html" %}
 {% block title %}{{ quiz.name }} — {{ space.name }} × MaxQuiz{% endblock %}
 {% block content %}
-<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.quiz-facts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.fact{background:#fff;border-radius:99px;padding:8px 14px;font-size:14px;box-shadow:0 1px 4px rgba(34,26,18,.08)}</style>
 {% include "game/_space_banner.html" with subtitle=quiz.name %}
 <div class="stagger">
+  {% if space.members_only %}
+  <div class="quiz-facts">
+    <span class="fact"><strong>{{ quiz.question_count }}</strong> questions</span>
+    {% if quiz.theme %}<span class="fact">{{ quiz.theme.name }}</span>{% elif quiz.sub_category %}<span class="fact">{{ quiz.sub_category.name }}</span>{% endif %}
+    {% if quiz.elimination %}<span class="fact">Mode survie</span>{% endif %}
+  </div>
+  {% else %}
   <p class="small" style="text-align:right;margin:8px 0 0">
     {% if player %}<a href="{% url 'account_home' %}">📋 Mes résultats</a>
     {% else %}<a href="{% url 'account_login' %}?space={{ space.slug }}">🔑 Se connecter / mes résultats</a>{% endif %}</p>
-  {% if quiz.category or quiz.sub_category %}
+  {% endif %}
+  {% if not space.members_only and quiz.category or not space.members_only and quiz.sub_category %}
   <p class="small" style="margin:0 0 8px;text-align:center">
     {% if quiz.category %}{{ space.category_label }} : <strong>{{ quiz.category.name }}</strong>{% endif %}
     {% if quiz.sub_category %} · {{ space.subcategory_label }} : <strong>{{ quiz.sub_category.name }}</strong>{% endif %}
@@ -15,28 +25,32 @@
   </p>
   {% endif %}
 
-  {% if space.welcome %}
+  {% if space.welcome and not space.members_only %}
   <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
   {% endif %}
 
+  {% if reward_text or not space.members_only %}
   <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
     {% if reward_text %}
     <p style="margin:0;font-weight:700">
       {% if reward_type == "monetaire" %}💰{% elif reward_type == "autre" %}🏅{% else %}🎁{% endif %}
       {{ reward_text }}</p>
     {% endif %}
-    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">{% if space.subscription_required %}Inclus dans l'abonnement{% else %}Participation gratuite{% endif %} · {{ quiz.question_count }} questions
-    {% if quiz.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
+    {% if not space.members_only %}<p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">{% if space.subscription_required %}Inclus dans l'abonnement{% else %}Participation gratuite{% endif %} · {{ quiz.question_count }} questions
+    {% if quiz.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>{% endif %}
   </div>
+  {% endif %}
 
   {% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:10px">{{ error }}</p>{% endif %}
-  {% include "game/_access_banner.html" %}
+  {% if not space.members_only or not access.ok %}{% include "game/_access_banner.html" %}{% endif %}
 
   {% if player %}
+  {% if not space.members_only %}
   <div class="card" style="margin-top:14px">
     <p style="margin:0;font-weight:700">👋 Bienvenue {{ player.pseudo }} !</p>
     <p class="small" style="margin:4px 0 0"><a href="{% url 'account_home' %}">Mes quiz & résultats</a></p>
   </div>
+  {% endif %}
   {% if expired %}
   <div class="card" style="margin-top:12px;text-align:center">
     <p style="margin:0;font-weight:700;color:var(--brun)">🔒 Période terminée</p>
@@ -71,6 +85,8 @@
     </button>
   </form>
   {% endif %}
+  {% elif space.members_only %}
+  <a class="btn" href="{% url 'student_login' space.slug %}" style="margin-top:14px">Me connecter avec mon matricule</a>
   {% else %}
   <form method="post" action="{% url 'account_login' %}" style="margin-top:14px">
     {% csrf_token %}

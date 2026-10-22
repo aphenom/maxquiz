@@ -16,16 +16,16 @@
   <span style="font-size:32px">🙂</span>
   <div>
     <h1 style="margin:0;font-size:22px">{{ player.pseudo }}</h1>
-    <p class="small" style="margin:0">{{ player.phone }} ·
+    <p class="small" style="margin:0">{% if player.phone %}{{ player.phone }} · {% endif %}
       <a href="{% url 'account_profile' %}">mon profil</a> ·
       <a href="{% url 'account_logout' %}">se déconnecter</a></p>
   </div>
 </div>
 
 <div style="display:flex;gap:8px;margin-top:14px" class="stagger">
-  <div class="kpi"><b>{{ total_quizzes }}</b><span class="small">partie{{ total_quizzes|pluralize }} jouée{{ total_quizzes|pluralize }}</span></div>
-  <div class="kpi"><b>{% if overall_pct is not None %}{{ overall_pct }}%{% else %}—{% endif %}</b><span class="small">réussite (tout confondu)</span></div>
-  <div class="kpi"><b>{{ space_count }}</b><span class="small">établissement{{ space_count|pluralize }}</span></div>
+  <div class="kpi"><b data-count="{{ total_quizzes }}">{{ total_quizzes }}</b><span class="small">partie{{ total_quizzes|pluralize }} jouée{{ total_quizzes|pluralize }}</span></div>
+  <div class="kpi"><b{% if overall_pct is not None %} data-count="{{ overall_pct }}" data-suffix="%"{% endif %}>{% if overall_pct is not None %}{{ overall_pct }}%{% else %}—{% endif %}</b><span class="small">réussite (tout confondu)</span></div>
+  {% if space_count > 1 %}<div class="kpi"><b>{{ space_count }}</b><span class="small">établissements</span></div>{% endif %}
 </div>
 
 {% for sb in space_blocks %}
@@ -166,6 +166,7 @@
 <p class="small" style="margin-top:16px">Pas encore de quiz d'établissement joué.</p>
 {% endfor %}
 
+{% if public_sessions or not nav_space %}
 <details class="dash-accordion stagger" style="margin-top:16px">
   <summary>🎮 Jeu public MaxQuiz
     {% if public_sessions %}<span class="small" style="font-weight:400"> · {{ public_sessions|length }} partie{{ public_sessions|length|pluralize }}</span>{% endif %}</summary>
@@ -185,4 +186,5 @@
     {% empty %}<p class="small">Pas encore de participation au jeu public.</p>{% endfor %}
   </div>
 </details>
+{% endif %}
 {% endblock %}

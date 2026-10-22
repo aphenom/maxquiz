@@ -237,3 +237,38 @@ def monthly_report(space, year, month):
         rows.append({"member": m, "quizzes": quizzes, "pct": pct, "strong": strong, "weak": weak,
                      "message": msg, "parent_phone": to, "whatsapp": wa})
     return rows
+
+
+def todo_items(space, today=None):
+    """Ce que la direction doit faire maintenant, chaque ligne menant à la page
+    où le faire. Seules les lignes non nulles sont affichées."""
+    from django.urls import reverse
+    from .models import LiveSession, Resource, SessionBooking, Subscription
+    today = today or timezone.localdate()
+    slug = space.slug
+    rows = [
+        ("Paiements d'abonnement à vérifier",
+         Subscription.objects.filter(membership__space=space, status="pending").count(),
+         reverse("dashboard_subscriptions", args=[slug]), "money"),
+        ("Paiements de séances à vérifier",
+         SessionBooking.objects.filter(session__space=space, status="pending").count(),
+         reverse("dashboard_sessions", args=[slug]), "money"),
+        ("Exercices déposés à transformer en quiz",
+         Resource.objects.filter(space=space, status="deposited").count(),
+         reverse("school_resources", args=[slug]), "content"),
+        ("Chapitres en retard de dépôt",
+         sum(1 for r in chapter_rhythm(space, space_subjects(space), today) if r["state"] == "late"),
+         reverse("school_resources", args=[slug]), "late"),
+        ("Élèves sans code PIN",
+         space.members.exclude(external_ref="").filter(pin_hash="").count(),
+         reverse("dashboard_pins", args=[slug]), "people"),
+        ("Fiches visées par des essais de PIN",
+         sum(1 for m in space.members.filter(pin_failures_24h__gte=ALERT_AFTER) if pin_alert(m)),
+         reverse("dashboard_pins", args=[slug]), "alert"),
+    ]
+    return [{"label": l, "count": n, "url": u, "kind": k} for l, n, u, k in rows if n]
+
+
+def space_subjects(space):
+    from .models import SubCategory
+    return SubCategory.objects.filter(category__space=space)

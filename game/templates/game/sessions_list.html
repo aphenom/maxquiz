@@ -8,11 +8,11 @@
   <p class="small" style="margin:8px 0 0"><a href="{% url 'space_home' space.slug %}">← Quiz</a> · <a href="{% url 'lessons_list' space.slug %}">Mes cours</a></p>
   {% for m in messages %}<p class="card small" style="margin-top:10px">{{ m }}</p>{% endfor %}
   {% for r in rows %}
-  <a class="card" href="{% url 'session_detail' space.slug r.s.id %}" style="display:block;margin-top:10px;text-decoration:none;color:inherit;padding:14px">
+  <a class="card" href="{% url 'session_detail' space.slug r.s.id %}" class="reveal" style="display:block;margin-top:10px;text-decoration:none;color:inherit;padding:14px">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
       <span><strong style="font-size:16px">{{ r.s.title }}</strong><br>
         <span class="small">{{ r.s.sub_category.name }}{% if r.s.teacher %} · {{ r.s.teacher.full_name }}{% endif %}</span></span>
-      {% if r.rights.live_open %}<span class="tag" style="background:var(--rouge);color:#fff">EN DIRECT</span>
+      {% if r.rights.live_open %}<span class="tag" style="background:var(--rouge);color:#fff;display:inline-flex;align-items:center;gap:6px"><span class="live-dot" style="background:#fff"></span>EN DIRECT</span>
       {% elif r.rights.replay_open %}<span class="tag" style="background:var(--vert);color:#fff">Différé dispo</span>
       {% elif r.rights.live_booked %}<span class="tag" style="background:var(--sable)">Inscrit</span>
       {% elif r.rights.pending %}<span class="tag" style="background:var(--sable)">Paiement en vérification</span>{% endif %}

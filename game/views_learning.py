@@ -23,7 +23,7 @@ def lessons_list(request, slug):
     if space.members_only and not membership:
         return redirect("student_login", slug=slug)
     return render(request, "game/lessons_list.html", {
-        "space": space, "player": player, "tab": "home",
+        "space": space, "player": player, "tab": "lessons",
         "subjects": learning.lessons_by_subject(space, membership),
         "access": access_status(space, player) if player else None,
     })
@@ -50,7 +50,7 @@ def lesson_detail(request, slug, lesson_id):
                                            name__iexact=lesson.shared_theme_name)[:3])
     return render(request, "game/lesson_detail.html", {
         "space": space, "player": player, "lesson": lesson, "quizzes": quizzes,
-        "page": request.GET.get("page", ""), "tab": "home",
+        "page": request.GET.get("page", ""), "tab": "lessons",
     })
 
 
@@ -77,7 +77,7 @@ def sessions_list(request, slug):
     rows = [{"s": s, "rights": learning.session_rights(s, membership), "left": learning.seats_left(s)}
             for s in sessions]
     return render(request, "game/sessions_list.html", {
-        "space": space, "player": player, "rows": rows, "tab": "home",
+        "space": space, "player": player, "rows": rows, "tab": "sessions",
     })
 
 
@@ -117,7 +117,7 @@ def session_detail(request, slug, session_id):
     return render(request, "game/session_detail.html", {
         "space": space, "player": player, "s": session, "rights": rights,
         "left": learning.seats_left(session), "jitsi_domain": learning.jitsi_domain(),
-        "display_name": membership.full_name, "tab": "home",
+        "display_name": membership.full_name, "tab": "sessions",
         "chat_domain": request.get_host().split(":")[0],
     })
 

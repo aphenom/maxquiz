@@ -8,23 +8,51 @@
 .bar>div{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.34,1.56,.64,1)}
 .kpi{flex:1;text-align:center;background:#fff;border-radius:14px;padding:12px 6px;box-shadow:0 1px 4px rgba(34,26,18,.08)}
 .kpi b{font-size:26px;display:block;color:var(--orange)}
+.todo-row{display:flex;align-items:center;gap:12px;padding:10px 6px;border-top:1px solid var(--sable);
+  text-decoration:none;color:inherit;font-size:15px;border-radius:10px;transition:background .15s ease,transform .15s ease}
+.todo-row:first-of-type{border-top:0}
+.todo-row:hover{background:var(--ivoire)} .todo-row:active{transform:scale(.98)}
+.todo-n{min-width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-weight:800;background:var(--sable);color:var(--encre)}
+.todo-n.money{background:rgba(11,154,92,.14);color:#0B6B40}.todo-n.late,.todo-n.alert{background:rgba(214,69,44,.14);color:#A8341D}
+.todo-n.content{background:rgba(242,121,15,.16);color:#8F4307}
+.todo-done{color:#0B6B40;font-weight:700;display:flex;align-items:center;gap:8px}
+.todo-check{width:28px;height:28px;border-radius:50%;background:rgba(11,154,92,.14);display:inline-flex;
+  align-items:center;justify-content:center;animation:popin .5s cubic-bezier(.34,1.56,.64,1) both}
 </style>
 <div style="display:flex;align-items:center;gap:10px">
   <span style="font-size:30px">{{ space.emoji }}</span>
   <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
-  <p class="small" style="margin:0">Tableau de bord des campagnes · MaxQuiz</p></div>
+  <p class="small" style="margin:0">{% if space.members_only %}Tableau de bord{% else %}Tableau de bord des campagnes · MaxQuiz{% endif %}</p></div>
 </div>
 {% include "game/_dashboard_nav.html" with active="overview" %}
 
+{% if todo is not None %}
+<section class="card todo" style="margin-top:14px" aria-labelledby="todo-title">
+  <h2 id="todo-title" style="font-size:17px;margin:0 0 8px">À traiter</h2>
+  {% for t in todo %}
+  <a class="todo-row reveal" href="{{ t.url }}">
+    <span class="todo-n {{ t.kind }}" data-count="{{ t.count }}">{{ t.count }}</span>
+    <span style="flex:1">{{ t.label }}</span>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+  {% empty %}
+  <p class="todo-done" style="margin:0"><span class="todo-check" aria-hidden="true">✓</span> Tout est à jour.</p>
+  {% endfor %}
+</section>
+{% endif %}
+
 <div style="display:flex;gap:8px;margin-top:14px" class="stagger">
-  <div class="kpi"><b>{{ unique_participants }}</b><span class="small">participants uniques</span></div>
-  <div class="kpi"><b>{{ total }}</b><span class="small">participations{% if avg_participation %} ({{ avg_participation }}/participant){% endif %}</span></div>
-  <div class="kpi"><b>{{ completion }}%</b><span class="small">complétion</span></div>
+  <div class="kpi"><b data-count="{{ unique_participants }}">{{ unique_participants }}</b><span class="small">participants uniques</span></div>
+  <div class="kpi"><b data-count="{{ total }}">{{ total }}</b><span class="small">participations{% if avg_participation %} ({{ avg_participation }}/participant){% endif %}</span></div>
+  <div class="kpi"><b data-count="{{ completion }}" data-suffix="%">{{ completion }}%</b><span class="small">complétion</span></div>
 </div>
+{% if space.consent_required %}
 <p class="small" style="margin-top:10px">
   <strong>{{ consented }}</strong> contact{{ consented|pluralize }} sur {{ unique_participants }} ont accepté d'être
   recontactés (case de consentement) — ce sont les seuls exportés ci-dessous avec leur numéro.</p>
 <a class="btn vert" href="?export=contacts" style="margin-top:10px;width:auto;display:inline-block;padding:12px 20px">⬇️ Exporter les contacts (CSV)</a>
+{% endif %}
 
 {% if tree or orphan_rows %}
 <h2 style="font-size:18px;margin:22px 0 4px">🗂️ Résultats par {{ space.category_label|lower }} / quiz</h2>

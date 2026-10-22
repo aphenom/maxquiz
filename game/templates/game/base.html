@@ -38,14 +38,51 @@ input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px so
 .tab{flex:1;padding:12px 0 14px;text-align:center;font-size:12px;font-weight:700;
   color:#8B7D6B;text-decoration:none;transition:transform .15s}
 .tab.on{color:var(--orange)} .tab:active{transform:scale(.9)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.tab svg{width:22px;height:22px;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.tab.on svg{transform:translateY(-2px) scale(1.12)}
+.tab.on::before{content:'';position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 3px 3px;
+  background:currentColor;animation:tab-in .3s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes tab-in{from{transform:scaleX(0)}}
 .pop-in{animation:popin .45s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes popin{from{opacity:0;transform:scale(.85) translateY(14px)}to{opacity:1;transform:none}}
 .stagger>*{animation:popin .45s cubic-bezier(.34,1.56,.64,1) both}
 .stagger>*:nth-child(2){animation-delay:.07s}.stagger>*:nth-child(3){animation-delay:.14s}
 .stagger>*:nth-child(4){animation-delay:.21s}.stagger>*:nth-child(5){animation-delay:.28s}
-.stagger>*:nth-child(6){animation-delay:.35s}
+.stagger>*:nth-child(6){animation-delay:.35s}.stagger>*:nth-child(7){animation-delay:.42s}
+.stagger>*:nth-child(8){animation-delay:.49s}.stagger>*:nth-child(n+9){animation-delay:.56s}
+
+/* --- Mouvement : utile, rapide, jamais bloquant ---------------------------- */
+/* Transition douce entre deux pages (navigateurs récents ; sans effet ailleurs) */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:vt-out .18s ease both}
+::view-transition-new(root){animation:vt-in .28s cubic-bezier(.2,.8,.2,1) both}
+@keyframes vt-out{to{opacity:0;transform:translateY(-6px)}}
+@keyframes vt-in{from{opacity:0;transform:translateY(10px)}}
+/* Cartes cliquables : légère élévation, enfoncement au toucher */
+a.card,.tap{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}
+a.card:hover,.tap:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(34,26,18,.12)}
+a.card:active,.tap:active{transform:scale(.98)}
+/* Barres de progression : se remplissent à l'affichage */
+.bar>div,.grow{transform-origin:left center;animation:grow .9s cubic-bezier(.2,.8,.2,1) .15s both}
+@keyframes grow{from{transform:scaleX(0)}}
+/* Éléments de liste qui apparaissent au défilement (navigateurs compatibles) */
+@supports (animation-timeline:view()){
+  .reveal{animation:popin linear both;animation-timeline:view();animation-range:entry 0% entry 35%}
+}
+/* Messages de confirmation / d'erreur */
+.flash{animation:flash-in .45s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes flash-in{from{opacity:0;transform:translateY(-10px) scale(.97)}}
+/* Pastille « en direct » */
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--rouge);
+  box-shadow:0 0 0 0 rgba(214,69,44,.6);animation:live 1.6s ease-out infinite}
+@keyframes live{70%{box-shadow:0 0 0 9px rgba(214,69,44,0)}100%{box-shadow:0 0 0 0 rgba(214,69,44,0)}}
+/* Petite célébration */
+@keyframes wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.wiggle{display:inline-block;animation:wiggle .6s ease-in-out 2}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
-  html{scroll-behavior:auto}}
+  html{scroll-behavior:auto}
+  ::view-transition-old(root),::view-transition-new(root){animation:none!important}}
 
 /* Tableau de bord client : mise en page large sur grand écran (pages joueur non concernées) */
 body.dash{max-width:1100px}
@@ -69,9 +106,14 @@ select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 
    menu complet au clic, pour rester accessible sans avoir à remonter la page */
 .dash-burger-bar{position:sticky;top:8px;z-index:50;display:flex;justify-content:flex-end;margin:6px 0}
 .dash-burger{cursor:pointer;box-shadow:0 2px 10px rgba(34,26,18,.22);border:none;font-family:inherit}
-.dash-nav-menu{display:none;flex-direction:column;gap:6px;position:absolute;top:44px;right:0;
-  background:#fff;padding:10px;border-radius:14px;box-shadow:0 4px 20px rgba(34,26,18,.2);min-width:210px}
-.dash-nav-menu.open{display:flex}
+.dash-nav-menu{display:flex;visibility:hidden;opacity:0;transform:translateY(-8px) scale(.98);transform-origin:top right;
+  flex-direction:column;gap:4px;position:absolute;top:44px;right:0;max-height:75vh;overflow:auto;
+  background:#fff;padding:10px;border-radius:14px;box-shadow:0 4px 20px rgba(34,26,18,.2);min-width:230px;
+  transition:opacity .18s ease,transform .22s cubic-bezier(.2,.8,.2,1),visibility 0s linear .22s}
+.dash-nav-menu.open{visibility:visible;opacity:1;transform:none;transition:opacity .18s ease,transform .22s cubic-bezier(.2,.8,.2,1)}
+.dash-nav-menu .nav-group{margin:8px 4px 2px;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--brun)}
+.dash-burger .burger-ico{transition:transform .2s ease}
+.dash-burger[aria-expanded=true] .burger-ico{transform:rotate(180deg)}
 .dash-nav-menu .chip{justify-content:flex-start;width:100%}
 
 /* Bouton flottant : accès direct au formulaire d'ajout sans avoir à défiler */
@@ -111,6 +153,19 @@ select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 
 <div class="band"></div>
 <main>{% block content %}{% endblock %}</main>
 {% block tabs %}
+{% with ns=nav_space %}
+{% if ns and ns.members_only %}
+<nav class="tabbar" aria-label="Navigation élève">
+  <a class="tab {% if tab == 'home' %}on{% endif %}" href="{% url 'space_home' ns.slug %}"{% if tab == 'home' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</a>
+  <a class="tab {% if tab == 'lessons' %}on{% endif %}" href="{% url 'lessons_list' ns.slug %}"{% if tab == 'lessons' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/></svg>Cours</a>
+  <a class="tab {% if tab == 'sessions' %}on{% endif %}" href="{% url 'sessions_list' ns.slug %}"{% if tab == 'sessions' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>Séances</a>
+  <a class="tab {% if tab == 'account' %}on{% endif %}" href="{% url 'account_home' %}"{% if tab == 'account' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progrès</a>
+</nav>
+{% else %}
 <nav class="tabbar">
   <a class="tab {% if tab == 'home' %}on{% endif %}"
      href="{% if space %}{% url 'space_home' space.slug %}{% else %}{% url 'public_daily' %}{% endif %}">🎮<br>Jouer</a>
@@ -121,9 +176,34 @@ select,textarea,input[type=number],input[type=password]{width:100%;padding:12px 
   {% endif %}
   <a class="tab {% if tab == 'account' %}on{% endif %}" href="{% url 'account_home' %}">🔑<br>Mon compte</a>
 </nav>
+{% endif %}
+{% endwith %}
 {% endblock %}
 {% block js %}{% endblock %}
 <script>
+(function(){
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Chiffres clés : comptent de 0 à leur valeur quand ils apparaissent
+  document.querySelectorAll('[data-count]').forEach(function(el){
+    var to = parseFloat(el.getAttribute('data-count')) || 0, suffix = el.getAttribute('data-suffix') || '';
+    if (reduced || !('IntersectionObserver' in window)) { el.textContent = to.toLocaleString('fr-FR') + suffix; return; }
+    el.textContent = '0' + suffix;
+    new IntersectionObserver(function(entries, obs){
+      if (!entries[0].isIntersecting) return; obs.disconnect();
+      var t0 = performance.now();
+      (function step(t){ var p = Math.min(1, (t - t0) / 900), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(to * e).toLocaleString('fr-FR') + suffix;
+        if (p < 1) requestAnimationFrame(step); })(t0);
+    }).observe(el);
+  });
+  // Formulaires : le bouton montre l'envoi et évite le double clic
+  document.querySelectorAll('form[method=post], form[method=POST]').forEach(function(f){
+    f.addEventListener('submit', function(e){
+      var b = e.submitter || f.querySelector('button[type=submit], button:not([type])');
+      if (b && !b.name) { setTimeout(function(){ b.disabled = true; b.style.opacity = '.7'; }, 0); }
+    });
+  });
+})();
 (function(){
   var fab = document.querySelector('.dash-fab');
   var target = document.getElementById('add-form');

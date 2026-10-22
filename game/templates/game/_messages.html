@@ -1,3 +1,3 @@
 {% for m in messages %}
-<p class="card small" style="margin-top:10px;border-left:4px solid {% if m.tags == 'error' %}var(--rouge){% else %}var(--vert){% endif %}">{{ m }}</p>
+<p class="card small flash" style="margin-top:10px;border-left:4px solid {% if m.tags == 'error' %}var(--rouge){% else %}var(--vert){% endif %}">{{ m }}</p>
 {% endfor %}
