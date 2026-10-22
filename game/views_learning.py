@@ -8,6 +8,9 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from django.urls import reverse
+
+from .push import direction_of, notify, students_of
 from . import learning
 from .models import Lesson, LiveSession, Quiz, SessionBooking, Theme, youtube_id
 from .subscriptions import access_status, current_membership
@@ -104,6 +107,11 @@ def session_detail(request, slug, session_id):
                 with transaction.atomic():
                     b = SessionBooking.objects.create(session=session, membership=membership, kind=kind,
                                                       amount=price, payment_ref=ref)
+                if price:
+                    notify(teachers=direction_of(space), kind="payment_pending",
+                           title="Paiement de séance à vérifier",
+                           body=f"{membership.full_name} · {price} F · réf. {ref}",
+                           url=reverse("dashboard_sessions", args=[space.slug]))
                 if price == 0:
                     learning.validate_booking(b)
                     messages.success(request, "Inscription confirmée.")
@@ -167,6 +175,9 @@ def staff_lessons(request, slug):
                     pdf_name=pdf.name[:200] if pdf else "", pdf_data=pdf.read() if pdf else None,
                     free_preview=request.POST.get("free_preview") == "on")
                 _log_action(space, "create", lesson, "Cours publié")
+                notify(players=students_of(space, sub), kind="lesson_new", title=f"Nouveau cours : {lesson.title}",
+                       body=f"{sub.name} · disponible dans MaxQuiz",
+                       url=reverse("lesson_detail", args=[space.slug, lesson.id]))
                 messages.success(request, f"Cours « {lesson.title} » publié.")
         elif action in ("toggle", "preview"):
             lesson = get_object_or_404(Lesson, id=request.POST.get("lesson_id"), space=space,
@@ -220,6 +231,10 @@ def staff_sessions(request, slug):
                     provider=provider if provider in ("youtube", "jitsi", "external") else "youtube",
                     stream_url=stream)
                 _log_action(space, "create", s, "Séance programmée")
+                when = timezone.localtime(s.starts_at)
+                notify(players=students_of(space, sub), kind="session_new", title=f"Nouvelle séance : {s.title}",
+                       body=f"{when:%d/%m à %H:%M} · " + (f"{s.price_live} F" if s.price_live else "gratuite"),
+                       url=reverse("session_detail", args=[space.slug, s.id]))
                 messages.success(request, f"Séance « {s.title} » programmée le {timezone.localtime(s.starts_at):%d/%m à %H:%M}.")
         else:
             s = get_object_or_404(LiveSession, id=request.POST.get("session_id"), space=space,
@@ -230,13 +245,20 @@ def staff_sessions(request, slug):
                 if replay and not youtube_id(replay):
                     messages.error(request, "Lien du différé non reconnu (vidéo YouTube).")
                 else:
+                    replay_new = bool(replay and not s.replay_url)
                     s.stream_url, s.replay_url = stream or s.stream_url, replay or s.replay_url
                     s.save(update_fields=["stream_url", "replay_url"])
                     _log_action(space, "update", s, "Liens mis à jour")
+                    if replay_new:
+                        notify(players=_bookers(s), kind="replay_ready", title="Le différé est disponible",
+                               body=s.title, url=reverse("session_detail", args=[space.slug, s.id]))
             elif action == "cancel":
                 s.cancelled = True
                 s.save(update_fields=["cancelled"])
                 _log_action(space, "update", s, "Séance annulée")
+                notify(players=_bookers(s), kind="session_cancelled", title="Séance annulée",
+                       body=f"{s.title} · l'école te contactera pour le remboursement si tu as payé.",
+                       url=reverse("sessions_list", args=[space.slug]))
                 messages.success(request, "Séance annulée : pense à prévenir les inscrits et à rembourser les paiements validés.")
         return redirect("staff_sessions", slug=slug)
     sessions = (LiveSession.objects.filter(space=space, sub_category_id__in=subject_ids)
@@ -248,6 +270,11 @@ def staff_sessions(request, slug):
                   "pending": s.bookings.filter(status="pending").count()} for s in sessions],
         "now": timezone.now(),
     })
+
+
+def _bookers(session):
+    return [b.membership.player for b in session.bookings.filter(status="active")
+            .select_related("membership__player") if b.membership.player_id]
 
 
 # --- Direction : paiements des séances et revenus ----------------------------------
@@ -262,11 +289,16 @@ def dashboard_sessions(request, slug):
             if request.POST.get("action") == "validate":
                 learning.validate_booking(b)
                 _log_action(space, "update", b, f"Paiement de séance validé ({b.amount} F, réf. {b.payment_ref})")
+                notify(players=[b.membership.player], kind="booking_ok", title="Inscription confirmée",
+                       body=b.session.title, url=reverse("session_detail", args=[space.slug, b.session_id]))
                 messages.success(request, f"Inscription de {b.membership.full_name} validée.")
             else:
                 b.status = "rejected"
                 b.save(update_fields=["status"])
                 _log_action(space, "update", b, f"Paiement de séance refusé (réf. {b.payment_ref})")
+                notify(players=[b.membership.player], kind="booking_refused", title="Paiement non validé",
+                       body=f"{b.session.title} · vérifie la référence ou contacte l'école.",
+                       url=reverse("session_detail", args=[space.slug, b.session_id]))
         return redirect("dashboard_sessions", slug=slug)
     report = learning.earnings_report(space)
     return render(request, "game/dashboard_sessions.html", {

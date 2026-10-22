@@ -7,7 +7,8 @@ from django.utils.safestring import mark_safe
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
                      Category, SubCategory, Theme, Quiz, Membership, License, AuditLog,
-                     Subscription, Teacher, Resource, Lesson, LiveSession, SessionBooking)
+                     Subscription, Teacher, Resource, Lesson, LiveSession, SessionBooking,
+                     PushDevice, Notification)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -282,3 +283,16 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(PushDevice)
+class PushDeviceAdmin(admin.ModelAdmin):
+    list_display = ("player", "teacher", "kind", "active", "created_at", "last_success_at")
+    list_filter = ("kind", "active")
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ("title", "player", "teacher", "kind", "pushed", "created_at", "read_at")
+    list_filter = ("kind",)
+    search_fields = ("title", "body")

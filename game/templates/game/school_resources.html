@@ -4,6 +4,7 @@
 {% block bodyclass %}dash{% endblock %}
 {% block content %}
 {% include "game/_staff_top.html" with subtitle="Exercices corrigés et rythme des chapitres" active="resources" %}
+{% include "game/_push_card.html" %}
 
 <h2 style="font-size:18px;margin:16px 0 8px">📅 Rythme des chapitres {% if late %}<span class="tag late">{{ late }} en retard</span>{% endif %}</h2>
 <p class="small" style="margin:0 0 8px">Les exercices d'un chapitre sont attendus au plus tard 7 jours après le cours.</p>

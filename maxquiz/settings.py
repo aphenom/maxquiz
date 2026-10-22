@@ -67,6 +67,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'game.context_processors.navigation',
+                'game.context_processors.notifications',
                 'game.context_processors.nav',
             ],
         },
@@ -132,3 +133,17 @@ STORAGES = {
 # Visio intégrée des séances en direct (Jitsi). Pour un usage régulier, utiliser
 # un serveur Jitsi auto-hébergé (ex. visio.mqtech.ci) plutôt que meet.jit.si.
 JITSI_DOMAIN = os.environ.get("JITSI_DOMAIN", "meet.jit.si")
+
+
+# Notifications push. Web Push : clés générées par `python manage.py generer_cles_vapid`.
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:contact@mqtech.ci")
+# Firebase (APK WebView/natif) : contenu JSON du compte de service, ou chemin du fichier.
+FCM_SERVICE_ACCOUNT_JSON = os.environ.get("FCM_SERVICE_ACCOUNT_JSON", "")
+# APK TWA : nom du paquet et empreinte(s) SHA-256 du certificat (séparées par des virgules).
+ANDROID_PACKAGE_NAME = os.environ.get("ANDROID_PACKAGE_NAME", "")
+ANDROID_SHA256_FINGERPRINTS = os.environ.get("ANDROID_SHA256_FINGERPRINTS", "")
+# Jeton de l'adresse /cron/rappels/ (service de tâches planifiées externe).
+CRON_TOKEN = os.environ.get("CRON_TOKEN", "")
+APP_VERSION = os.environ.get("APP_VERSION", "1")

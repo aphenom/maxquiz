@@ -1,0 +1,17 @@
+{% extends "game/base.html" %}
+{% block title %}Notifications — MaxQuiz{% endblock %}
+{% block content %}
+<h1 style="font-size:24px">Notifications</h1>
+{% include "game/_push_card.html" %}
+<div style="margin-top:12px">
+  {% for n in items %}
+  <a class="card notif reveal{% if n.id in unread_ids %} unread{% endif %}" href="{% url 'notification_open' n.id %}">
+    <span class="notif-dot" aria-hidden="true"></span>
+    <span style="flex:1"><strong>{{ n.title }}</strong>{% if n.body %}<br><span class="small">{{ n.body }}</span>{% endif %}
+      <br><span class="small" style="font-size:11.5px">{{ n.ago }}</span></span>
+  </a>
+  {% empty %}
+  <div class="card" style="text-align:center"><p style="margin:0" class="small">Aucune notification pour l'instant.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

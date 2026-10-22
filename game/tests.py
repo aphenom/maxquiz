@@ -521,3 +521,123 @@ class SmokeTests(TestCase):
             self.assertEqual(r.status_code, 200)
             self.assertEqual("Codes PIN" in r.content.decode(), school)
             self.assertEqual("À traiter" in r.content.decode(), school)
+
+
+from unittest import mock
+
+from django.test import override_settings
+from cryptography.hazmat.primitives import hashes as _h
+from cryptography.hazmat.primitives.asymmetric import ec as _ec
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+
+from . import push
+from .models import Notification, PushDevice
+from .reminders import run_reminders
+
+VAPID_PRIV, VAPID_PUB = push.generate_vapid_keys()
+
+
+@override_settings(PUSH_SYNC=True)
+class PushTests(TestCase):
+    """Chiffrement Web Push (vecteur officiel RFC 8291), signature VAPID,
+    abonnement des appareils, centre de notifications, déclencheurs, rappels."""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.space = Space.objects.create(name="Collège Test", slug="college-test", dashboard_code="secret123",
+                                          members_only=True, consent_required=False, payment_number="0700000000")
+        lic = License.objects.create(space=self.space, period_label="2026-2027", seat_count=50,
+                                     start_date=self.today - timedelta(days=30), end_date=self.today + timedelta(days=200))
+        self.cat = Category.objects.create(space=self.space, name="3ème", slug="3eme")
+        self.maths = SubCategory.objects.create(category=self.cat, name="Maths", slug="maths")
+        self.player = Player.objects.create(pseudo="Aya", phone="0707070707")
+        self.member = Membership.objects.create(space=self.space, license=lic, full_name="Kouassi Aya",
+                                                phone="0707070707", external_ref="M1", category=self.cat,
+                                                player=self.player)
+
+    def _login(self):
+        s = self.client.session
+        s["player_id"] = s["verified_player_id"] = self.player.id
+        s.save()
+
+    def test_rfc8291_test_vector(self):
+        as_priv = _ec.derive_private_key(int.from_bytes(push.b64u_dec("yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"), "big"),
+                                         _ec.SECP256R1())
+        body = push.encrypt_payload(b"When I grow up, I want to be a watermelon",
+                                    "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
+                                    "BTBZMqHH6r4Tts7J_aSIgg", salt=push.b64u_dec("DGv6ra1nlYgDCS1FRnbzlw"), server_key=as_priv)
+        self.assertEqual(push.b64u(body),
+                         "DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzA"
+                         "C8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN")
+
+    @override_settings(VAPID_PRIVATE_KEY=VAPID_PRIV, VAPID_PUBLIC_KEY=VAPID_PUB)
+    def test_vapid_signature_verifies(self):
+        header = push.vapid_header("https://fcm.googleapis.com/fcm/send/abc")
+        token = header.split("t=")[1].split(",")[0]
+        head, body, sig = token.split(".")
+        raw = push.b64u_dec(sig)
+        der = encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big"))
+        pub = _ec.EllipticCurvePublicKey.from_encoded_point(_ec.SECP256R1(), push.b64u_dec(VAPID_PUB))
+        pub.verify(der, f"{head}.{body}".encode(), _ec.ECDSA(_h.SHA256()))   # lève une erreur si faux
+        import json as _json
+        self.assertEqual(_json.loads(push.b64u_dec(body))["aud"], "https://fcm.googleapis.com")
+
+    @override_settings(VAPID_PRIVATE_KEY=VAPID_PRIV, VAPID_PUBLIC_KEY=VAPID_PUB)
+    def test_subscribe_notify_and_expired_device(self):
+        self._login()
+        ua = _ec.generate_private_key(_ec.SECP256R1())
+        from cryptography.hazmat.primitives import serialization as _s
+        p256dh = push.b64u(ua.public_key().public_bytes(_s.Encoding.X962, _s.PublicFormat.UncompressedPoint))
+        import json as _json
+        r = self.client.post("/api/push/subscribe/", data=_json.dumps(
+            {"endpoint": "https://push.example/abc", "keys": {"p256dh": p256dh, "auth": push.b64u(b"0123456789abcdef")}}),
+            content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(PushDevice.objects.get().player, self.player)
+        with mock.patch("game.push._post", return_value=(201, b"")) as post:
+            push.notify(players=[self.player], title="Test", body="Corps", url="/x/")
+        self.assertEqual(post.call_args[0][0], "https://push.example/abc")
+        self.assertEqual(Notification.objects.get().pushed, 1)
+        with mock.patch("game.push._post", return_value=(410, b"")):
+            push.notify(players=[self.player], title="Encore")
+        self.assertFalse(PushDevice.objects.get().active)          # appareil désinstallé : désactivé
+
+    def test_notification_center_and_bell(self):
+        push.notify(players=[self.player], title="Nouveau cours : Pythagore", url="/e/college-test/cours/")
+        self._login()
+        r = self.client.get("/e/college-test/")
+        self.assertContains(r, 'class="badge">1<')
+        self.assertContains(self.client.get("/notifications/"), "Nouveau cours : Pythagore")
+        self.assertNotContains(self.client.get("/e/college-test/"), 'class="badge"')   # lue
+        n = Notification.objects.get()
+        self.assertRedirects(self.client.get(f"/notifications/{n.id}/"), "/e/college-test/cours/",
+                             fetch_redirect_response=False)
+
+    def test_lesson_publication_notifies_students(self):
+        t = Teacher(space=self.space, full_name="M. Kouadio", username="k.t", role="teacher")
+        t.set_password("motdepasse1")
+        t.save()
+        t.sub_categories.set([self.maths])
+        self.client.post("/tableau-de-bord/connexion/", {"identifiant": "k.t", "password": "motdepasse1"})
+        self.client.post(f"/e/college-test/ressources/cours/", {"action": "create", "sub_category_id": self.maths.id,
+                                                              "title": "Pythagore", "youtube_url": "https://youtu.be/aaaaaaaaaaa"})
+        self.assertTrue(Notification.objects.filter(player=self.player, kind="lesson_new").exists())
+
+    def test_reminders_session_and_subscription(self):
+        s = LiveSession.objects.create(space=self.space, sub_category=self.maths, title="Révision",
+                                       starts_at=timezone.now() + timedelta(minutes=20), price_live=0)
+        validate(Subscription.objects.create(membership=self.member, plan="monthly", amount=2000, payment_ref="R1"),
+                 day=self.today - timedelta(days=28))
+        res = run_reminders()
+        self.assertEqual(res, {"sessions": 1, "subscriptions": 1})
+        self.assertEqual(run_reminders(), {"sessions": 0, "subscriptions": 0})   # jamais deux fois
+        kinds = set(Notification.objects.filter(player=self.player).values_list("kind", flat=True))
+        self.assertEqual(kinds, {"session_soon", "sub_ending"})
+
+    def test_pwa_files(self):
+        self.assertEqual(self.client.get("/sw.js")["Service-Worker-Allowed"], "/")
+        self.assertIn("standalone", self.client.get("/manifest.webmanifest").content.decode())
+        with override_settings(ANDROID_PACKAGE_NAME="ci.mqtech.maxquiz", ANDROID_SHA256_FINGERPRINTS="AA:BB"):
+            data = self.client.get("/.well-known/assetlinks.json").json()
+        self.assertEqual(data[0]["target"]["package_name"], "ci.mqtech.maxquiz")
+        self.assertEqual(self.client.get("/cron/rappels/").status_code, 404)        # sans jeton

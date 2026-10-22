@@ -540,3 +540,17 @@ Démo complète : `python manage.py seed_demo_school_space --abonnements` (profe
   - *YouTube Live intégré* (conseillé pour une classe) : le professeur diffuse en non répertorié, les élèves regardent dans MaxQuiz ; l'enregistrement sert de différé.
   - *Visio intégrée Jitsi* (petits groupes) : salle générée automatiquement, ouverte 15 min avant le début. Réglage `JITSI_DOMAIN` (défaut `meet.jit.si`) : pour un usage régulier, un serveur Jitsi auto-hébergé ou un compte JaaS.
   - *Lien externe* (Meet, Zoom) en secours.
+
+## Notifications push et application Android (APK)
+
+Tout se décide côté serveur : un nouveau type de notification ne demande **jamais** de mettre à jour l'APK. Chaque notification est aussi conservée dans l'application (cloche en haut à droite, page `/notifications/`), même si le push est refusé.
+
+**Déjà branché** : nouveau cours, nouveaux quiz validés, nouvelle séance, rappel 30 min avant une séance, différé disponible, séance annulée, inscription ou abonnement validé / refusé, fin d'abonnement dans 3 jours ; pour l'équipe : exercices déposés, questions à vérifier, paiements à vérifier. Pour en ajouter un : `game.push.notify(players=…, teachers=…, title=…, body=…, url=…)`.
+
+**Mise en route (une fois)** :
+1. `python manage.py generer_cles_vapid` → mettre `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` dans les variables d'environnement de l'hébergement. Ne plus jamais les changer.
+2. Rappels : lancer `python manage.py envoyer_rappels` toutes les 10 minutes (Cron Job Render), ou définir `CRON_TOKEN` et faire appeler `https://<site>/cron/rappels/?token=<CRON_TOKEN>` par un service gratuit comme cron-job.org.
+
+**APK recommandé : TWA (Trusted Web Activity)**, générée avec PWABuilder ou Bubblewrap à partir de `https://<site>/manifest.webmanifest`. L'APK affiche le site via Chrome : notifications, mises à jour et nouvelles fonctions passent par le site, sans republier l'APK. Après génération, renseigner `ANDROID_PACKAGE_NAME` et `ANDROID_SHA256_FINGERPRINTS` (empreinte du certificat de signature, celle de Google Play si l'app y est publiée) : `/.well-known/assetlinks.json` lie alors l'APK au site (plein écran, sans barre d'adresse).
+
+**APK WebView ou natif (alternative)** : l'APK intègre Firebase Cloud Messaging et, une fois l'utilisateur connecté, transmet son jeton par `window.maxquizSetFcmToken(jeton)` dans la page (ou `POST /api/push/fcm/` avec les cookies de la WebView) ; au toucher d'une notification, il ouvre `data.url` dans la WebView. Côté serveur : `FCM_SERVICE_ACCOUNT_JSON` (contenu du fichier de compte de service Firebase).

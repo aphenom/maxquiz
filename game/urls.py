@@ -3,9 +3,20 @@ from . import views
 from . import views_subscriptions as subs
 from . import views_school as school_views
 from . import views_learning as learn
+from . import views_push as pushv
 
 urlpatterns = [
     path("", views.public_daily, name="home"),
+    path("sw.js", pushv.service_worker, name="service_worker"),
+    path("manifest.webmanifest", pushv.manifest, name="manifest"),
+    path(".well-known/assetlinks.json", pushv.assetlinks, name="assetlinks"),
+    path("api/push/config/", pushv.push_config, name="push_config"),
+    path("api/push/subscribe/", pushv.push_subscribe, name="push_subscribe"),
+    path("api/push/fcm/", pushv.push_fcm, name="push_fcm"),
+    path("api/push/unsubscribe/", pushv.push_unsubscribe, name="push_unsubscribe"),
+    path("notifications/", pushv.notifications_page, name="notifications"),
+    path("notifications/<int:notif_id>/", pushv.notification_open, name="notification_open"),
+    path("cron/rappels/", pushv.cron_reminders, name="cron_reminders"),
     path("defi-du-jour/", views.public_daily, name="public_daily"),
     path("start/", views.start, name="start"),
     path("api/answer/", views.answer, name="answer"),

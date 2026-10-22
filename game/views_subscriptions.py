@@ -11,6 +11,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from openpyxl.styles import Font
 
+from django.urls import reverse
+
+from .push import direction_of, notify
 from .models import Subscription
 from .subscriptions import (access_status, current_membership, plan_prices,
                             share_report, validate)
@@ -40,6 +43,10 @@ def space_subscribe(request, slug):
                     Subscription.objects.create(
                         membership=membership, plan=plan, amount=chosen["price"], payment_ref=ref,
                         payer_phone=normalize_phone(request.POST.get("payer_phone", "")) or "")
+                notify(teachers=direction_of(space), kind="payment_pending",
+                       title="Paiement d'abonnement à vérifier",
+                       body=f"{membership.full_name} · {chosen['price']} F · réf. {ref}",
+                       url=reverse("dashboard_subscriptions", args=[space.slug]))
                 messages.success(request, "Paiement déclaré. Ton accès s'ouvrira dès sa vérification "
                                           "par l'établissement.")
             except IntegrityError:
@@ -67,6 +74,9 @@ def dashboard_subscriptions(request, slug):
             _log_action(space, "update", sub,
                         f"Paiement validé ({sub.amount} F, réf. {sub.payment_ref}) : "
                         f"du {sub.start_date:%d/%m/%Y} au {sub.end_date:%d/%m/%Y}")
+            notify(players=[sub.membership.player], kind="sub_ok", title="Abonnement activé",
+                   body=f"Accès complet jusqu'au {sub.end_date:%d/%m/%Y}. Bonnes révisions !",
+                   url=reverse("space_home", args=[space.slug]))
             messages.success(request, f"Abonnement de {sub.membership.full_name} validé jusqu'au "
                                       f"{sub.end_date:%d/%m/%Y}.")
         elif action == "reject" and sub.status == "pending":
@@ -74,6 +84,9 @@ def dashboard_subscriptions(request, slug):
             sub.note = request.POST.get("note", "").strip()[:200]
             sub.save(update_fields=["status", "note"])
             _log_action(space, "update", sub, f"Paiement refusé (réf. {sub.payment_ref}) {sub.note}")
+            notify(players=[sub.membership.player], kind="sub_refused", title="Paiement non validé",
+                   body="Vérifie la référence de la transaction ou contacte l'école.",
+                   url=reverse("space_subscribe", args=[space.slug]))
             messages.success(request, f"Paiement de {sub.membership.full_name} refusé.")
         return redirect("dashboard_subscriptions", slug=slug)
 

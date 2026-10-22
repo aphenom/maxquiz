@@ -632,6 +632,7 @@ class Subscription(models.Model):
     end_date = models.DateField("Fin (incluse)", null=True, blank=True)
     validated_at = models.DateTimeField("Validé le", null=True, blank=True)
     note = models.CharField("Note interne", max_length=200, blank=True, default="")
+    expiry_notified_at = models.DateTimeField("Rappel d'échéance envoyé le", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -784,6 +785,7 @@ class LiveSession(models.Model):
     replay_url = models.URLField("Lien du différé (YouTube)", blank=True, default="",
                                  help_text="Pour YouTube Live, vide = le lien du direct sert aussi de différé.")
     cancelled = models.BooleanField("Annulée", default=False)
+    reminder_sent_at = models.DateTimeField("Rappel envoyé le", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -837,3 +839,47 @@ class SessionBooking(models.Model):
 
     def __str__(self):
         return f"{self.membership} · {self.session} · {self.get_kind_display()}"
+
+
+class PushDevice(models.Model):
+    """Appareil qui reçoit les notifications push : navigateur ou APK de type
+    TWA (Web Push), ou APK WebView/natif (jeton Firebase Cloud Messaging)."""
+    KINDS = [("webpush", "Web Push (navigateur, APK TWA)"), ("fcm", "Firebase (APK)")]
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.CASCADE, related_name="devices")
+    teacher = models.ForeignKey("Teacher", null=True, blank=True, on_delete=models.CASCADE, related_name="devices")
+    kind = models.CharField(max_length=8, choices=KINDS)
+    endpoint = models.TextField("Adresse Web Push ou jeton FCM", unique=True)
+    p256dh = models.CharField(max_length=200, blank=True, default="")
+    auth = models.CharField(max_length=100, blank=True, default="")
+    user_agent = models.CharField(max_length=200, blank=True, default="")
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_success_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Appareil (notifications)"
+
+    def __str__(self):
+        return f"{self.player or self.teacher} · {self.kind}"
+
+
+class Notification(models.Model):
+    """Notification conservée dans l'application (centre de notifications) :
+    toujours créée, même si le push est refusé ou hors ligne."""
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.CASCADE, related_name="notifications")
+    teacher = models.ForeignKey("Teacher", null=True, blank=True, on_delete=models.CASCADE, related_name="notifications")
+    kind = models.CharField("Type", max_length=30, default="info")
+    title = models.CharField("Titre", max_length=120)
+    body = models.CharField("Message", max_length=300, blank=True, default="")
+    url = models.CharField("Lien", max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    pushed = models.PositiveSmallIntegerField("Appareils atteints", default=0)
+
+    class Meta:
+        verbose_name = "Notification"
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["player", "read_at"]), models.Index(fields=["teacher", "read_at"])]
+
+    def __str__(self):
+        return self.title

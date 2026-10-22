@@ -10,6 +10,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.text import slugify
 
+from django.urls import reverse
+
+from .push import direction_of, notify, students_of
 from . import school
 from .models import Membership, Resource, SubCategory, Teacher, Theme
 from .views import _dashboard_gate, _log_action, _rows_from_upload, _space
@@ -178,6 +181,8 @@ def school_resources(request, slug):
                     note=request.POST.get("note", "").strip(), file_name=f.name[:200],
                     content_type=f.content_type or "application/octet-stream", data=f.read())
                 _log_action(space, "create", r, "Ressource déposée")
+                notify(teachers=direction_of(space), kind="resource_new", title="Nouveaux exercices déposés",
+                       body=f"{r.title} · {sub.name}", url=reverse("school_resources", args=[space.slug]))
                 messages.success(request, f"« {r.title} » déposée. MQ la transforme en quiz, "
                                           f"tu pourras ensuite les vérifier et les valider.")
         elif action == "taught_on":
@@ -197,6 +202,9 @@ def school_resources(request, slug):
                     n, errors = school.import_resource_questions(r, _rows_from_upload(f))
                     if n:
                         _log_action(space, "update", r, f"{n} question(s) créée(s), en attente de validation")
+                        notify(teachers=[r.teacher], kind="resource_review", title="Questions à vérifier",
+                               body=f"{n} question(s) prête(s) pour « {r.title} »",
+                               url=reverse("school_resources", args=[space.slug]))
                         messages.success(request, f"{n} question(s) créée(s) pour « {r.title} ». "
                                                   f"Elles seront visibles des élèves après validation du professeur.")
                     for e in errors[:10]:
@@ -204,6 +212,10 @@ def school_resources(request, slug):
             else:
                 n = school.validate_resource(r)
                 _log_action(space, "update", r, f"Validée : {n} question(s) visibles des élèves")
+                notify(players=students_of(space, r.sub_category), kind="quiz_new",
+                       title=f"Nouveaux quiz : {r.theme.name if r.theme else r.sub_category.name}",
+                       body=f"{n} question(s) pour réviser ce que tu as vu en classe",
+                       url=reverse("space_home", args=[space.slug]))
                 messages.success(request, f"{n} question(s) de « {r.title} » sont maintenant visibles des élèves.")
         return redirect("school_resources", slug=slug)
 
