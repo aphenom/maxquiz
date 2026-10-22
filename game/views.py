@@ -1176,6 +1176,15 @@ def space_answer(request):
         "explanation": "", "reached": session.reached,
         "status": status, "done": done,
     }
+    if question.kind == "quiz" and not is_correct:
+        # Après une erreur : correction (si le quiz la montre) et cours à revoir
+        from .learning import lesson_for_question
+        if session.quiz_id and session.quiz.show_corrections:
+            resp["explanation"] = question.explanation
+        lesson = lesson_for_question(question, session.space)
+        if lesson:
+            resp["lesson"] = {"title": lesson.title,
+                              "url": reverse("lesson_detail", args=[session.space.slug, lesson.id])}
     if joker_offer:
         resp["joker_offer"] = joker_offer
     return JsonResponse(resp)

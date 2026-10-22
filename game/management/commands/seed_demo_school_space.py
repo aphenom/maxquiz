@@ -274,4 +274,19 @@ class Command(BaseCommand):
         for full_name, ref, parent in demo_students:   # Yao Koffi et Yao Ama : fratrie, même parent
             Membership.objects.get_or_create(space=space, license=lic, external_ref=ref, defaults=dict(
                 full_name=full_name, parent_phone=parent, category=third))
+        from game.models import Lesson, LiveSession
+        maths3 = SubCategory.objects.filter(category__space=space, category__name="3ème", name__icontains="math").first()
+        if maths3:
+            pyth = Theme.objects.filter(sub_category=maths3, slug="theoreme-de-pythagore").first()
+            Lesson.objects.get_or_create(space=space, sub_category=maths3, title="Le théorème de Pythagore", defaults=dict(
+                theme=pyth, teacher=prof, free_preview=True,
+                summary="Dans un triangle rectangle, le carré de l'hypoténuse est égal à la somme des carrés "
+                        "des deux autres côtés : BC² = AB² + AC².\nRéciproque : si BC² = AB² + AC², le triangle "
+                        "est rectangle en A.\n(Ajoutez le lien YouTube de votre vidéo et la fiche PDF depuis "
+                        "l'espace professeur.)"))
+            LiveSession.objects.get_or_create(space=space, sub_category=maths3, title="Révision Pythagore avant la composition",
+                                              defaults=dict(teacher=prof, theme=pyth, provider="jitsi",
+                                                            starts_at=timezone.now() + timedelta(days=2),
+                                                            duration_min=60, price_live=500, price_replay=300, seats=15,
+                                                            description="Exercices types de composition, questions en direct."))
         self.stdout.write("Compte professeur démo : prof.maths / PROF2026 (même page de connexion).")

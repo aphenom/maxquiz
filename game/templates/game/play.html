@@ -30,6 +30,7 @@
 <div id="feedback" style="margin-top:14px" hidden>
   <p id="verdict" style="margin:0 0 8px;font-weight:800;font-size:18px"></p>
   <p id="explain" class="small" style="margin:0 0 10px" hidden></p>
+  <a id="lessonLink" class="small" href="#" target="_blank" rel="noopener" style="display:block;margin:0 0 10px;font-weight:700" hidden></a>
   <button class="btn encre" id="nextBtn"></button>
 </div>
 
@@ -210,7 +211,7 @@ function show() {
   $('cat').textContent = q.cat + ' · ' + (G.timers[String(q.difficulty)]||15) + ' s';
   $('qtext').textContent = q.text;
   $('qcard').classList.remove('pop-in'); void $('qcard').offsetWidth; $('qcard').classList.add('pop-in');
-  $('feedback').hidden = true; $('explain').hidden = true;
+  $('feedback').hidden = true; $('explain').hidden = true; $('lessonLink').hidden = true;
   const box = $('options'); box.innerHTML = ''; box.classList.remove('stagger');
   void box.offsetWidth; box.classList.add('stagger');
   const order = [0,1,2,3].sort(() => Math.random()-.5);
@@ -273,6 +274,7 @@ async function answer(choice, btn) {
     if (PLAYFUL && navigator.vibrate && !reduced) navigator.vibrate([80,50,80]);
     $('verdict').textContent = 'Mauvaise réponse !';
     $('verdict').style.color='var(--rouge)';
+    if (r.lesson){$('lessonLink').textContent='📘 Revoir le cours : '+r.lesson.title;$('lessonLink').href=r.lesson.url;$('lessonLink').hidden=false}
     $('feedback').hidden = false;
     $('nextBtn').textContent = 'Voir mon résultat';
     $('nextBtn').onclick = () => endScreen('eliminated', r.reached);
@@ -286,6 +288,7 @@ async function answer(choice, btn) {
     $('verdict').textContent = choice === -1 ? '⏱ Temps écoulé !' : 'Raté !';
     $('verdict').style.color='var(--rouge)';
     if (r.explanation){$('explain').textContent='💡 '+r.explanation;$('explain').hidden=false}
+    if (r.lesson){$('lessonLink').textContent='📘 Revoir le cours : '+r.lesson.title;$('lessonLink').href=r.lesson.url;$('lessonLink').hidden=false}
     $('feedback').hidden=false;
     $('nextBtn').textContent = r.done ? 'Voir mon résultat ✨' : 'Question suivante →';
     $('nextBtn').onclick = () => r.done ? endScreen(r.status) : next();

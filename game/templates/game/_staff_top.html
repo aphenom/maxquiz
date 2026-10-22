@@ -1,0 +1,10 @@
+{% if teacher and not is_direction %}{% include "game/_dash_head.html" with subtitle=subtitle %}
+<nav style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" aria-label="Espace professeur">
+  <a class="chip {% if active == 'resources' %}orange{% endif %}" href="{% url 'school_resources' space.slug %}">📚 Exercices</a>
+  <a class="chip {% if active == 'lessons' %}orange{% endif %}" href="{% url 'staff_lessons' space.slug %}">📘 Cours</a>
+  <a class="chip {% if active == 'staff_sessions' %}orange{% endif %}" href="{% url 'staff_sessions' space.slug %}">🎥 Séances</a>
+  <a class="chip rouge" href="{% url 'dashboard_logout' space.slug %}">🚪 Déconnexion</a>
+</nav>
+{% else %}{% include "game/_dash_head.html" with subtitle=subtitle %}
+{% include "game/_dashboard_nav.html" with active=active %}{% endif %}
+{% include "game/_messages.html" %}

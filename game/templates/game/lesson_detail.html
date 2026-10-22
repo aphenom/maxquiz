@@ -1,0 +1,24 @@
+{% extends "game/base.html" %}
+{% block title %}{{ lesson.title }} — {{ space.name }}{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+<div class="stagger">
+  <p class="small" style="margin:8px 0 0"><a href="{% url 'lessons_list' space.slug %}">← Mes cours</a></p>
+  <h1 style="font-size:24px;margin:8px 0 2px">{{ lesson.title }}</h1>
+  <p class="small" style="margin:0">{% if lesson.space_id %}{{ lesson.sub_category.name }}{% if lesson.theme %} · {{ lesson.theme.name }}{% endif %}{% if lesson.teacher %} · {{ lesson.teacher.full_name }}{% endif %}{% else %}{{ lesson.shared_subject_name }} · {{ lesson.shared_theme_name }} · cours MaxQuiz{% endif %}</p>
+  {% if lesson.video_id %}<div style="margin-top:12px">{% include "game/_yt.html" with vid=lesson.video_id title=lesson.title %}</div>{% endif %}
+  {% if lesson.summary %}<div class="card" style="margin-top:12px"><p style="margin:0;white-space:pre-line">{{ lesson.summary }}</p></div>{% endif %}
+  {% if lesson.has_pdf %}
+  <div class="card" style="margin-top:12px">
+    <p style="margin:0 0 8px;font-weight:700">Fiche de cours{% if page %} · voir page {{ page }}{% endif %}</p>
+    <iframe src="{% url 'lesson_pdf' space.slug lesson.id %}{% if page %}#page={{ page }}{% endif %}" title="Fiche PDF : {{ lesson.title }}"
+            style="width:100%;height:60vh;border:1px solid var(--sable);border-radius:10px;background:#fff" loading="lazy"></iframe>
+    <a class="btn encre" href="{% url 'lesson_pdf' space.slug lesson.id %}" target="_blank" rel="noopener" style="margin-top:8px">Ouvrir le PDF</a>
+  </div>
+  {% endif %}
+  {% if quizzes %}
+  <p style="font-weight:700;margin:18px 0 8px">S'entraîner sur ce chapitre</p>
+  {% for q in quizzes %}<a class="btn" href="{% url 'quiz_home' space.slug q.slug %}" style="margin-bottom:8px">{{ q.name }}</a>{% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

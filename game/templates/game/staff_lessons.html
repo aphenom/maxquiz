@@ -1,0 +1,32 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Cours{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+{% include "game/_staff_top.html" with subtitle="Cours : vidéos YouTube et fiches PDF" active="lessons" %}
+<form method="post" enctype="multipart/form-data" class="card" style="margin-top:12px">{% csrf_token %}
+  <input type="hidden" name="action" value="create">
+  <p style="margin:0 0 8px;font-weight:700">Publier un cours</p>
+  <select name="sub_category_id" required><option value="">Matière…</option>{% for s in subjects %}<option value="{{ s.id }}">{{ s.category.name }} · {{ s.name }}</option>{% endfor %}</select>
+  <select name="theme_id" style="margin-top:8px"><option value="">Chapitre (relie le cours aux corrections des quiz)…</option>{% for t in themes %}<option value="{{ t.id }}">{{ t.sub_category.name }} · {{ t.name }}</option>{% endfor %}</select>
+  <input type="text" name="title" required placeholder="Titre (ex. : Le théorème de Pythagore en 10 minutes)" style="margin-top:8px">
+  <input type="url" name="youtube_url" placeholder="Lien YouTube (vidéo non répertoriée conseillée)" style="margin-top:8px">
+  <label class="small" style="display:block;margin:8px 0 4px;font-weight:700">Fiche PDF (5 Mo max.)</label>
+  <input type="file" name="pdf" accept=".pdf">
+  <textarea name="summary" rows="3" placeholder="Résumé ou points clés (facultatif)" style="margin-top:8px;width:100%;box-sizing:border-box"></textarea>
+  <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" name="free_preview" style="width:auto"> Accessible sans abonnement (aperçu gratuit)</label>
+  <button class="btn" style="margin-top:10px">Publier</button>
+  <p class="small" style="margin:6px 0 0">Conseil : vidéos courtes (5 à 10 min par notion) en qualité basse, pour économiser la data des élèves. La vidéo est lue directement dans MaxQuiz.</p>
+</form>
+<h2 style="font-size:18px;margin:18px 0 8px">Cours publiés</h2>
+{% for l in lessons %}
+<div class="card row" style="{% if not l.active %}opacity:.55{% endif %}">
+  <span><strong>{{ l.title }}</strong><br><span class="small">{{ l.sub_category.name }}{% if l.theme %} · {{ l.theme.name }}{% endif %}{% if l.video_id %} · vidéo{% endif %}{% if l.has_pdf %} · PDF{% endif %}{% if l.teacher %} · {{ l.teacher.full_name }}{% endif %}</span></span>
+  <form method="post">{% csrf_token %}<input type="hidden" name="lesson_id" value="{{ l.id }}">
+    {% if l.free_preview %}<span class="tag ok">gratuit</span>{% endif %}
+    <button class="btn encre mini" name="action" value="preview">{% if l.free_preview %}Réserver aux abonnés{% else %}Aperçu gratuit{% endif %}</button>
+    <button class="btn mini" style="background:{% if l.active %}var(--rouge){% else %}var(--vert){% endif %}" name="action" value="toggle">{% if l.active %}Retirer{% else %}Republier{% endif %}</button>
+  </form>
+</div>
+{% empty %}<p class="small">Aucun cours publié. Les cours communs MaxQuiz apparaissent aussi aux élèves s'ils existent pour leur niveau.</p>{% endfor %}
+{% endblock %}

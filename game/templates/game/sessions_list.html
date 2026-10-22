@@ -1,0 +1,29 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Séances en direct{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.tag{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;white-space:nowrap}</style>
+{% include "game/_space_banner.html" with subtitle="Séances en direct et en différé" %}
+<div class="stagger">
+  <p class="small" style="margin:8px 0 0"><a href="{% url 'space_home' space.slug %}">← Quiz</a> · <a href="{% url 'lessons_list' space.slug %}">Mes cours</a></p>
+  {% for m in messages %}<p class="card small" style="margin-top:10px">{{ m }}</p>{% endfor %}
+  {% for r in rows %}
+  <a class="card" href="{% url 'session_detail' space.slug r.s.id %}" style="display:block;margin-top:10px;text-decoration:none;color:inherit;padding:14px">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+      <span><strong style="font-size:16px">{{ r.s.title }}</strong><br>
+        <span class="small">{{ r.s.sub_category.name }}{% if r.s.teacher %} · {{ r.s.teacher.full_name }}{% endif %}</span></span>
+      {% if r.rights.live_open %}<span class="tag" style="background:var(--rouge);color:#fff">EN DIRECT</span>
+      {% elif r.rights.replay_open %}<span class="tag" style="background:var(--vert);color:#fff">Différé dispo</span>
+      {% elif r.rights.live_booked %}<span class="tag" style="background:var(--sable)">Inscrit</span>
+      {% elif r.rights.pending %}<span class="tag" style="background:var(--sable)">Paiement en vérification</span>{% endif %}
+    </div>
+    <p class="small" style="margin:8px 0 0">{{ r.s.starts_at|date:"l d/m à H:i" }} · {{ r.s.duration_min }} min ·
+      {% if r.s.price_live %}direct {{ r.s.price_live }} F{% else %}direct gratuit{% endif %} ·
+      {% if r.s.price_replay %}différé {{ r.s.price_replay }} F{% else %}différé gratuit{% endif %}
+      {% if r.left is not None %} · {{ r.left }} place{{ r.left|pluralize }}{% endif %}</p>
+  </a>
+  {% empty %}
+  <div class="card" style="margin-top:14px"><p style="margin:0">Aucune séance programmée pour ta classe pour l'instant.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

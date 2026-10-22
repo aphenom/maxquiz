@@ -85,6 +85,9 @@ class Question(models.Model):
                               related_name="questions",
                               verbose_name="Espace (vide = jeu public MaxQuiz)")
     kind = models.CharField("Type", max_length=6, choices=KINDS, default="quiz")
+    lesson = models.ForeignKey("Lesson", null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name="questions",
+                               verbose_name="Cours à revoir en cas d'erreur (vide = cours du chapitre)")
     resource = models.ForeignKey("Resource", null=True, blank=True, on_delete=models.SET_NULL,
                                  related_name="questions",
                                  verbose_name="Ressource d'origine (exercices du professeur)")
@@ -304,6 +307,10 @@ class Space(models.Model):
     price_yearly = models.PositiveIntegerField("Prix annuel (F CFA, 0 = non proposé)", default=15000)
     school_share_per_month = models.PositiveIntegerField(
         "Part de l'établissement par élève abonné et par mois (F CFA)", default=500)
+    live_teacher_share_pct = models.PositiveSmallIntegerField(
+        "Part du professeur sur les séances payantes (%)", default=60)
+    live_school_share_pct = models.PositiveSmallIntegerField(
+        "Part de l'établissement sur les séances payantes (%)", default=10)
     payment_number = models.CharField(
         "Numéro de paiement mobile money", max_length=30, blank=True, default="",
         help_text="Numéro Wave / Orange Money / MTN / Moov sur lequel les familles paient.")
@@ -700,3 +707,133 @@ class Resource(models.Model):
 
     def __str__(self):
         return f"{self.sub_category} · {self.title}"
+
+
+def youtube_id(url):
+    """Identifiant d'une vidéo YouTube depuis ses formes d'URL courantes
+    (watch?v=, youtu.be/, /embed/, /live/, /shorts/), ou "" si non reconnu."""
+    import re
+    m = re.search(r"(?:v=|youtu\.be/|/embed/|/live/|/shorts/)([A-Za-z0-9_-]{11})", url or "")
+    return m.group(1) if m else ""
+
+
+class Lesson(models.Model):
+    """Cours (fiche PDF et/ou vidéo YouTube) rattaché à un chapitre.
+    space vide = cours commun MQ, rattaché par niveau/matière/chapitre comme
+    les quiz partagés ; sinon cours propre à l'établissement."""
+    space = models.ForeignKey(Space, null=True, blank=True, on_delete=models.CASCADE, related_name="lessons",
+                              verbose_name="Espace (vide = cours commun à toutes les écoles)")
+    shared_level_name = models.CharField("Niveau (cours commun)", max_length=80, blank=True, default="")
+    shared_subject_name = models.CharField("Matière (cours commun)", max_length=80, blank=True, default="")
+    shared_theme_name = models.CharField("Chapitre (cours commun)", max_length=100, blank=True, default="",
+                                         help_text="Même nom que le quiz partagé du chapitre : relie les corrections au cours.")
+    sub_category = models.ForeignKey(SubCategory, null=True, blank=True, on_delete=models.CASCADE,
+                                     related_name="lessons")
+    theme = models.ForeignKey(Theme, null=True, blank=True, on_delete=models.SET_NULL, related_name="lessons")
+    teacher = models.ForeignKey("Teacher", null=True, blank=True, on_delete=models.SET_NULL, related_name="lessons")
+    title = models.CharField("Titre", max_length=150)
+    summary = models.TextField("Résumé", blank=True, default="")
+    youtube_url = models.URLField("Lien de la vidéo YouTube", blank=True, default="",
+                                  help_text="Vidéo publique ou « non répertoriée » ; lue directement dans MaxQuiz.")
+    pdf_name = models.CharField("Nom du PDF", max_length=200, blank=True, default="")
+    pdf_data = models.BinaryField("Fiche PDF", null=True, blank=True)
+    free_preview = models.BooleanField("Accessible sans abonnement", default=False)
+    order = models.PositiveSmallIntegerField("Ordre", default=0)
+    active = models.BooleanField("Publié", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    MAX_PDF_BYTES = 5 * 1024 * 1024
+
+    class Meta:
+        verbose_name = "Cours"
+        verbose_name_plural = "Cours"
+        ordering = ["order", "title"]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def video_id(self):
+        return youtube_id(self.youtube_url)
+
+    @property
+    def has_pdf(self):
+        return bool(self.pdf_name)
+
+
+class LiveSession(models.Model):
+    """Séance de cours en direct (payante ou non), avec différé."""
+    PROVIDERS = [("youtube", "YouTube Live intégré (diffusion à toute une classe)"),
+                 ("jitsi", "Visio Jitsi intégrée (petit groupe interactif)"),
+                 ("external", "Lien externe (Google Meet, Zoom…)")]
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="live_sessions")
+    teacher = models.ForeignKey("Teacher", null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name="live_sessions")
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="live_sessions")
+    theme = models.ForeignKey(Theme, null=True, blank=True, on_delete=models.SET_NULL, related_name="live_sessions")
+    title = models.CharField("Titre", max_length=150)
+    description = models.TextField("Description", blank=True, default="")
+    starts_at = models.DateTimeField("Début")
+    duration_min = models.PositiveSmallIntegerField("Durée (minutes)", default=60)
+    price_live = models.PositiveIntegerField("Prix du direct (F CFA, 0 = gratuit)", default=500)
+    price_replay = models.PositiveIntegerField("Prix du différé seul (F CFA, 0 = gratuit)", default=300)
+    seats = models.PositiveIntegerField("Places en direct (0 = illimité)", default=0)
+    provider = models.CharField("Diffusion", max_length=10, choices=PROVIDERS, default="youtube")
+    stream_url = models.URLField("Lien du direct (YouTube Live ou Meet/Zoom)", blank=True, default="")
+    jitsi_room = models.CharField("Salle Jitsi", max_length=80, blank=True, default="")
+    replay_url = models.URLField("Lien du différé (YouTube)", blank=True, default="",
+                                 help_text="Pour YouTube Live, vide = le lien du direct sert aussi de différé.")
+    cancelled = models.BooleanField("Annulée", default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Séance en direct"
+        verbose_name_plural = "Séances en direct"
+        ordering = ["starts_at"]
+
+    def __str__(self):
+        return f"{self.title} · {self.starts_at:%d/%m %H:%M}"
+
+    def save(self, *args, **kwargs):
+        if self.provider == "jitsi" and not self.jitsi_room:
+            import secrets
+            from django.utils.text import slugify
+            self.jitsi_room = f"maxquiz-{slugify(self.space.slug)[:20]}-{secrets.token_hex(6)}"
+        super().save(*args, **kwargs)
+
+    @property
+    def ends_at(self):
+        from datetime import timedelta
+        return self.starts_at + timedelta(minutes=self.duration_min)
+
+    @property
+    def live_video_id(self):
+        return youtube_id(self.stream_url) if self.provider == "youtube" else ""
+
+    @property
+    def replay_video_id(self):
+        return youtube_id(self.replay_url) or self.live_video_id
+
+
+class SessionBooking(models.Model):
+    """Inscription payante d'un élève à une séance (direct, qui inclut le
+    différé, ou différé seul). Paiement mobile money validé à la main."""
+    KINDS = [("live", "Direct + différé"), ("replay", "Différé seul")]
+    STATUS = [("pending", "En attente de validation"), ("active", "Validée"), ("rejected", "Refusée")]
+    session = models.ForeignKey(LiveSession, on_delete=models.CASCADE, related_name="bookings")
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="bookings")
+    kind = models.CharField("Formule", max_length=6, choices=KINDS)
+    amount = models.PositiveIntegerField("Montant (F CFA)")
+    payment_ref = models.CharField("Référence de la transaction", max_length=60, blank=True, default="")
+    status = models.CharField("Statut", max_length=10, choices=STATUS, default="pending")
+    validated_at = models.DateTimeField("Validée le", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Inscription à une séance"
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["session", "membership", "kind"],
+                                               name="unique_booking_per_kind")]
+
+    def __str__(self):
+        return f"{self.membership} · {self.session} · {self.get_kind_display()}"

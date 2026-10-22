@@ -1,0 +1,30 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Cours{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.les{display:flex;gap:12px;align-items:center;padding:12px 14px;margin-bottom:8px;text-decoration:none;color:inherit}
+.badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--sable);color:var(--brun);white-space:nowrap}</style>
+{% include "game/_space_banner.html" with subtitle="Mes cours" %}
+<div class="stagger">
+  <p class="small" style="margin:8px 0 0"><a href="{% url 'space_home' space.slug %}">← Quiz</a> · <a href="{% url 'sessions_list' space.slug %}">Séances en direct</a></p>
+  {% include "game/_access_banner.html" %}
+  {% for g in subjects %}
+  <h2 style="font-size:19px;margin:18px 0 6px">{{ g.sub.name }} <span class="small" style="font-weight:600">· {{ g.sub.category.name }}</span></h2>
+  {% for c in g.chapters %}
+  <p class="small" style="margin:10px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">{{ c.name }}</p>
+  {% for l in c.lessons %}
+  <a class="card les" href="{% url 'lesson_detail' space.slug l.id %}">
+    <span style="width:40px;height:40px;border-radius:10px;background:var(--sable);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      {% if l.video_id %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      {% else %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>{% endif %}
+    </span>
+    <span style="flex:1"><strong>{{ l.title }}</strong><br><span class="small">{% if l.video_id %}Vidéo{% endif %}{% if l.video_id and l.has_pdf %} + {% endif %}{% if l.has_pdf %}Fiche PDF{% endif %}{% if not l.space_id %} · cours MaxQuiz{% endif %}</span></span>
+    {% if l.free_preview %}<span class="badge">Gratuit</span>{% endif %}
+  </a>
+  {% endfor %}
+  {% endfor %}
+  {% empty %}
+  <div class="card" style="margin-top:14px"><p style="margin:0">Aucun cours publié pour ta classe pour l'instant. Tes professeurs les ajoutent au fil des chapitres.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

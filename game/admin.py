@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
                      Category, SubCategory, Theme, Quiz, Membership, License, AuditLog,
-                     Subscription, Teacher, Resource)
+                     Subscription, Teacher, Resource, Lesson, LiveSession, SessionBooking)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -37,6 +37,59 @@ class SpaceAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "dashboard_username", "dashboard_code", "active",
                     "consent_required", "members_only", "subscription_required", "free_until")
     prepopulated_fields = {"slug": ("name",)}
+
+
+from django import forms
+
+
+class LessonAdminForm(forms.ModelForm):
+    pdf_file = forms.FileField(label="Fiche PDF (5 Mo max.)", required=False)
+
+    class Meta:
+        model = Lesson
+        exclude = ("pdf_data", "pdf_name")
+
+    def clean_pdf_file(self):
+        f = self.cleaned_data.get("pdf_file")
+        if f and (f.size > Lesson.MAX_PDF_BYTES or not f.name.lower().endswith(".pdf")):
+            raise forms.ValidationError("Un PDF de 5 Mo maximum.")
+        return f
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        f = self.cleaned_data.get("pdf_file")
+        if f:
+            obj.pdf_name, obj.pdf_data = f.name[:200], f.read()
+        if commit:
+            obj.save()
+        return obj
+
+
+@admin.register(Lesson)
+class LessonAdmin(admin.ModelAdmin):
+    """Les cours communs MQ (sans espace) se créent ici : niveau, matière et
+    chapitre doivent reprendre les libellés des quiz partagés."""
+    form = LessonAdminForm
+    list_display = ("title", "space", "shared_level_name", "shared_subject_name", "shared_theme_name",
+                    "sub_category", "has_video", "pdf_name", "free_preview", "active")
+    list_filter = ("space", "active", "free_preview")
+    search_fields = ("title", "shared_theme_name")
+
+    @admin.display(boolean=True, description="Vidéo")
+    def has_video(self, obj):
+        return bool(obj.video_id)
+
+
+@admin.register(LiveSession)
+class LiveSessionAdmin(admin.ModelAdmin):
+    list_display = ("title", "space", "teacher", "starts_at", "provider", "price_live", "price_replay", "cancelled")
+    list_filter = ("space", "provider", "cancelled")
+
+
+@admin.register(SessionBooking)
+class SessionBookingAdmin(admin.ModelAdmin):
+    list_display = ("membership", "session", "kind", "amount", "payment_ref", "status", "created_at")
+    list_filter = ("status", "kind", "session__space")
 
 
 @admin.register(Teacher)

@@ -3,11 +3,7 @@
 {% block tabs %}{% endblock %}
 {% block bodyclass %}dash{% endblock %}
 {% block content %}
-{% if teacher and not is_direction %}{% include "game/_dash_head.html" with subtitle="Mes ressources · "|add:teacher.full_name %}
-<p class="small" style="text-align:right;margin:6px 0 0"><a href="{% url 'dashboard_logout' space.slug %}">🚪 Déconnexion</a></p>
-{% else %}{% include "game/_dash_head.html" with subtitle="Ressources des professeurs" %}
-{% include "game/_dashboard_nav.html" with active="resources" %}{% endif %}
-{% include "game/_messages.html" %}
+{% include "game/_staff_top.html" with subtitle="Exercices corrigés et rythme des chapitres" active="resources" %}
 
 <h2 style="font-size:18px;margin:16px 0 8px">📅 Rythme des chapitres {% if late %}<span class="tag late">{{ late }} en retard</span>{% endif %}</h2>
 <p class="small" style="margin:0 0 8px">Les exercices d'un chapitre sont attendus au plus tard 7 jours après le cours.</p>

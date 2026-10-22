@@ -126,3 +126,8 @@ STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
 }
+
+
+# Visio intégrée des séances en direct (Jitsi). Pour un usage régulier, utiliser
+# un serveur Jitsi auto-hébergé (ex. visio.mqtech.ci) plutôt que meet.jit.si.
+JITSI_DOMAIN = os.environ.get("JITSI_DOMAIN", "meet.jit.si")

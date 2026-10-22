@@ -1,0 +1,66 @@
+{% extends "game/base.html" %}
+{% block title %}{{ s.title }} — {{ space.name }}{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.plan{display:flex;gap:10px;align-items:center;padding:12px 14px;margin-bottom:8px;cursor:pointer}.plan input{width:auto;margin:0}</style>
+<div class="stagger">
+  <p class="small" style="margin:8px 0 0"><a href="{% url 'sessions_list' space.slug %}">← Séances</a></p>
+  <h1 style="font-size:24px;margin:8px 0 2px">{{ s.title }}</h1>
+  <p class="small" style="margin:0">{{ s.sub_category.name }}{% if s.theme %} · {{ s.theme.name }}{% endif %}{% if s.teacher %} · {{ s.teacher.full_name }}{% endif %}<br>
+    {{ s.starts_at|date:"l d/m/Y à H:i" }} · {{ s.duration_min }} min</p>
+  {% for m in messages %}<p class="card small" style="margin-top:10px;border-left:4px solid {% if m.tags == 'error' %}var(--rouge){% else %}var(--vert){% endif %}">{{ m }}</p>{% endfor %}
+  {% if s.description %}<div class="card" style="margin-top:12px"><p style="margin:0;white-space:pre-line">{{ s.description }}</p></div>{% endif %}
+
+  {% if rights.live_open %}
+    <p style="margin:14px 0 8px;font-weight:800;color:var(--rouge)">● En direct</p>
+    {% if s.provider == "youtube" and s.live_video_id %}
+      {% include "game/_yt.html" with vid=s.live_video_id title=s.title %}
+      <iframe src="https://www.youtube.com/live_chat?v={{ s.live_video_id }}&embed_domain={{ chat_domain }}" title="Questions en direct"
+              style="width:100%;height:320px;border:1px solid var(--sable);border-radius:12px;margin-top:8px;background:#fff" loading="lazy"></iframe>
+      <p class="small" style="margin:6px 0 0">Pose tes questions dans le chat : le professeur y répond en direct (connexion à un compte Google nécessaire pour écrire).</p>
+    {% elif s.provider == "jitsi" %}
+      <div style="position:relative;width:100%;height:70vh;min-height:420px;border-radius:14px;overflow:hidden;background:#111">
+        <iframe src="https://{{ jitsi_domain }}/{{ s.jitsi_room }}#userInfo.displayName=%22{{ display_name|urlencode }}%22&config.prejoinPageEnabled=false&config.startWithVideoMuted=true"
+                title="Visio : {{ s.title }}" allow="camera; microphone; fullscreen; display-capture; autoplay"
+                style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>
+      </div>
+      <p class="small" style="margin:6px 0 0">Ta caméra est coupée au départ. Active le micro seulement pour poser une question.</p>
+    {% elif s.stream_url %}
+      <a class="btn" href="{{ s.stream_url }}" target="_blank" rel="noopener">Rejoindre la séance</a>
+    {% else %}
+      <div class="card"><p style="margin:0">Le professeur n'a pas encore mis le lien du direct. Recharge la page dans quelques minutes.</p></div>
+    {% endif %}
+  {% elif rights.replay_open %}
+    <p style="margin:14px 0 8px;font-weight:800">Différé</p>
+    {% include "game/_yt.html" with vid=s.replay_video_id title=s.title %}
+  {% elif rights.live_booked and not rights.ended %}
+    <div class="card" style="margin-top:12px"><p style="margin:0;font-weight:700">✅ Tu es inscrit.</p>
+      <p class="small" style="margin:4px 0 0">Le direct s'ouvre ici 15 minutes avant le début. Le différé restera disponible ensuite.</p></div>
+  {% elif rights.replay_booked and rights.ended %}
+    <div class="card" style="margin-top:12px"><p style="margin:0">Le différé sera disponible ici dès que le professeur l'aura mis en ligne.</p></div>
+  {% elif rights.pending %}
+    <div class="card" style="margin-top:12px"><p style="margin:0">Ton paiement est en cours de vérification. L'accès s'ouvrira ici.</p></div>
+  {% endif %}
+
+  {% if not rights.replay_booked and not rights.pending %}
+  <form method="post" style="margin-top:14px">{% csrf_token %}
+    <p style="font-weight:700;margin:0 0 8px">S'inscrire</p>
+    {% if not rights.ended and left != 0 %}
+    <label class="card plan"><input type="radio" name="kind" value="live" checked>
+      <span style="flex:1"><strong>Direct + différé</strong><br><span class="small">Pose tes questions pendant la séance{% if left is not None %} · {{ left }} place{{ left|pluralize }}{% endif %}</span></span>
+      <strong>{% if s.price_live %}{{ s.price_live }} F{% else %}Gratuit{% endif %}</strong></label>
+    {% endif %}
+    <label class="card plan"><input type="radio" name="kind" value="replay" {% if rights.ended or left == 0 %}checked{% endif %}>
+      <span style="flex:1"><strong>Différé seul</strong><br><span class="small">Regarde l'enregistrement quand tu veux</span></span>
+      <strong>{% if s.price_replay %}{{ s.price_replay }} F{% else %}Gratuit{% endif %}</strong></label>
+    {% if s.price_live or s.price_replay %}
+    <div class="card" style="margin-top:4px">
+      <p class="small" style="margin:0 0 6px">Paie par mobile money au <strong>{{ space.payment_number|default:"numéro communiqué par l'école" }}</strong>, puis saisis la référence reçue par SMS.</p>
+      <input type="text" name="payment_ref" maxlength="60" placeholder="Référence de la transaction">
+    </div>
+    {% endif %}
+    <button class="btn" style="margin-top:10px">Valider mon inscription</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

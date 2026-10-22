@@ -531,3 +531,12 @@ Démo : `python manage.py seed_demo_school_space --abonnements`. Tests : `python
 - L'import des élèves accepte une 6e colonne « Téléphone du parent » ; le téléphone de l'élève devient facultatif quand il a un matricule.
 
 Démo complète : `python manage.py seed_demo_school_space --abonnements` (professeur `prof.maths` / `PROF2026`, 6 élèves de 3ème avec matricule, dont une fratrie).
+
+## Cours et séances en direct
+
+- **Cours** (`/e/<ecole>/cours/`) : fiche PDF et/ou vidéo YouTube (publique ou « non répertoriée ») lue directement dans MaxQuiz, rangés par matière et chapitre. Publiés par les professeurs (espace professeur → 📘 Cours) pour leur école, ou communs à toutes les écoles (admin Django : cours sans espace, avec niveau / matière / chapitre identiques à ceux des quiz partagés). Inclus dans l'abonnement ; un cours peut être en « aperçu gratuit ».
+- **Après une erreur à un quiz**, la correction propose « Revoir le cours » : le cours lié à la question, sinon celui du même chapitre (école ou commun).
+- **Séances en direct** (`/e/<ecole>/seances/`) : programmées par les professeurs, payantes ou gratuites (direct + différé, ou différé seul), paiement mobile money validé dans Tableau de bord → 🎥 Séances, qui affiche aussi les revenus par professeur (part du professeur et de l'école réglables sur l'espace, 60 % / 10 % par défaut).
+  - *YouTube Live intégré* (conseillé pour une classe) : le professeur diffuse en non répertorié, les élèves regardent dans MaxQuiz ; l'enregistrement sert de différé.
+  - *Visio intégrée Jitsi* (petits groupes) : salle générée automatiquement, ouverte 15 min avant le début. Réglage `JITSI_DOMAIN` (défaut `meet.jit.si`) : pour un usage régulier, un serveur Jitsi auto-hébergé ou un compte JaaS.
+  - *Lien externe* (Meet, Zoom) en secours.

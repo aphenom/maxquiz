@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import views_subscriptions as subs
 from . import views_school as school_views
+from . import views_learning as learn
 
 urlpatterns = [
     path("", views.public_daily, name="home"),
@@ -33,6 +34,14 @@ urlpatterns = [
     path("e/<slug:slug>/tableau-de-bord/journal/", views.dashboard_audit_log, name="dashboard_audit_log"),
     path("e/<slug:slug>/abonnement/", subs.space_subscribe, name="space_subscribe"),
     path("e/<slug:slug>/connexion-eleve/", school_views.student_login, name="student_login"),
+    path("e/<slug:slug>/cours/", learn.lessons_list, name="lessons_list"),
+    path("e/<slug:slug>/cours/<int:lesson_id>/", learn.lesson_detail, name="lesson_detail"),
+    path("e/<slug:slug>/cours/<int:lesson_id>/pdf/", learn.lesson_pdf, name="lesson_pdf"),
+    path("e/<slug:slug>/seances/", learn.sessions_list, name="sessions_list"),
+    path("e/<slug:slug>/seances/<int:session_id>/", learn.session_detail, name="session_detail"),
+    path("e/<slug:slug>/ressources/cours/", learn.staff_lessons, name="staff_lessons"),
+    path("e/<slug:slug>/ressources/seances/", learn.staff_sessions, name="staff_sessions"),
+    path("e/<slug:slug>/tableau-de-bord/seances/", learn.dashboard_sessions, name="dashboard_sessions"),
     path("e/<slug:slug>/ressources/", school_views.school_resources, name="school_resources"),
     path("e/<slug:slug>/ressources/<int:resource_id>/fichier/", school_views.resource_file, name="resource_file"),
     path("e/<slug:slug>/tableau-de-bord/codes-pin/", school_views.dashboard_pins, name="dashboard_pins"),

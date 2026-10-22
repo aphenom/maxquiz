@@ -330,3 +330,157 @@ class SchoolTests(TestCase):
         resp = self.client.get(reverse("dashboard_reports", args=[self.space.slug]) +
                                f"?mois={self.today:%Y-%m}&export=csv")
         self.assertIn("Kouassi Aya", resp.content.decode("utf-8"))
+
+
+from .models import Lesson, LiveSession, SessionBooking, youtube_id
+from . import learning
+
+
+class LearningTests(TestCase):
+    """Cours PDF/vidéo, lien depuis les corrections, séances en direct payantes."""
+
+    def setUp(self):
+        cache.clear()
+        self.today = timezone.localdate()
+        self.space = Space.objects.create(name="Collège Test", slug="college-test", dashboard_code="secret123",
+                                          members_only=True, subscription_required=True,
+                                          free_until=self.today - timedelta(days=1), consent_required=False,
+                                          one_per_day=False, payment_number="0700000000")
+        self.license = License.objects.create(space=self.space, period_label="2026-2027", seat_count=100,
+                                              start_date=self.today - timedelta(days=30),
+                                              end_date=self.today + timedelta(days=200))
+        self.cat = Category.objects.create(space=self.space, name="3e", slug="3e")
+        self.maths = SubCategory.objects.create(category=self.cat, name="Maths", slug="maths")
+        self.theme = Theme.objects.create(sub_category=self.maths, name="Pythagore", slug="pythagore")
+        self.player = Player.objects.create(pseudo="Aya", phone="0707070707")
+        self.member = Membership.objects.create(space=self.space, license=self.license, full_name="Kouassi Aya",
+                                                phone="0707070707", external_ref="M001", category=self.cat,
+                                                player=self.player)
+        self.teacher = Teacher(space=self.space, full_name="M. Kouadio", username="kouadio.t", role="teacher")
+        self.teacher.set_password("motdepasse1")
+        self.teacher.save()
+        self.teacher.sub_categories.set([self.maths])
+        self.lesson = Lesson.objects.create(space=self.space, sub_category=self.maths, theme=self.theme,
+                                            title="Pythagore en 10 min", youtube_url="https://youtu.be/dQw4w9WgXcQ",
+                                            pdf_name="fiche.pdf", pdf_data=b"%PDF-1.4 fiche")
+
+    def _login(self):
+        s = self.client.session
+        s["player_id"] = self.player.id
+        s["verified_player_id"] = self.player.id
+        s.save()
+
+    def _subscribe(self):
+        validate(Subscription.objects.create(membership=self.member, plan="monthly", amount=2000, payment_ref="R1"))
+
+    def test_youtube_id_forms(self):
+        for url in ("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3", "https://youtu.be/dQw4w9WgXcQ",
+                    "https://www.youtube.com/live/dQw4w9WgXcQ?si=x", "https://youtube.com/shorts/dQw4w9WgXcQ"):
+            self.assertEqual(youtube_id(url), "dQw4w9WgXcQ")
+        self.assertEqual(youtube_id("https://vimeo.com/123"), "")
+
+    def test_lesson_requires_subscription_then_plays_inline(self):
+        self._login()
+        url = reverse("lesson_detail", args=[self.space.slug, self.lesson.id])
+        self.assertRedirects(self.client.get(url), reverse("space_subscribe", args=[self.space.slug]),
+                             fetch_redirect_response=False)
+        self._subscribe()
+        r = self.client.get(url)
+        self.assertContains(r, "youtube-nocookie.com/embed/dQw4w9WgXcQ")
+        pdf = self.client.get(reverse("lesson_pdf", args=[self.space.slug, self.lesson.id]))
+        self.assertEqual(pdf["Content-Disposition"].split(";")[0], "inline")
+
+    def test_free_preview_without_subscription(self):
+        self.lesson.free_preview = True
+        self.lesson.save()
+        self._login()
+        r = self.client.get(reverse("lesson_detail", args=[self.space.slug, self.lesson.id]))
+        self.assertEqual(r.status_code, 200)
+
+    def test_global_lesson_matches_school_labels(self):
+        g = Lesson.objects.create(space=None, shared_level_name="3ème", shared_subject_name="Mathématiques",
+                                  shared_theme_name="Équations", title="Équations (MQ)",
+                                  youtube_url="https://youtu.be/aaaaaaaaaaa")
+        titles = [l.title for grp in learning.lessons_by_subject(self.space, self.member)
+                  for c in grp["chapters"] for l in c["lessons"]]
+        self.assertIn(g.title, titles)
+        self.assertIn(self.lesson.title, titles)
+
+    def test_wrong_answer_links_to_lesson(self):
+        self._subscribe()
+        self._login()
+        quiz = Quiz.objects.create(space=self.space, name="Pythagore", slug="pyth", category=self.cat,
+                                   sub_category=self.maths, theme=self.theme, question_count=2, survey_every=0)
+        for i in range(2):
+            Question.objects.create(space=self.space, sub_category=self.maths, theme=self.theme, kind="quiz",
+                                    category="ec", difficulty=1, text=f"Q{i}", option_a="a", option_b="b",
+                                    option_c="c", option_d="d", correct=0, explanation="Parce que.")
+        r = self.client.post(reverse("quiz_start", args=[self.space.slug, quiz.slug]))
+        import json as _json
+        data = _json.loads(_re.search(r'<script id="game-data" type="application/json">(.*?)</script>',
+                                      r.content.decode(), _re.S).group(1))
+        q0 = data["questions"][0]["id"]
+        resp = self.client.post(reverse("space_answer"), data=_json.dumps(
+            {"session_id": data["session_id"], "question_id": q0, "choice": 1, "time_ms": 3000}),
+            content_type="application/json").json()
+        self.assertEqual(resp["lesson"]["url"], reverse("lesson_detail", args=[self.space.slug, self.lesson.id]))
+
+    def test_teacher_publishes_lesson_in_own_subject_only(self):
+        self.client.post(reverse("dashboard_login_common"), {"identifiant": "kouadio.t", "password": "motdepasse1"})
+        url = reverse("staff_lessons", args=[self.space.slug])
+        self.client.post(url, {"action": "create", "sub_category_id": self.maths.id, "title": "Mauvais lien",
+                               "youtube_url": "https://vimeo.com/1"})
+        self.assertFalse(Lesson.objects.filter(title="Mauvais lien").exists())
+        other = SubCategory.objects.create(category=self.cat, name="Français", slug="fr")
+        self.client.post(url, {"action": "create", "sub_category_id": other.id, "title": "Hors matière",
+                               "youtube_url": "https://youtu.be/bbbbbbbbbbb"})
+        self.assertFalse(Lesson.objects.filter(title="Hors matière").exists())
+        self.client.post(url, {"action": "create", "sub_category_id": self.maths.id, "theme_id": self.theme.id,
+                               "title": "Réciproque", "youtube_url": "https://youtu.be/ccccccccccc"})
+        self.assertEqual(Lesson.objects.get(title="Réciproque").teacher, self.teacher)
+
+    # --- séances ---------------------------------------------------------------
+    def _session(self, **kw):
+        defaults = dict(space=self.space, teacher=self.teacher, sub_category=self.maths, title="Révision",
+                        starts_at=timezone.now() + timedelta(minutes=10), duration_min=60,
+                        provider="youtube", stream_url="https://www.youtube.com/live/ddddddddddd")
+        defaults.update(kw)
+        return LiveSession.objects.create(**defaults)
+
+    def test_paid_live_flow_and_earnings(self):
+        s = self._session()
+        self._login()
+        url = reverse("session_detail", args=[self.space.slug, s.id])
+        self.client.post(url, {"kind": "live", "payment_ref": "OM123456"})
+        b = SessionBooking.objects.get()
+        self.assertEqual((b.status, b.amount), ("pending", 500))
+        self.assertFalse(learning.session_rights(s, self.member)["live_open"])
+        self.assertNotContains(self.client.get(url), "youtube-nocookie.com/embed/ddddddddddd")
+        s2 = self.client.session
+        s2[f"dash_{self.space.id}"] = self.space.dashboard_code
+        s2.save()
+        self.client.post(reverse("dashboard_sessions", args=[self.space.slug]), {"booking_id": b.id, "action": "validate"})
+        self.assertContains(self.client.get(url), "youtube-nocookie.com/embed/ddddddddddd")   # fenêtre ouverte (10 min avant)
+        rows = learning.earnings_report(self.space)
+        self.assertEqual((rows[0]["teacher_share"], rows[0]["school_share"], rows[0]["mq_share"]), (300, 50, 150))
+
+    def test_replay_after_end_and_seats(self):
+        s = self._session(starts_at=timezone.now() - timedelta(hours=3), seats=1,
+                          replay_url="https://youtu.be/eeeeeeeeeee")
+        b = SessionBooking.objects.create(session=s, membership=self.member, kind="replay", amount=300, payment_ref="X1")
+        learning.validate_booking(b)
+        r = learning.session_rights(s, self.member)
+        self.assertTrue(r["replay_open"])
+        self.assertFalse(r["live_open"])
+        other = Membership.objects.create(space=self.space, license=self.license, full_name="Yao Koffi",
+                                          external_ref="M002", category=self.cat)
+        SessionBooking.objects.create(session=s, membership=other, kind="live", amount=500, payment_ref="X2")
+        self.assertEqual(learning.seats_left(s), 0)
+
+    def test_free_jitsi_session_embeds_visio(self):
+        s = self._session(provider="jitsi", stream_url="", price_live=0, price_replay=0)
+        self.assertTrue(s.jitsi_room.startswith("maxquiz-college-test-"))
+        self._login()
+        r = self.client.get(reverse("session_detail", args=[self.space.slug, s.id]))
+        self.assertContains(r, f"https://meet.jit.si/{s.jitsi_room}")
+        self.assertContains(r, "Kouassi%20Aya")

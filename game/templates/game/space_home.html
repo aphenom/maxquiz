@@ -13,6 +13,12 @@
   <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
   {% endif %}
   {% include "game/_access_banner.html" %}
+  {% if player %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+    <a class="btn encre" href="{% url 'lessons_list' space.slug %}" style="padding:12px;font-size:15px">📘 Mes cours</a>
+    <a class="btn encre" href="{% url 'sessions_list' space.slug %}" style="padding:12px;font-size:15px">🎥 Séances en direct</a>
+  </div>
+  {% endif %}
 
   <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
     {% if reward_text %}

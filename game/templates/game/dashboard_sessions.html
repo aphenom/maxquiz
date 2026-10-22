@@ -1,0 +1,30 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Séances payantes{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+{% include "game/_dash_head.html" with subtitle="Séances payantes : paiements et revenus" %}
+{% include "game/_dashboard_nav.html" with active="sessions" %}
+{% include "game/_messages.html" %}
+<p class="small card" style="margin-top:10px">Programmer une séance : <a href="{% url 'staff_sessions' space.slug %}">Séances</a>.
+  Partage des revenus : professeur {{ space.live_teacher_share_pct }} %, établissement {{ space.live_school_share_pct }} %, MQ le reste.</p>
+<h2 style="font-size:18px;margin:16px 0 8px">⏳ Paiements à vérifier ({{ pending|length }})</h2>
+{% for b in pending %}
+<div class="card row">
+  <span><strong>{{ b.membership.full_name }}</strong> · {{ b.session.title }}<br>
+    <span class="small">{{ b.get_kind_display }} · {{ b.amount }} F · réf. <strong>{{ b.payment_ref }}</strong> · {{ b.created_at|date:"d/m H:i" }}</span></span>
+  <form method="post">{% csrf_token %}<input type="hidden" name="booking_id" value="{{ b.id }}">
+    <button class="btn vert mini" name="action" value="validate">Valider</button>
+    <button class="btn mini" style="background:var(--rouge)" name="action" value="reject">Refuser</button></form>
+</div>
+{% empty %}<p class="small">Aucun paiement en attente.</p>{% endfor %}
+<h2 style="font-size:18px;margin:18px 0 8px">💰 Revenus par mois et par professeur</h2>
+{% if report %}
+<div class="card" style="overflow-x:auto">
+<table style="width:100%;border-collapse:collapse;font-size:14px">
+  <tr style="text-align:right"><th style="text-align:left;padding:6px">Mois</th><th style="text-align:left">Professeur</th><th>Inscriptions</th><th>Encaissé</th><th>Professeur</th><th>École</th><th>MQ</th></tr>
+  {% for r in report %}<tr style="text-align:right;border-top:1px solid var(--sable)"><td style="text-align:left;padding:6px">{{ r.label }}</td><td style="text-align:left">{{ r.teacher }}</td><td>{{ r.count }}</td><td>{{ r.total }} F</td><td><strong>{{ r.teacher_share }} F</strong></td><td>{{ r.school_share }} F</td><td>{{ r.mq_share }} F</td></tr>{% endfor %}
+  <tr style="text-align:right;border-top:2px solid var(--sable);font-weight:800"><td style="text-align:left;padding:6px">Total</td><td></td><td></td><td>{{ totals.total }} F</td><td>{{ totals.teacher_share }} F</td><td>{{ totals.school_share }} F</td><td>{{ totals.mq_share }} F</td></tr>
+</table></div>
+{% else %}<p class="small">Aucune inscription payante validée pour l'instant.</p>{% endif %}
+{% endblock %}
