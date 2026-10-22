@@ -6,7 +6,8 @@ from django.utils.html import format_html, escape
 from django.utils.safestring import mark_safe
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
-                     Category, SubCategory, Theme, Quiz, Membership, License, AuditLog)
+                     Category, SubCategory, Theme, Quiz, Membership, License, AuditLog,
+                     Subscription)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -34,8 +35,15 @@ class PlayerAdmin(admin.ModelAdmin):
 @admin.register(Space)
 class SpaceAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "dashboard_username", "dashboard_code", "active",
-                    "consent_required", "question_count", "elimination", "playful_fx")
+                    "consent_required", "members_only", "subscription_required", "free_until")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("membership", "plan", "amount", "payment_ref", "status", "start_date", "end_date", "created_at")
+    list_filter = ("status", "plan", "membership__space")
+    search_fields = ("membership__full_name", "membership__external_ref", "payment_ref", "payer_phone")
 
 
 @admin.register(License)

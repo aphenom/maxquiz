@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal)
+from .subscriptions import access_status
 
 TRAINING_COUNT = 6
 MIN_HUMAN_MS = 800  # bonne réponse plus rapide = suspect
@@ -817,7 +818,7 @@ def space_home(request, slug):
     # Un élève sans fiche établissement (personne n'a chargé son numéro) peut se
     # déclarer lui-même — seulement s'il y a un niveau à choisir, et seulement
     # tant que l'établissement n'a rien réglé pour lui (no_profile).
-    can_declare_level = bool(player and no_profile and all_categories)
+    can_declare_level = bool(player and no_profile and all_categories and not space.members_only)
     return render(request, "game/space_home.html", {
         "space": space, "player": player, "already": already,
         "categories": categories, "orphan_quizzes": orphan_quizzes,
@@ -828,6 +829,7 @@ def space_home(request, slug):
         "multi_subject": total_subs > 1,
         "all_categories": all_categories,
         "can_declare_level": can_declare_level,
+        "access": access_status(space, player) if player else None,
         "tab": "home",
     })
 
@@ -841,7 +843,9 @@ def space_declare_level(request, slug):
     tableau de bord — cette déclaration n'est qu'un point de départ."""
     space = _space(slug)
     player = _player(request)
-    if not player:
+    if not player or space.members_only:
+        # Espace réservé : seule l'école crée les fiches (sinon n'importe qui
+        # occuperait un siège facturé en se déclarant lui-même).
         return redirect("space_home", slug=slug)
     category = Category.objects.filter(space=space, id=_post_int(request.POST, "category")).first()
     if not category:
@@ -879,6 +883,8 @@ def space_start(request, slug):
     if not player:
         return redirect("space_home", slug=slug)
     _match_membership(space, player.phone, player)
+    if not access_status(space, player)["ok"]:
+        return redirect("space_subscribe", slug=slug)
 
     today = timezone.localdate()
     if space.one_per_day and GameSession.objects.filter(
@@ -960,6 +966,7 @@ def quiz_home(request, slug, quiz_slug):
         "space": space, "quiz": quiz, "player": player, "already": already,
         "played_before": played_before, "expired": expired,
         "reward_text": reward_text, "reward_type": reward_type,
+        "access": access_status(space, player) if player else None,
         "tab": "home",
     })
 
@@ -988,6 +995,10 @@ def quiz_start(request, slug, quiz_slug):
             "error": "La période de licence liée à ce quiz est terminée — il n'est plus jouable, "
                     "mais tes résultats passés restent visibles sur ton compte.",
         })
+
+    access = access_status(space, player)
+    if not access["ok"]:
+        return redirect("space_subscribe", slug=slug)
 
     today = timezone.localdate()
     if _quiz_locked(player, quiz, today):

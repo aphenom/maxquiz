@@ -25,11 +25,12 @@
       {% if reward_type == "monetaire" %}💰{% elif reward_type == "autre" %}🏅{% else %}🎁{% endif %}
       {{ reward_text }}</p>
     {% endif %}
-    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">Participation gratuite · {{ quiz.question_count }} questions
+    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">{% if space.subscription_required %}Inclus dans l'abonnement{% else %}Participation gratuite{% endif %} · {{ quiz.question_count }} questions
     {% if quiz.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
   </div>
 
   {% if error %}<p style="color:var(--rouge);font-weight:700;text-align:center;margin-top:10px">{{ error }}</p>{% endif %}
+  {% include "game/_access_banner.html" %}
 
   {% if player %}
   <div class="card" style="margin-top:14px">

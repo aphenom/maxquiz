@@ -1,0 +1,18 @@
+{% if access and access.reason != "open" %}
+<div class="card" style="margin-top:12px;border-left:4px solid {% if access.ok %}var(--vert){% else %}var(--rouge){% endif %}">
+  {% if access.reason == "trial" %}
+    <p style="margin:0;font-weight:700">🎁 Accès gratuit jusqu'au {{ space.free_until|date:"d/m/Y" }}</p>
+    <p class="small" style="margin:4px 0 0">Profite de la période d'essai.
+      <a href="{% url 'space_subscribe' space.slug %}">Voir les formules d'abonnement</a></p>
+  {% elif access.reason == "subscribed" %}
+    <p style="margin:0;font-weight:700">✅ Abonné jusqu'au {{ access.subscription.end_date|date:"d/m/Y" }}</p>
+    <p class="small" style="margin:4px 0 0"><a href="{% url 'space_subscribe' space.slug %}">Mon abonnement</a></p>
+  {% elif access.reason == "member" %}
+  {% else %}
+    <p style="margin:0;font-weight:700">🔒 {{ access.message }}</p>
+    {% if access.reason != "not_member" %}
+    <p class="small" style="margin:6px 0 0"><a href="{% url 'space_subscribe' space.slug %}">S'abonner ou suivre mon paiement</a></p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endif %}

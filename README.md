@@ -506,3 +506,18 @@ jokers + retraits automatisés via agrégateur), répartition automatique de la 
 minuit (cron/Celery), banque de questions industrialisée (plusieurs milliers, avec
 processus de validation), PostgreSQL + Redis, PWA (manifest + service worker),
 déploiement gunicorn + whitenoise.
+
+## Accompagnement scolaire : abonnements des élèves
+
+Réglages par espace (admin Django, fiche de l'espace) :
+- **Réservé aux membres** (`members_only`) : seuls les élèves importés par l'école jouent ; l'auto-déclaration de niveau est désactivée.
+- **Abonnement individuel requis** (`subscription_required`) et **accès gratuit jusqu'au** (`free_until`) pour la période d'essai ou le pilote.
+- **Prix** mensuel, trimestriel (0 = non proposé) et annuel ; l'annuel court jusqu'à la fin de la licence de l'élève (l'année scolaire).
+- **Part de l'établissement** par élève abonné et par mois (500 F par défaut), **numéro de paiement** mobile money et consignes.
+
+Parcours :
+1. L'élève (ou son parent) ouvre `/e/<ecole>/abonnement/`, choisit une formule, paie par mobile money et saisit la référence de la transaction : l'abonnement est « en attente ».
+2. L'établissement (ou MQ) vérifie la référence et valide dans **Tableau de bord → 💳 Abonnements** : les dates sont calculées automatiquement (un réabonnement anticipé démarre le lendemain de la fin du précédent).
+3. **Tableau de bord → 🤝 Reversements** : part due à l'école mois par mois, export Excel.
+
+Démo : `python manage.py seed_demo_school_space --abonnements`. Tests : `python manage.py test game`.

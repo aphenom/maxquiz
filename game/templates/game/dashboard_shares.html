@@ -1,0 +1,35 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Reversements{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--sable)}
+th:first-child,td:first-child{text-align:left}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
+  <p class="small" style="margin:0">Part de l'établissement : {{ space.school_share_per_month }} F par élève abonné et par mois</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="shares" %}
+
+<p class="small card" style="margin-top:10px">Un élève compte pour un mois dès que son abonnement validé couvre
+  au moins un jour de ce mois. Un abonnement annuel compte donc chaque mois de l'année scolaire.</p>
+
+{% if rows %}
+<div class="card" style="margin-top:10px;overflow-x:auto">
+<table>
+  <tr><th>Mois</th><th>Élèves abonnés</th><th>Part due</th><th>Encaissé ce mois</th></tr>
+  {% for r in rows %}
+  <tr><td>{{ r.label }}</td><td>{{ r.students }}</td><td><strong>{{ r.share }} F</strong></td><td>{{ r.collected }} F</td></tr>
+  {% endfor %}
+  <tr><td><strong>Total</strong></td><td></td><td><strong>{{ total_share }} F</strong></td><td><strong>{{ total_collected }} F</strong></td></tr>
+</table>
+</div>
+<a class="btn vert" href="?export=xlsx" style="margin-top:10px">⬇️ Exporter le relevé (Excel)</a>
+{% else %}
+<p class="small" style="margin-top:10px">Aucun abonnement validé pour l'instant.</p>
+{% endif %}
+{% endblock %}

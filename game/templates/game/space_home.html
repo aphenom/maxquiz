@@ -11,6 +11,7 @@
   {% if space.welcome %}
   <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
   {% endif %}
+  {% include "game/_access_banner.html" %}
 
   <div class="card" style="margin-top:12px;text-align:center;border-top:6px solid var(--or)">
     {% if reward_text %}
@@ -18,7 +19,7 @@
       {% if reward_type == "monetaire" %}💰{% elif reward_type == "autre" %}🏅{% else %}🎁{% endif %}
       {{ reward_text }}</p>
     {% endif %}
-    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">Participation gratuite · {{ space.question_count }} questions
+    <p class="small" style="margin:{% if reward_text %}6px{% else %}0{% endif %} 0 0">{% if space.subscription_required %}Inclus dans l'abonnement{% else %}Participation gratuite{% endif %} · {{ space.question_count }} questions
     {% if space.elimination %}· mode survie : une erreur et c'est fini !{% endif %}</p>
   </div>
 

@@ -6,6 +6,8 @@
     {% elif active == "quizzes" %}📝 Quiz
     {% elif active == "questions" %}❓ Questions
     {% elif active == "members" %}🪪 Membres
+    {% elif active == "subscriptions" %}💳 Abonnements
+    {% elif active == "shares" %}🤝 Reversements
     {% elif active == "password" %}🔒 Mot de passe
     {% elif active == "journal" %}📜 Journal
     {% endif %} ▾
@@ -16,6 +18,8 @@
     <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
     <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
     <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">🪪 Membres</a>
+    {% if space.subscription_required %}<a href="{% url 'dashboard_subscriptions' space.slug %}" class="chip {% if active == 'subscriptions' %}orange{% endif %}">💳 Abonnements</a>
+    <a href="{% url 'dashboard_shares' space.slug %}" class="chip {% if active == 'shares' %}orange{% endif %}">🤝 Reversements</a>{% endif %}
     <a href="{% url 'dashboard_audit_log' space.slug %}" class="chip {% if active == 'journal' %}orange{% endif %}">📜 Journal</a>
     <a href="{% url 'dashboard_change_password' space.slug %}" class="chip {% if active == 'password' %}orange{% endif %}">🔒 Mot de passe</a>
     <a href="{% url 'dashboard_logout' space.slug %}" class="chip rouge">🚪 Déconnexion</a>

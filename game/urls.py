@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_subscriptions as subs
 
 urlpatterns = [
     path("", views.public_daily, name="home"),
@@ -29,6 +30,9 @@ urlpatterns = [
     path("e/<slug:slug>/tableau-de-bord/membres/modele/", views.dashboard_members_template, name="dashboard_members_template"),
     path("e/<slug:slug>/tableau-de-bord/membres/<int:member_id>/", views.dashboard_member_detail, name="dashboard_member_detail"),
     path("e/<slug:slug>/tableau-de-bord/journal/", views.dashboard_audit_log, name="dashboard_audit_log"),
+    path("e/<slug:slug>/abonnement/", subs.space_subscribe, name="space_subscribe"),
+    path("e/<slug:slug>/tableau-de-bord/abonnements/", subs.dashboard_subscriptions, name="dashboard_subscriptions"),
+    path("e/<slug:slug>/tableau-de-bord/reversements/", subs.dashboard_shares, name="dashboard_shares"),
     path("e/<slug:slug>/tableau-de-bord/journal/restaurer/", views.dashboard_restore, name="dashboard_restore"),
     path("e/<slug:slug>/connecte/", views.space_confirm, name="space_confirm"),
     path("compte/connexion/", views.account_login, name="account_login"),

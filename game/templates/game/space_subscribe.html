@@ -1,0 +1,74 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Mon abonnement{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.plan{display:flex;gap:10px;align-items:center;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.plan input{width:auto;margin:0}
+.plan b{font-size:18px;color:var(--orange)}
+</style>
+{% include "game/_space_banner.html" with subtitle="Mon abonnement" %}
+<div class="stagger">
+  <p class="small" style="margin:8px 0 0"><a href="{% url 'space_home' space.slug %}">← Retour aux quiz</a></p>
+
+  {% for m in messages %}
+  <p class="card small" style="margin-top:10px;border-left:4px solid {% if m.tags == 'error' %}var(--rouge){% else %}var(--vert){% endif %}">{{ m }}</p>
+  {% endfor %}
+
+  {% include "game/_access_banner.html" %}
+
+  {% if not membership %}
+  <div class="card" style="margin-top:12px">
+    <p style="margin:0">L'abonnement est réservé aux élèves inscrits par {{ space.name }}.
+      Si ton école t'a inscrit, connecte-toi avec le numéro qu'elle a enregistré.</p>
+  </div>
+  {% elif not space.subscription_required %}
+  <div class="card" style="margin-top:12px"><p style="margin:0">Aucun abonnement n'est demandé dans cet espace.</p></div>
+  {% else %}
+  <div class="card" style="margin-top:12px">
+    <p style="margin:0;font-weight:700">{{ membership.full_name }}{% if membership.external_ref %} · matricule {{ membership.external_ref }}{% endif %}</p>
+  </div>
+
+  <form method="post" style="margin-top:12px">
+    {% csrf_token %}
+    <p style="font-weight:700;margin:0 0 8px">1. Choisis ta formule</p>
+    {% for p in plans %}
+    <label class="card plan">
+      <input type="radio" name="plan" value="{{ p.code }}" {% if forloop.first %}checked{% endif %}>
+      <span style="flex:1"><strong>{{ p.label }}</strong><br><span class="small">{{ p.duration }}</span></span>
+      <b>{{ p.price }} F</b>
+    </label>
+    {% endfor %}
+
+    <p style="font-weight:700;margin:14px 0 8px">2. Paie par mobile money</p>
+    <div class="card">
+      {% if space.payment_number %}
+      <p style="margin:0">Numéro : <strong style="font-size:18px">{{ space.payment_number }}</strong></p>
+      {% else %}
+      <p style="margin:0">Le numéro de paiement sera communiqué par l'établissement.</p>
+      {% endif %}
+      {% if space.payment_instructions %}<p class="small" style="margin:6px 0 0">{{ space.payment_instructions|linebreaksbr }}</p>{% endif %}
+    </div>
+
+    <p style="font-weight:700;margin:14px 0 8px">3. Déclare ton paiement</p>
+    <div class="card">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:4px">Référence de la transaction (reçue par SMS)</label>
+      <input type="text" name="payment_ref" required maxlength="60" placeholder="Ex. : CI261022.1530.A12345">
+      <label class="small" style="font-weight:700;display:block;margin:10px 0 4px">Numéro qui a payé (facultatif)</label>
+      <input type="text" name="payer_phone" maxlength="20" placeholder="07 07 07 07 07">
+    </div>
+    <button class="btn" type="submit" style="margin-top:12px">Envoyer pour vérification</button>
+  </form>
+
+  {% if history %}
+  <p style="font-weight:700;margin:18px 0 8px">Historique</p>
+  {% for s in history %}
+  <div class="card small" style="margin-bottom:6px;display:flex;justify-content:space-between;gap:8px">
+    <span>{{ s.get_plan_display }} · {{ s.amount }} F · réf. {{ s.payment_ref }}</span>
+    <span style="font-weight:700;{% if s.status == 'active' %}color:var(--vert){% elif s.status == 'rejected' %}color:var(--rouge){% endif %}">
+      {% if s.status == "active" %}du {{ s.start_date|date:"d/m" }} au {{ s.end_date|date:"d/m/Y" }}{% else %}{{ s.get_status_display }}{% endif %}</span>
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

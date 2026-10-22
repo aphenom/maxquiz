@@ -1,0 +1,55 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Abonnements{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.sub-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;margin-bottom:6px;flex-wrap:wrap}
+.sub-row form{display:flex;gap:6px;margin:0}
+.sub-row button{width:auto;padding:8px 12px;font-size:13px}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
+  <p class="small" style="margin:0">Abonnements des élèves</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="subscriptions" %}
+
+{% for m in messages %}
+<p class="card small" style="margin-top:10px;border-left:4px solid {% if m.tags == 'error' %}var(--rouge){% else %}var(--vert){% endif %}">{{ m }}</p>
+{% endfor %}
+
+<div class="card small" style="margin-top:10px">
+  <strong>{{ active|length }}</strong> élève{{ active|length|pluralize }} abonné{{ active|length|pluralize }} aujourd'hui
+  sur {{ members_total }} inscrit{{ members_total|pluralize }}.
+  {% if trial_active %}<br>🎁 Période gratuite en cours jusqu'au {{ space.free_until|date:"d/m/Y" }} : tous les élèves jouent.{% endif %}
+</div>
+
+<h2 style="font-size:18px;margin:18px 0 8px">⏳ Paiements à vérifier ({{ pending|length }})</h2>
+<p class="small" style="margin:0 0 8px">Vérifie la référence dans l'historique du compte mobile money, puis valide.
+  Les dates sont calculées automatiquement.</p>
+{% for s in pending %}
+<div class="card sub-row">
+  <span><strong>{{ s.membership.full_name }}</strong>{% if s.membership.external_ref %} · {{ s.membership.external_ref }}{% endif %}<br>
+    <span class="small">{{ s.get_plan_display }} · {{ s.amount }} F · réf. <strong>{{ s.payment_ref }}</strong>
+    {% if s.payer_phone %}· payé depuis {{ s.payer_phone }}{% endif %} · le {{ s.created_at|date:"d/m H:i" }}</span></span>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="sub_id" value="{{ s.id }}">
+    <button class="btn vert" name="action" value="validate">✅ Valider</button>
+    <button class="btn" style="background:var(--rouge)" name="action" value="reject">✖ Refuser</button>
+  </form>
+</div>
+{% empty %}<p class="small">Aucun paiement en attente.</p>{% endfor %}
+
+<h2 style="font-size:18px;margin:18px 0 8px">⚠️ Échéance dans moins de 7 jours ({{ expiring|length }})</h2>
+{% for s in expiring %}
+<div class="card sub-row"><span><strong>{{ s.membership.full_name }}</strong> · {{ s.membership.phone }}</span>
+  <span class="small" style="font-weight:700;color:var(--orange)">fin le {{ s.end_date|date:"d/m/Y" }}</span></div>
+{% empty %}<p class="small">Aucune échéance proche.</p>{% endfor %}
+
+<h2 style="font-size:18px;margin:18px 0 8px">✅ Abonnements en cours ({{ active|length }})</h2>
+{% for s in active %}
+<div class="card sub-row"><span><strong>{{ s.membership.full_name }}</strong> · {{ s.get_plan_display }}</span>
+  <span class="small">jusqu'au {{ s.end_date|date:"d/m/Y" }}</span></div>
+{% empty %}<p class="small">Aucun abonnement en cours.</p>{% endfor %}
+{% endblock %}

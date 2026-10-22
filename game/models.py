@@ -284,6 +284,30 @@ class Space(models.Model):
         default=True,
         help_text="À désactiver pour un usage sans finalité marketing (ex. suivi pédagogique en école) : "
                   "la case à cocher n'est plus proposée aux participants et personne n'est anonymisé dans les exports.")
+    # --- Accès et abonnements individuels (accompagnement scolaire) ---
+    members_only = models.BooleanField(
+        "Réservé aux membres de l'établissement", default=False,
+        help_text="Seuls les joueurs reliés à une fiche membre (élève importé par l'établissement) "
+                  "peuvent jouer les quiz de l'espace. À activer pour une école.")
+    subscription_required = models.BooleanField(
+        "Abonnement individuel requis", default=False,
+        help_text="Chaque élève doit avoir un abonnement actif (mensuel, trimestriel ou annuel) "
+                  "pour lancer un quiz, après la période d'essai.")
+    free_until = models.DateField(
+        "Accès gratuit jusqu'au (inclus)", null=True, blank=True,
+        help_text="Période d'essai ou pilote : tous les membres jouent sans abonnement jusqu'à cette date.")
+    price_monthly = models.PositiveIntegerField("Prix mensuel (F CFA)", default=2000)
+    price_quarterly = models.PositiveIntegerField("Prix trimestriel (F CFA, 0 = non proposé)", default=0)
+    price_yearly = models.PositiveIntegerField("Prix annuel (F CFA, 0 = non proposé)", default=15000)
+    school_share_per_month = models.PositiveIntegerField(
+        "Part de l'établissement par élève abonné et par mois (F CFA)", default=500)
+    payment_number = models.CharField(
+        "Numéro de paiement mobile money", max_length=30, blank=True, default="",
+        help_text="Numéro Wave / Orange Money / MTN / Moov sur lequel les familles paient.")
+    payment_instructions = models.TextField(
+        "Consignes de paiement", blank=True,
+        default="Indique le matricule de l'élève en motif du paiement, puis saisis ci-dessous "
+                "la référence de la transaction reçue par SMS.")
     active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -562,3 +586,41 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.created_at:%d/%m/%Y %H:%M} · {self.get_action_display()} · {self.model_name} · {self.object_repr}"
+
+
+class Subscription(models.Model):
+    """Abonnement individuel d'un élève (Membership) pour une période donnée.
+    Le paiement mobile money est déclaré par la famille (référence de
+    transaction), puis validé à la main dans le tableau de bord : tant qu'il
+    n'est pas validé, l'abonnement est « en attente » et ne donne pas accès."""
+    PLANS = [("monthly", "Mensuel"), ("quarterly", "Trimestriel"), ("yearly", "Annuel")]
+    PLAN_MONTHS = {"monthly": 1, "quarterly": 3, "yearly": 12}
+    STATUS = [("pending", "En attente de validation"), ("active", "Validé"), ("rejected", "Refusé")]
+
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="subscriptions")
+    plan = models.CharField("Formule", max_length=10, choices=PLANS)
+    amount = models.PositiveIntegerField("Montant payé (F CFA)")
+    payer_phone = models.CharField("Téléphone du payeur", max_length=20, blank=True, default="")
+    payment_ref = models.CharField("Référence de la transaction", max_length=60)
+    status = models.CharField("Statut", max_length=10, choices=STATUS, default="pending")
+    start_date = models.DateField("Début", null=True, blank=True)
+    end_date = models.DateField("Fin (incluse)", null=True, blank=True)
+    validated_at = models.DateTimeField("Validé le", null=True, blank=True)
+    note = models.CharField("Note interne", max_length=200, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Abonnement élève"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["membership", "payment_ref"], name="unique_payment_ref_per_member"),
+        ]
+
+    def __str__(self):
+        return f"{self.membership} · {self.get_plan_display()} · {self.get_status_display()}"
+
+    def is_current(self, day=None):
+        from django.utils import timezone as _tz
+        day = day or _tz.localdate()
+        return (self.status == "active" and self.start_date and self.end_date
+                and self.start_date <= day <= self.end_date)

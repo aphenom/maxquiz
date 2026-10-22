@@ -139,6 +139,12 @@ PSEUDOS = ["Aya K.", "Koffi D.", "Aminata T.", "Jean-Marc B.", "Fatou C.", "Yao 
 class Command(BaseCommand):
     help = "Espace démo Collège La Réussite (niveaux/matières/quiz) + données simulées pour le tableau de bord"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--abonnements", action="store_true",
+            help="Active le modèle accompagnement scolaire : espace réservé aux élèves inscrits, "
+                 "abonnement individuel requis, accès gratuit jusqu'au 18/12/2026.")
+
     def handle(self, *args, **options):
         space, created = Space.objects.get_or_create(slug="college-la-reussite", defaults=dict(
             name="Collège La Réussite", emoji="🎓",
@@ -150,6 +156,16 @@ class Command(BaseCommand):
             elimination=False, category_label="Niveau", category_label_plural="Niveaux",
             subcategory_label="Matière", subcategory_label_plural="Matières",
             consent_required=False))
+
+        if options.get("abonnements"):
+            space.members_only = True
+            space.subscription_required = True
+            space.free_until = date(2026, 12, 18)
+            space.price_monthly, space.price_quarterly, space.price_yearly = 2000, 6000, 15000
+            space.school_share_per_month = 500
+            space.payment_number = space.payment_number or "07 00 00 00 00 (démo)"
+            space.save()
+            self.stdout.write("Abonnements activés : accès gratuit jusqu'au 18/12/2026, puis abonnement requis.")
 
         License.objects.get_or_create(space=space, period_label="2026-2027", defaults=dict(
             billing_mode="per_seat", seat_count=60, price="60 sièges — tarif à convenir",
