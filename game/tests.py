@@ -158,3 +158,175 @@ class SubscriptionTests(TestCase):
         self._login(self.outsider)
         self.client.post(reverse("space_declare_level", args=[self.space.slug]), {"category": self.cat.id})
         self.assertFalse(Membership.objects.filter(phone="0101010101").exists())
+
+
+import io
+import re as _re
+
+import openpyxl
+from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+from .models import AuditLog, GameSession, Resource, Teacher, Theme
+from . import school
+
+
+class SchoolTests(TestCase):
+    """Connexion par PIN, fratries, équipe, ressources des professeurs, bilans."""
+
+    def setUp(self):
+        cache.clear()
+        self.today = timezone.localdate()
+        self.space = Space.objects.create(name="Collège Test", slug="college-test", dashboard_code="secret123",
+                                          members_only=True, consent_required=False, one_per_day=False)
+        self.license = License.objects.create(space=self.space, period_label="2026-2027", seat_count=100,
+                                              start_date=self.today - timedelta(days=30),
+                                              end_date=self.today + timedelta(days=200))
+        self.cat = Category.objects.create(space=self.space, name="3ème", slug="3eme")
+        self.maths = SubCategory.objects.create(category=self.cat, name="Mathématiques", slug="maths")
+        self.fr = SubCategory.objects.create(category=self.cat, name="Français", slug="francais")
+        self.theme = Theme.objects.create(sub_category=self.maths, name="Équations", slug="equations",
+                                          taught_on=self.today - timedelta(days=10))
+        self.m1 = Membership.objects.create(space=self.space, license=self.license, full_name="Kouassi Aya",
+                                            phone="0707070707", external_ref="M001", category=self.cat,
+                                            parent_phone="0505050505")
+
+    def _dash(self):
+        s = self.client.session
+        s[f"dash_{self.space.id}"] = self.space.dashboard_code
+        s.save()
+
+    # --- PIN -------------------------------------------------------------------
+    def test_pin_generation_login_and_hash(self):
+        self._dash()
+        r = self.client.post(reverse("dashboard_pins", args=[self.space.slug]), {"action": "generate", "scope": "missing"})
+        pin = _re.search(r'class="pin">(\d{6})<', r.content.decode()).group(1)
+        self.m1.refresh_from_db()
+        self.assertNotIn(pin, self.m1.pin_hash)               # stocké haché
+        self.client.logout()
+        r = self.client.post(reverse("student_login", args=[self.space.slug]), {"matricule": "m001", "pin": pin})
+        self.assertRedirects(r, reverse("space_home", args=[self.space.slug]), fetch_redirect_response=False)
+        self.m1.refresh_from_db()
+        self.assertIsNotNone(self.m1.player_id)
+        self.assertIsNone(self.m1.player.phone)               # compte propre à l'élève
+
+    def test_pin_lock_is_temporary(self):
+        school.set_pin(self.m1)
+        url = reverse("student_login", args=[self.space.slug])
+        for _ in range(5):
+            self.client.post(url, {"matricule": "M001", "pin": "000000"})
+        self.m1.refresh_from_db()
+        self.assertIsNotNone(self.m1.pin_locked_until)
+        self.assertLessEqual(self.m1.pin_locked_until, timezone.now() + timedelta(minutes=16))
+        r = self.client.post(url, {"matricule": "M001", "pin": "000000"})
+        self.assertContains(r, "Réessaie dans")
+
+    def test_device_limit(self):
+        url = reverse("student_login", args=[self.space.slug])
+        for _ in range(school.DEVICE_MAX_FAILS_PER_HOUR):
+            self.client.post(url, {"matricule": "INCONNU", "pin": "000000"})
+        r = self.client.post(url, {"matricule": "INCONNU", "pin": "000000"})
+        self.assertContains(r, "depuis cet appareil")
+
+    # --- Fratrie -----------------------------------------------------------------
+    def test_import_siblings_same_phone_with_matricule(self):
+        self._dash()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Nom complet*", "Téléphone (élève)", "Matricule", "Niveau", "Matière", "Téléphone du parent"])
+        ws.append(["Yao Koffi", "0101010101", "M010", "3ème", "", "0101010101"])
+        ws.append(["Yao Ama", "0101010101", "M011", "3ème", "", "0101010101"])
+        ws.append(["Sans Rien", "", "", "3ème", "", ""])
+        buf = io.BytesIO(); wb.save(buf)
+        f = SimpleUploadedFile("eleves.xlsx", buf.getvalue())
+        r = self.client.post(reverse("dashboard_members", args=[self.space.slug]),
+                             {"action": "import_csv", "csv_file": f}, follow=True)
+        self.assertEqual(Membership.objects.filter(phone="0101010101").count(), 2)
+        self.assertContains(r, "ni téléphone ni matricule")
+        # un compte joueur avec ce numéro ne s'approprie pas les deux fiches
+        p = Player.objects.create(pseudo="Parent", phone="0101010101")
+        from .views import _match_by_phone
+        _match_by_phone(Membership.objects.filter(space=self.space), "0101010101", p)
+        self.assertFalse(Membership.objects.filter(player=p).exists())
+
+    # --- Équipe et ressources ----------------------------------------------------
+    def _teacher(self, role="teacher"):
+        t = Teacher(space=self.space, full_name="M. Kouadio", username="kouadio.test", role=role)
+        t.set_password("motdepasse1")
+        t.save()
+        t.sub_categories.set([self.maths])
+        return t
+
+    def test_team_creation_shows_password_once(self):
+        self._dash()
+        r = self.client.post(reverse("dashboard_team", args=[self.space.slug]),
+                             {"action": "add", "full_name": "Mme Traoré", "role": "teacher",
+                              "subjects": [self.fr.id]}, follow=True)
+        t = Teacher.objects.get(full_name="Mme Traoré")
+        pwd = _re.search(r"mot de passe : (\w+)", r.content.decode()).group(1)
+        self.assertTrue(t.check_password(pwd))
+        self.assertEqual(list(t.sub_categories.all()), [self.fr])
+
+    def test_teacher_login_cannot_open_direction_pages(self):
+        self._teacher()
+        r = self.client.post(reverse("dashboard_login_common"), {"identifiant": "kouadio.test", "password": "motdepasse1"})
+        self.assertRedirects(r, reverse("school_resources", args=[self.space.slug]), fetch_redirect_response=False)
+        r = self.client.get(reverse("dashboard_pins", args=[self.space.slug]))
+        self.assertEqual(r.status_code, 302)
+
+    def test_resource_flow_upload_convert_validate(self):
+        t = self._teacher()
+        self.client.post(reverse("dashboard_login_common"), {"identifiant": "kouadio.test", "password": "motdepasse1"})
+        url = reverse("school_resources", args=[self.space.slug])
+        # rythme : chapitre en retard tant que rien n'est déposé
+        self.assertContains(self.client.get(url), "en retard")
+        # le prof ne peut pas déposer dans une matière qui n'est pas la sienne
+        self.client.post(url, {"action": "upload", "sub_category_id": self.fr.id, "title": "X",
+                               "file": SimpleUploadedFile("x.pdf", b"%PDF")})
+        self.assertFalse(Resource.objects.exists())
+        self.client.post(url, {"action": "upload", "sub_category_id": self.maths.id, "theme_id": self.theme.id,
+                               "title": "Série 1", "file": SimpleUploadedFile("serie1.pdf", b"%PDF-1.4 test",
+                                                                            content_type="application/pdf")})
+        res = Resource.objects.get()
+        self.assertEqual((res.teacher, res.status), (t, "deposited"))
+        r = self.client.get(reverse("resource_file", args=[self.space.slug, res.id]))
+        self.assertEqual(r.content, b"%PDF-1.4 test")
+        # MQ / direction transforme en quiz
+        self._dash()
+        csv_bytes = ("question;a;b;c;d;bonne;difficulte;explication\n"
+                     "2x = 6, x = ?;3;2;6;12;A;1;On divise par 2\n"
+                     "x + 5 = 9, x = ?;4;14;5;9;A;1;\n").encode("utf-8")
+        self.client.post(url, {"action": "convert", "resource_id": res.id,
+                               "questions_file": SimpleUploadedFile("q.csv", csv_bytes)})
+        res.refresh_from_db()
+        self.assertEqual(res.status, "converted")
+        self.assertEqual(res.questions.filter(active=False).count(), 2)
+        # le professeur valide
+        self.client.post(url, {"action": "validate", "resource_id": res.id})
+        res.refresh_from_db()
+        self.assertEqual(res.status, "validated")
+        self.assertEqual(res.questions.filter(active=True, theme=self.theme).count(), 2)
+        self.assertTrue(AuditLog.objects.filter(model_name="Resource").exists())
+
+    # --- Bilan mensuel --------------------------------------------------------------
+    def test_monthly_report_message_and_whatsapp(self):
+        p = Player.objects.create(pseudo="Aya", phone="0707070707")
+        self.m1.player = p
+        self.m1.save()
+        q = [Question.objects.create(space=self.space, sub_category=self.maths, kind="quiz", category="ec",
+                                     difficulty=1, text=f"Q{i}", option_a="a", option_b="b", option_c="c",
+                                     option_d="d", correct=0) for i in range(4)]
+        sess = GameSession.objects.create(player=p, space=self.space, mode="space", status="finished",
+                                          question_ids=[x.id for x in q])
+        from .models import Answer
+        for i, x in enumerate(q):
+            Answer.objects.create(session=sess, question=x, choice=0 if i else 1, time_ms=3000, is_correct=bool(i))
+        rows = school.monthly_report(self.space, self.today.year, self.today.month)
+        r = rows[0]
+        self.assertEqual((r["quizzes"], r["pct"], r["weak"]), (1, 75, "Mathématiques"))
+        self.assertIn("1 quiz fait, 75 %", r["message"])
+        self.assertTrue(r["whatsapp"].startswith("https://wa.me/2250505050505?text="))
+        self._dash()
+        resp = self.client.get(reverse("dashboard_reports", args=[self.space.slug]) +
+                               f"?mois={self.today:%Y-%m}&export=csv")
+        self.assertIn("Kouassi Aya", resp.content.decode("utf-8"))

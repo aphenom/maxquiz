@@ -1,0 +1,25 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Bilans parents{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+{% include "game/_dash_head.html" with subtitle="Bilan mensuel envoyé aux parents" %}
+{% include "game/_dashboard_nav.html" with active="reports" %}
+<form method="get" class="card" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <label class="small" style="font-weight:700">Mois</label>
+  <input type="month" name="mois" value="{{ mois }}" style="width:auto" onchange="this.form.submit()">
+  <a class="btn vert mini" href="?mois={{ mois }}&export=csv" style="margin-left:auto">⬇️ CSV</a>
+</form>
+<div class="card small" style="margin-top:10px">{{ active_count }} élève{{ active_count|pluralize }} actif{{ active_count|pluralize }} en {{ label }} sur {{ rows|length }}.
+  {% if no_parent %}<br>⚠️ {{ no_parent }} sans téléphone de parent : ajoute-le dans Membres (colonne « Téléphone du parent » de l'import).{% endif %}
+  <br>Clique sur « Envoyer » : WhatsApp s'ouvre avec le message prêt, il ne reste qu'à valider.</div>
+{% for r in rows %}
+<div class="card" style="padding:12px 14px;margin:8px 0">
+  <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+    <span><strong>{{ r.member.full_name }}</strong><br><span class="small">{{ r.quizzes }} quiz{% if r.pct is not None %} · {{ r.pct }} %{% endif %}{% if r.weak %} · à revoir : {{ r.weak }}{% endif %}</span></span>
+    {% if r.whatsapp %}<a class="btn vert mini" href="{{ r.whatsapp }}" target="_blank" rel="noopener">📲 Envoyer</a>{% else %}<span class="tag mute">pas de n° parent</span>{% endif %}
+  </div>
+  <p class="small" style="margin:6px 0 0;color:var(--brun)">{{ r.message }}</p>
+</div>
+{% empty %}<p class="small">Aucun élève inscrit.</p>{% endfor %}
+{% endblock %}

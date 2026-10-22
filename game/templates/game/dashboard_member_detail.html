@@ -142,9 +142,11 @@
           <label>Nom complet</label>
           <input type="text" name="full_name" value="{{ member.full_name }}" maxlength="120" required>
           <label>Téléphone</label>
-          <input type="text" name="phone" value="{{ member.phone }}" maxlength="20" required>
+          <input type="text" name="phone" value="{{ member.phone }}" maxlength="20">
           <label>Référence externe (matricule…)</label>
           <input type="text" name="external_ref" value="{{ member.external_ref }}" maxlength="60">
+          <label>Téléphone du parent (bilan mensuel)</label>
+          <input type="text" name="parent_phone" value="{{ member.parent_phone }}" maxlength="20" placeholder="07 XX XX XX XX">
           <label>{{ space.category_label }}</label>
           <select name="category_id">
             <option value="">— Aucune —</option>

@@ -1,0 +1,21 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Connexion élève{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
+{% include "game/_space_banner.html" with subtitle="Connexion élève" %}
+<div class="stagger">
+  {% if error %}<p class="card" style="color:var(--rouge);text-align:center;font-weight:700;margin-top:12px">{{ error }}</p>{% endif %}
+  <form method="post" class="card" style="margin-top:14px">
+    {% csrf_token %}
+    <label class="small" style="font-weight:700;display:block;margin-bottom:6px">Matricule</label>
+    <input type="text" name="matricule" required autocomplete="username" placeholder="Ex. : M3-014" autofocus>
+    <label class="small" style="font-weight:700;display:block;margin:12px 0 6px">Code PIN (6 chiffres)</label>
+    <input type="password" name="pin" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+           autocomplete="current-password" placeholder="••••••">
+    <button class="btn" type="submit" style="margin-top:14px">Se connecter</button>
+  </form>
+  <p class="small" style="text-align:center;margin-top:12px">Ton code PIN est sur le coupon remis par ton professeur principal.
+    Code perdu ? Demande-lui d'en générer un nouveau.</p>
+  <p class="small" style="text-align:center"><a href="{% url 'account_login' %}?space={{ space.slug }}">Se connecter avec un numéro de téléphone</a></p>
+</div>
+{% endblock %}

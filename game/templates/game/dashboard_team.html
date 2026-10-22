@@ -1,0 +1,35 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Équipe pédagogique{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+{% include "game/_dash_head.html" with subtitle="Équipe pédagogique : un compte par personne" %}
+{% include "game/_dashboard_nav.html" with active="team" %}
+{% include "game/_messages.html" %}
+<form method="post" class="card" style="margin-top:10px">{% csrf_token %}
+  <input type="hidden" name="action" value="add">
+  <p style="margin:0 0 8px;font-weight:700">Ajouter un membre de l'équipe</p>
+  <input type="text" name="full_name" placeholder="Nom complet (ex. : M. Kouadio Serge)" required>
+  <select name="role" style="margin-top:8px">
+    <option value="teacher">Professeur : dépose et valide les ressources de ses matières</option>
+    <option value="direction">Direction : accès complet au tableau de bord</option>
+  </select>
+  <p class="small" style="margin:10px 0 4px;font-weight:700">Matières suivies</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+  {% for s in subjects %}<label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="subjects" value="{{ s.id }}" style="width:auto"> {{ s.category.name }} · {{ s.name }}</label>{% endfor %}
+  </div>
+  <button class="btn" style="margin-top:10px">Créer le compte</button>
+  <p class="small" style="margin:8px 0 0">L'identifiant et le mot de passe s'affichent une seule fois. Connexion sur la même page que le tableau de bord.</p>
+</form>
+<h2 style="font-size:18px;margin:18px 0 8px">Comptes</h2>
+{% for t in teachers %}
+<div class="card row" style="{% if not t.active %}opacity:.55{% endif %}">
+  <span><strong>{{ t.full_name }}</strong> · <span class="small">{{ t.get_role_display }}</span><br>
+    <span class="small">Identifiant : {{ t.username }}{% if t.role == "teacher" %} · {% for s in t.sub_categories.all %}{{ s.category.name }} {{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}aucune matière{% endfor %}{% endif %}</span></span>
+  <form method="post">{% csrf_token %}<input type="hidden" name="teacher_id" value="{{ t.id }}">
+    <button class="btn encre mini" name="action" value="reset">Nouveau mot de passe</button>
+    <button class="btn mini" style="background:{% if t.active %}var(--rouge){% else %}var(--vert){% endif %}" name="action" value="toggle">{% if t.active %}Désactiver{% else %}Réactiver{% endif %}</button>
+  </form>
+</div>
+{% empty %}<p class="small">Aucun compte pour l'instant.</p>{% endfor %}
+{% endblock %}

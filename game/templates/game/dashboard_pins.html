@@ -1,0 +1,39 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Codes PIN{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+{% include "game/_dash_head.html" with subtitle="Connexion des élèves par matricule + code PIN" %}
+{% include "game/_dashboard_nav.html" with active="pins" %}
+{% include "game/_messages.html" %}
+<div class="card small" style="margin-top:10px">
+  Les élèves se connectent sur <strong>/e/{{ space.slug }}/connexion-eleve/</strong> avec leur matricule et un code à 6 chiffres.
+  Pas de SMS, et des frères et sœurs peuvent partager le téléphone d'un parent.
+  {% if without_ref %}<br>⚠️ {{ without_ref }} élève{{ without_ref|pluralize }} sans matricule : renseigne-le dans Membres pour lui donner un code.{% endif %}
+</div>
+{% if alerts %}
+<div class="card" style="margin-top:10px;border-left:4px solid var(--rouge)">
+  <p style="margin:0;font-weight:700;color:var(--rouge)">🚨 {{ alerts|length }} fiche{{ alerts|length|pluralize }} visée{{ alerts|length|pluralize }} par de nombreux essais (24 h)</p>
+  {% for r in alerts %}<p class="small" style="margin:4px 0 0">{{ r.m.full_name }} · {{ r.m.pin_failures_24h }} échecs, dernier le {{ r.m.pin_last_failed_at|date:"d/m H:i" }}. Régénère son code si besoin.</p>{% endfor %}
+</div>
+{% endif %}
+<form method="post" class="card" style="margin-top:10px">{% csrf_token %}
+  <input type="hidden" name="action" value="generate">
+  <p style="margin:0 0 8px;font-weight:700">Générer et imprimer des coupons</p>
+  <label class="small" style="display:block;margin-bottom:4px">{{ space.category_label|default:"Niveau" }}</label>
+  <select name="category_id"><option value="">Tous</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+  <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="radio" name="scope" value="missing" checked style="width:auto"> Seulement les élèves sans code ({{ without_pin }})</label>
+  <label class="small" style="display:flex;gap:8px;align-items:center"><input type="radio" name="scope" value="all" style="width:auto"> Tous (remplace les codes existants)</label>
+  <button class="btn" style="margin-top:10px">🔑 Générer les coupons</button>
+</form>
+<h2 style="font-size:18px;margin:18px 0 8px">Élèves</h2>
+{% for r in rows %}
+<div class="card row">
+  <span><strong>{{ r.m.full_name }}</strong> · {{ r.m.external_ref|default:"sans matricule" }}{% if r.m.category %} · {{ r.m.category.name }}{% endif %}</span>
+  <span style="display:flex;gap:8px;align-items:center">
+    {% if r.alert %}<span class="tag late">alerte</span>{% elif r.locked %}<span class="tag wait">verrouillé</span>{% elif r.has_pin %}<span class="tag ok">code actif</span>{% else %}<span class="tag mute">pas de code</span>{% endif %}
+    {% if r.m.external_ref %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="reset"><input type="hidden" name="member_id" value="{{ r.m.id }}"><button class="btn encre mini">{% if r.has_pin %}Régénérer{% else %}Créer{% endif %}</button></form>{% endif %}
+  </span>
+</div>
+{% empty %}<p class="small">Aucun élève inscrit.</p>{% endfor %}
+{% endblock %}

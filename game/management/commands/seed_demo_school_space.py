@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.text import slugify
-from game.models import Space, Category, SubCategory, Theme, Quiz, Question, Player, GameSession, Answer, License
+from game.models import Space, Category, SubCategory, Theme, Quiz, Question, Player, GameSession, Answer, License, Membership
 
 LEVELS = ["6ème", "5ème", "4ème", "3ème"]
 SUBJECTS = ["Mathématiques", "Français"]
@@ -167,6 +167,7 @@ class Command(BaseCommand):
             space.save()
             self.stdout.write("Abonnements activés : accès gratuit jusqu'au 18/12/2026, puis abonnement requis.")
 
+
         License.objects.get_or_create(space=space, period_label="2026-2027", defaults=dict(
             billing_mode="per_seat", seat_count=60, price="60 sièges — tarif à convenir",
             start_date=date(2026, 9, 1), end_date=date(2027, 7, 31), active=True))
@@ -247,3 +248,30 @@ class Command(BaseCommand):
             f"mot de passe {space.dashboard_code}) · "
             f"{Quiz.objects.filter(space=space).count()} quiz · "
             f"{GameSession.objects.filter(space=space).count()} participations simulées."))
+        if options.get("abonnements"):
+            self._demo_teacher(space)
+
+    def _demo_teacher(self, space):
+        """Compte professeur et chapitres datés pour la démo (après création des matières)."""
+        from game.models import Teacher, Theme
+        prof, made = Teacher.objects.get_or_create(username="prof.maths", defaults=dict(
+            space=space, full_name="M. Kouadio (mathématiques)", role="teacher"))
+        if made:
+            prof.set_password("PROF2026")
+            prof.save()
+        prof.sub_categories.set(SubCategory.objects.filter(category__space=space, name__icontains="math"))
+        for sub in prof.sub_categories.all():
+            for i, (name, days) in enumerate((("Calcul littéral", 40), ("Équations", 12), ("Théorème de Pythagore", 2))):
+                th, _ = Theme.objects.get_or_create(sub_category=sub, slug=slugify(name), defaults=dict(
+                    name=name, order=i))
+                th.taught_on = th.taught_on or (date.today() - timedelta(days=days))
+                th.save(update_fields=["taught_on"])
+        third = Category.objects.filter(space=space, name="3ème").first()
+        lic = License.objects.filter(space=space).first()
+        demo_students = [("Kouassi Aya", "M3-001", "0707070701"), ("Yao Koffi", "M3-002", "0505050502"),
+                         ("Yao Ama", "M3-003", "0505050502"), ("Traoré Fatou", "M3-004", "0101010104"),
+                         ("Konan Serge", "M3-005", "0707070705"), ("Bamba Mariam", "M3-006", "0505050506")]
+        for full_name, ref, parent in demo_students:   # Yao Koffi et Yao Ama : fratrie, même parent
+            Membership.objects.get_or_create(space=space, license=lic, external_ref=ref, defaults=dict(
+                full_name=full_name, parent_phone=parent, category=third))
+        self.stdout.write("Compte professeur démo : prof.maths / PROF2026 (même page de connexion).")

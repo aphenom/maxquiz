@@ -602,9 +602,21 @@ def _quiz_still_playable(player, space, quiz):
 def _match_membership(space, phone, player):
     """Associe automatiquement un joueur à une entrée de la base établissement
     (Membership) déjà présente pour ce téléphone mais pas encore appariée."""
-    if phone:
-        Membership.objects.filter(space=space, phone=phone, player__isnull=True).update(
-            player=player, matched_at=timezone.now())
+    _match_by_phone(Membership.objects.filter(space=space), phone, player)
+
+
+def _match_by_phone(memberships, phone, player):
+    """Relie au joueur les fiches non appariées portant ce téléphone, sauf
+    ambiguïté : une fiche avec code PIN se relie par la connexion matricule +
+    PIN, et un téléphone partagé par plusieurs fiches d'un même espace (fratrie
+    sur le numéro d'un parent) n'est jamais apparié automatiquement."""
+    if not phone:
+        return
+    ids = [m.id for m in memberships.filter(phone=phone, player__isnull=True, pin_hash="")
+           if Membership.objects.filter(space_id=m.space_id, license_id=m.license_id,
+                                        phone=phone).count() == 1]
+    if ids:
+        Membership.objects.filter(id__in=ids).update(player=player, matched_at=timezone.now())
 
 
 def _post_int(post, key):
@@ -647,7 +659,22 @@ def dashboard_login_common(request):
         identifiant = request.POST.get("identifiant", "").strip()
         password = request.POST.get("password", "")
         space = Space.objects.filter(dashboard_username=identifiant, active=True).first()
-        if not space or password != space.dashboard_code:
+        teacher = None
+        if not space:
+            # Compte individuel d'un enseignant (direction ou professeur)
+            from .models import Teacher
+            teacher = Teacher.objects.filter(username__iexact=identifiant, active=True,
+                                             space__active=True).select_related("space").first()
+        if teacher:
+            if not teacher.check_password(password):
+                error = "Identifiant ou mot de passe incorrect."
+            else:
+                request.session["teacher_id"] = teacher.id
+                if teacher.role == "direction":
+                    request.session[f"dash_{teacher.space_id}"] = teacher.space.dashboard_code
+                    return redirect(next_url or reverse("space_dashboard", args=[teacher.space.slug]))
+                return redirect("school_resources", slug=teacher.space.slug)
+        elif not space or password != space.dashboard_code:
             error = "Identifiant ou mot de passe incorrect."
         else:
             request.session[f"dash_{space.id}"] = space.dashboard_code
@@ -695,6 +722,7 @@ def dashboard_logout(request, slug):
     une éventuelle session élève active en parallèle dans le même navigateur."""
     space = _space(slug)
     request.session.pop(f"dash_{space.id}", None)
+    request.session.pop("teacher_id", None)
     return redirect("dashboard_login_common")
 
 
@@ -1659,6 +1687,7 @@ def _member_fields(post, space):
         "full_name": post.get("full_name", "").strip()[:120],
         "phone": normalize_phone(post.get("phone", "")) or "",
         "external_ref": post.get("external_ref", "").strip()[:60],
+        "parent_phone": normalize_phone(post.get("parent_phone", "")) or "",
         "category": space.categories.filter(id=_post_int(post, "category_id")).first(),
         "sub_category": SubCategory.objects.filter(id=_post_int(post, "subcategory_id"),
                                                     category__space=space).first(),
@@ -1860,16 +1889,18 @@ def dashboard_members_template(request, slug):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Import"
-    headers = ["Nom complet*", "Téléphone*", "Référence externe",
-              space.category_label or "Catégorie", space.subcategory_label or "Sous-catégorie"]
+    headers = ["Nom complet*", "Téléphone (élève)", "Matricule",
+              space.category_label or "Catégorie", space.subcategory_label or "Sous-catégorie",
+              "Téléphone du parent"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)
-    for i, width in enumerate([26, 18, 20, 22, 22], start=1):
+    for i, width in enumerate([26, 18, 20, 22, 22, 20], start=1):
         ws.column_dimensions[get_column_letter(i)].width = width
     ws.freeze_panes = "A2"
-    for r in range(2, 501):                    # colonne Téléphone au format Texte : garde le 0 initial
+    for r in range(2, 501):                    # colonnes téléphone au format Texte : garde le 0 initial
         ws.cell(row=r, column=2).number_format = "@"
+        ws.cell(row=r, column=6).number_format = "@"
 
     ref_name = "Catégories disponibles"
     ref = wb.create_sheet(ref_name)
@@ -1934,38 +1965,53 @@ def dashboard_members(request, slug):
                 if not row or len(row) < 2:
                     continue
                 full_name = (row[0] or "").strip()[:120]
+                if not full_name or (line_no == 1 and full_name.lower().startswith("nom")):
+                    continue  # en-tête et lignes vides
                 raw_phone = (row[1] or "").strip()
                 phone = normalize_phone(raw_phone) or ""
-                if full_name and not phone and (re.search(r"\d", raw_phone) or line_no > 1):
-                    rejected.append(f"{full_name} ({raw_phone or 'sans téléphone'})")
-                    continue
                 external_ref = (row[2] or "").strip()[:60] if len(row) > 2 else ""
+                if external_ref.endswith(".0") and external_ref[:-2].isdigit():
+                    external_ref = external_ref[:-2]          # matricule numérique lu par Excel
                 cat_name = row[3] if len(row) > 3 else ""
                 sub_name = row[4] if len(row) > 4 else ""
-                if not full_name or not phone or not phone[0].isdigit():
-                    continue  # ignore l'en-tête éventuelle et les lignes vides
+                parent_phone = normalize_phone(row[5]) or "" if len(row) > 5 else ""
+                if raw_phone and not phone:
+                    rejected.append(f"{full_name} ({raw_phone})")
+                    continue
+                if not phone and not external_ref:
+                    rejected.append(f"{full_name} (ni téléphone ni matricule)")
+                    continue
+                key = ("ref", external_ref) if external_ref else ("tel", phone)
+                if key in seen_in_file:
+                    what = "même matricule" if external_ref else "même téléphone"
+                    duplicates.append(f"{full_name} ({what} que {seen_in_file[key]})")
+                    continue
+                seen_in_file[key] = full_name
                 category, sub_category = _resolve_category_by_name(space, cat_name, sub_name)
-                existing = Membership.objects.filter(space=space, phone=phone, license=current_license).first()
-                if not existing and _seat_check(space, current_license):
+                lookup = ({"external_ref": external_ref} if external_ref
+                          else {"phone": phone, "external_ref": ""})
+                existing = Membership.objects.filter(space=space, license=current_license, **lookup).first()
+                if existing:
+                    already += 1
+                    if parent_phone and not existing.parent_phone:
+                        existing.parent_phone = parent_phone
+                        existing.save(update_fields=["parent_phone"])
+                    continue
+                if _seat_check(space, current_license):
                     skipped += 1
                     continue
-                member, is_new = Membership.objects.get_or_create(
-                    space=space, phone=phone, license=current_license,
-                    defaults={"full_name": full_name, "external_ref": external_ref,
-                             "category": category, "sub_category": sub_category})
-                if phone in seen_in_file:
-                    # même téléphone qu'une ligne précédente du fichier (frère/sœur) :
-                    # non créé, mais signalé à l'école au lieu de disparaître.
-                    duplicates.append(f"{full_name} (même téléphone que {seen_in_file[phone]})")
-                    continue
-                seen_in_file[phone] = full_name
-                if is_new:
-                    created += 1
-                    _log_action(space, "create", member, "import")
-                else:
-                    already += 1
-                existing_player = Player.objects.filter(phone=phone).first()
-                if existing_player and not member.player_id:
+                member = Membership.objects.create(
+                    space=space, license=current_license, full_name=full_name, phone=phone,
+                    external_ref=external_ref, parent_phone=parent_phone,
+                    category=category, sub_category=sub_category)
+                created += 1
+                _log_action(space, "create", member, "import")
+                # Appariement automatique par téléphone, sauf si ce téléphone est
+                # partagé par plusieurs élèves (fratrie) : chacun se connecte
+                # alors avec son matricule et son code PIN.
+                existing_player = Player.objects.filter(phone=phone).first() if phone else None
+                if existing_player and not Membership.objects.filter(
+                        space=space, license=current_license, phone=phone).exclude(id=member.id).exists():
                     member.player = existing_player
                     member.matched_at = timezone.now()
                     member.save(update_fields=["player", "matched_at"])
@@ -1977,30 +2023,38 @@ def dashboard_members(request, slug):
                 msg += f" {skipped} ignoré(s) faute de sièges disponibles."
             messages.success(request, msg)
             if duplicates:
-                messages.error(request, f"{len(duplicates)} ligne(s) non créée(s), téléphone en double : "
+                messages.error(request, f"{len(duplicates)} ligne(s) en double dans le fichier, non créée(s) : "
                                + ", ".join(duplicates[:20]) + ("…" if len(duplicates) > 20 else "")
-                               + ". Une fiche par téléphone tant que la connexion par matricule n'est pas active.")
+                               + ". Renseigne un matricule par élève : des frères et sœurs peuvent alors "
+                                 "partager le même téléphone.")
             if rejected:
-                messages.error(request, f"{len(rejected)} ligne(s) refusée(s), téléphone invalide : "
+                messages.error(request, f"{len(rejected)} ligne(s) refusée(s) : "
                                + ", ".join(rejected[:20]) + ("…" if len(rejected) > 20 else ""))
         elif action == "add_member":
             f = _member_fields(request.POST, space)
-            if not f["full_name"] or not f["phone"]:
-                messages.error(request, "Nom et téléphone sont obligatoires.")
+            if not f["full_name"] or not (f["phone"] or f["external_ref"]):
+                messages.error(request, "Le nom et un téléphone ou un matricule sont obligatoires.")
             else:
                 seat_error = _seat_check(space, current_license)
                 if seat_error:
                     messages.error(request, seat_error)
                 else:
+                    lookup = ({"external_ref": f["external_ref"]} if f["external_ref"]
+                              else {"phone": f["phone"], "external_ref": ""})
                     member, created = Membership.objects.get_or_create(
-                        space=space, phone=f["phone"], license=current_license, defaults={
-                            "full_name": f["full_name"], "external_ref": f["external_ref"],
+                        space=space, license=current_license, **lookup, defaults={
+                            "full_name": f["full_name"], "phone": f["phone"],
+                            "parent_phone": f["parent_phone"],
                             "category": f["category"], "sub_category": f["sub_category"]})
                     if not created:
-                        messages.error(request, f"Un membre existe déjà avec le téléphone {f['phone']}.")
+                        messages.error(request, "Un membre existe déjà avec ce "
+                                       + ("matricule." if f["external_ref"] else "téléphone."))
                     else:
                         _log_action(space, "create", member)
-                        existing_player = Player.objects.filter(phone=f["phone"]).first()
+                        existing_player = (Player.objects.filter(phone=f["phone"]).first()
+                                           if f["phone"] and not space.members.filter(
+                                               license=current_license, phone=f["phone"]).exclude(
+                                               id=member.id).exists() else None)
                         if existing_player:
                             member.player = existing_player
                             member.matched_at = timezone.now()
@@ -2060,14 +2114,18 @@ def dashboard_member_detail(request, slug, member_id):
         action = request.POST.get("action")
         if action == "edit_member":
             f = _member_fields(request.POST, space)
-            if not f["full_name"] or not f["phone"]:
-                messages.error(request, "Nom et téléphone sont obligatoires.")
-            elif space.members.exclude(id=member.id).filter(phone=f["phone"], license=member.license).exists():
+            others = space.members.exclude(id=member.id).filter(license=member.license)
+            if not f["full_name"] or not (f["phone"] or f["external_ref"]):
+                messages.error(request, "Le nom et un téléphone ou un matricule sont obligatoires.")
+            elif f["external_ref"] and others.filter(external_ref=f["external_ref"]).exists():
+                messages.error(request, f"Un autre membre a déjà le matricule {f['external_ref']}.")
+            elif not f["external_ref"] and others.filter(phone=f["phone"], external_ref="").exists():
                 messages.error(request, f"Un autre membre utilise déjà le téléphone {f['phone']}.")
             else:
                 member.full_name = f["full_name"]
                 member.phone = f["phone"]
                 member.external_ref = f["external_ref"]
+                member.parent_phone = f["parent_phone"]
                 member.category = f["category"]
                 member.sub_category = f["sub_category"]
                 member.save()
@@ -2268,8 +2326,7 @@ def account_verify(request):
             player, created = Player.objects.get_or_create(phone=phone, defaults={"pseudo": ""})
             request.session["player_id"] = player.id
             request.session["verified_player_id"] = player.id
-            Membership.objects.filter(phone=phone, player__isnull=True).update(
-                player=player, matched_at=timezone.now())
+            _match_by_phone(Membership.objects.all(), phone, player)
             if not player.full_name:
                 # Priorité à l'établissement via lequel la connexion a lieu — chaque
                 # établissement garde sa propre fiche (Membership.full_name) ; on ne

@@ -85,6 +85,9 @@ class Question(models.Model):
                               related_name="questions",
                               verbose_name="Espace (vide = jeu public MaxQuiz)")
     kind = models.CharField("Type", max_length=6, choices=KINDS, default="quiz")
+    resource = models.ForeignKey("Resource", null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="questions",
+                                 verbose_name="Ressource d'origine (exercices du professeur)")
     category = models.CharField("Catégorie", max_length=2, choices=CATEGORIES)
     sub_category = models.ForeignKey("SubCategory", null=True, blank=True, on_delete=models.SET_NULL,
                                      related_name="questions",
@@ -365,8 +368,15 @@ class Membership(models.Model):
     sub_category = models.ForeignKey("SubCategory", null=True, blank=True, on_delete=models.SET_NULL,
                                      related_name="members")
     full_name = models.CharField("Nom complet", max_length=120)
-    phone = models.CharField("Téléphone (base établissement)", max_length=20)
+    phone = models.CharField("Téléphone (base établissement)", max_length=20, blank=True, default="")
     external_ref = models.CharField("Référence externe (matricule...)", max_length=60, blank=True, default="")
+    parent_phone = models.CharField("Téléphone du parent", max_length=20, blank=True, default="",
+                                    help_text="Reçoit le bilan mensuel. Peut être partagé par des frères et sœurs.")
+    pin_hash = models.CharField("Code PIN (haché)", max_length=128, blank=True, default="")
+    pin_failed = models.PositiveSmallIntegerField("Échecs PIN consécutifs", default=0)
+    pin_locked_until = models.DateTimeField("PIN verrouillé jusqu'au", null=True, blank=True)
+    pin_failures_24h = models.PositiveSmallIntegerField("Échecs PIN sur 24 h", default=0)
+    pin_last_failed_at = models.DateTimeField("Dernier échec PIN", null=True, blank=True)
     matched_at = models.DateTimeField("Apparié le", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField("Supprimé le", null=True, blank=True, default=None)
@@ -377,8 +387,13 @@ class Membership(models.Model):
     class Meta:
         verbose_name = "Membre de l'espace"
         constraints = [
+            # Avec matricule : un élève = un matricule (des frères et sœurs peuvent
+            # partager le téléphone d'un parent). Sans matricule : un par téléphone.
+            models.UniqueConstraint(fields=["space", "license", "external_ref"],
+                                    condition=models.Q(deleted_at__isnull=True) & ~models.Q(external_ref=""),
+                                    name="unique_active_membership_ref"),
             models.UniqueConstraint(fields=["space", "phone", "license"],
-                                    condition=models.Q(deleted_at__isnull=True),
+                                    condition=models.Q(deleted_at__isnull=True, external_ref="") & ~models.Q(phone=""),
                                     name="unique_active_membership"),
         ]
 
@@ -455,6 +470,9 @@ class Theme(models.Model):
     name = models.CharField("Nom", max_length=80)
     slug = models.SlugField("Identifiant d'URL", max_length=60)
     order = models.PositiveSmallIntegerField("Ordre", default=0)
+    taught_on = models.DateField("Cours prévu le", null=True, blank=True,
+                                 help_text="Sert au suivi du rythme : les ressources du chapitre sont attendues "
+                                           "au plus tard 7 jours après.")
     deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)
 
     objects = SoftDeleteManager()
@@ -624,3 +642,61 @@ class Subscription(models.Model):
         day = day or _tz.localdate()
         return (self.status == "active" and self.start_date and self.end_date
                 and self.start_date <= day <= self.end_date)
+
+
+class Teacher(models.Model):
+    """Compte individuel d'un membre de l'équipe pédagogique (direction ou
+    professeur), distinct de l'identifiant unique du tableau de bord."""
+    ROLES = [("direction", "Direction / administration"), ("teacher", "Professeur")]
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="teachers")
+    full_name = models.CharField("Nom complet", max_length=120)
+    username = models.CharField("Identifiant de connexion", max_length=40, unique=True)
+    password_hash = models.CharField("Mot de passe (haché)", max_length=128, blank=True, default="")
+    role = models.CharField("Rôle", max_length=10, choices=ROLES, default="teacher")
+    sub_categories = models.ManyToManyField(SubCategory, blank=True, related_name="teachers",
+                                            verbose_name="Matières suivies")
+    active = models.BooleanField("Actif", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Enseignant"
+
+    def __str__(self):
+        return f"{self.full_name} ({self.get_role_display()})"
+
+    def set_password(self, raw):
+        from django.contrib.auth.hashers import make_password
+        self.password_hash = make_password(raw)
+
+    def check_password(self, raw):
+        from django.contrib.auth.hashers import check_password
+        return bool(self.password_hash) and check_password(raw, self.password_hash)
+
+
+class Resource(models.Model):
+    """Exercices corrigés déposés par un professeur pour un chapitre. Le
+    fichier est stocké en base (pas de disque persistant sur l'hébergement)."""
+    STATUS = [("deposited", "Déposée"), ("converted", "Transformée en quiz"),
+              ("validated", "Validée par le professeur")]
+    MAX_BYTES = 5 * 1024 * 1024
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="resources")
+    teacher = models.ForeignKey(Teacher, null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name="resources")
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="resources")
+    theme = models.ForeignKey(Theme, null=True, blank=True, on_delete=models.SET_NULL, related_name="resources")
+    title = models.CharField("Titre", max_length=150)
+    note = models.TextField("Commentaire", blank=True, default="")
+    file_name = models.CharField("Nom du fichier", max_length=200)
+    content_type = models.CharField(max_length=100, default="application/octet-stream")
+    data = models.BinaryField("Contenu du fichier")
+    status = models.CharField("Statut", max_length=10, choices=STATUS, default="deposited")
+    created_at = models.DateTimeField("Déposée le", auto_now_add=True)
+    converted_at = models.DateTimeField("Transformée le", null=True, blank=True)
+    validated_at = models.DateTimeField("Validée le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Ressource pédagogique"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.sub_category} · {self.title}"

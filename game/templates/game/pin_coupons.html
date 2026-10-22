@@ -1,0 +1,31 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Coupons PIN — {{ space.name }}</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#221A12}
+.bar{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.bar button{padding:10px 16px;font-size:15px;font-weight:700;border:0;border-radius:10px;background:{{ space.color_primary }};color:#fff;cursor:pointer}
+.warn{background:#FFF3E0;border-left:4px solid #E9A820;padding:10px 12px;font-size:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.c{border:1.5px dashed #999;border-radius:8px;padding:10px 12px;break-inside:avoid;font-size:13px}
+.c h3{margin:0 0 2px;font-size:15px}.pin{font:700 22px/1.2 ui-monospace,monospace;letter-spacing:4px;margin:6px 0}
+.n{font-size:10.5px;color:#555;margin-top:6px}
+@media print{.bar,.warn{display:none}body{padding:0}.grid{gap:4mm}}
+</style></head><body>
+<div class="bar"><button onclick="window.print()">🖨️ Imprimer les coupons</button>
+  <a href="/e/{{ space.slug }}/tableau-de-bord/codes-pin/">← Retour</a></div>
+<p class="warn">Ces codes ne seront <strong>plus jamais affichés</strong> : imprime-les maintenant, découpe chaque coupon
+  et remets-le à l'élève en main propre. Ne jamais afficher une liste de classe.</p>
+<div class="grid">
+{% for c in coupons %}
+  <div class="c">
+    <h3>{{ space.emoji }} {{ space.name }}</h3>
+    <div><strong>{{ c.member.full_name }}</strong>{% if c.member.category %} · {{ c.member.category.name }}{% endif %}</div>
+    <div>Matricule : <strong>{{ c.member.external_ref }}</strong></div>
+    <div class="pin">{{ c.pin }}</div>
+    <div>Connexion : {{ login_url }}</div>
+    <div class="n">Garde ce code secret. Aux parents : MaxQuiz (MQ Technologies) traite pour l'établissement les résultats
+      de quiz de votre enfant afin de suivre ses révisions. Données conservées pendant l'année scolaire.
+      Questions : adressez-vous à l'établissement.</div>
+  </div>
+{% endfor %}
+</div>
+</body></html>

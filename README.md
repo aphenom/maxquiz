@@ -521,3 +521,13 @@ Parcours :
 3. **Tableau de bord → 🤝 Reversements** : part due à l'école mois par mois, export Excel.
 
 Démo : `python manage.py seed_demo_school_space --abonnements`. Tests : `python manage.py test game`.
+
+## Équipe pédagogique, ressources des professeurs, connexion par PIN, bilans parents
+
+- **Équipe** (tableau de bord → 👩‍🏫 Équipe) : un compte par personne. *Direction* = accès complet ; *Professeur* = ses matières seulement. Connexion sur la même page que le tableau de bord ; le mot de passe n'est affiché qu'une fois.
+- **Ressources** (`/e/<ecole>/ressources/`) : le professeur dépose ses exercices corrigés (PDF, Word, photos, 5 Mo max, stockés en base) par chapitre et renseigne la date de chaque cours ; les chapitres sans dépôt 7 jours après le cours passent « en retard ». MQ importe les questions (.xlsx/.csv : question;a;b;c;d;bonne;difficulte;explication) : elles restent masquées jusqu'à ce que le professeur les vérifie et clique « Valider ».
+- **Connexion élève** (`/e/<ecole>/connexion-eleve/`) : matricule + code PIN à 6 chiffres, généré et imprimé sur coupons (tableau de bord → 🔑 Codes PIN), stocké haché. Verrou temporaire (15 min après 5 échecs, puis 1 h), limites par appareil et par adresse IP, alerte à l'école après 10 échecs en 24 h. Des frères et sœurs peuvent partager le téléphone d'un parent : avec un matricule, un même téléphone n'est plus apparié automatiquement à plusieurs fiches.
+- **Bilans parents** (tableau de bord → 📨 Bilans parents) : un message par élève et par mois (quiz faits, réussite, point fort, matière à revoir), bouton « Envoyer » qui ouvre WhatsApp avec le message prêt, export CSV. En ligne de commande : `python manage.py bilan_mensuel <ecole> --mois 2026-11 --sortie bilans.csv`.
+- L'import des élèves accepte une 6e colonne « Téléphone du parent » ; le téléphone de l'élève devient facultatif quand il a un matricule.
+
+Démo complète : `python manage.py seed_demo_school_space --abonnements` (professeur `prof.maths` / `PROF2026`, 6 élèves de 3ème avec matricule, dont une fratrie).

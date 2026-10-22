@@ -6,6 +6,7 @@
 <div class="stagger">
   <p class="small" style="text-align:right;margin:8px 0 0">
     {% if player %}<a href="{% url 'account_home' %}">📋 Mes résultats</a>
+    {% elif space.members_only %}<a href="{% url 'student_login' space.slug %}">🔑 Connexion élève (matricule + code)</a>
     {% else %}<a href="{% url 'account_login' %}?space={{ space.slug }}">🔑 Se connecter / mes résultats</a>{% endif %}</p>
 
   {% if space.welcome %}

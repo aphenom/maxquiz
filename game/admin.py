@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from .models import (GameConfig, Player, Question, AdCampaign,
                      GameSession, Answer, JokerUse, Withdrawal, Space,
                      Category, SubCategory, Theme, Quiz, Membership, License, AuditLog,
-                     Subscription)
+                     Subscription, Teacher, Resource)
 
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
@@ -37,6 +37,21 @@ class SpaceAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "dashboard_username", "dashboard_code", "active",
                     "consent_required", "members_only", "subscription_required", "free_until")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(Teacher)
+class TeacherAdmin(admin.ModelAdmin):
+    list_display = ("full_name", "space", "username", "role", "active")
+    list_filter = ("space", "role", "active")
+    filter_horizontal = ("sub_categories",)
+    exclude = ("password_hash",)
+
+
+@admin.register(Resource)
+class ResourceAdmin(admin.ModelAdmin):
+    list_display = ("title", "space", "sub_category", "theme", "teacher", "status", "created_at")
+    list_filter = ("space", "status")
+    exclude = ("data",)
 
 
 @admin.register(Subscription)

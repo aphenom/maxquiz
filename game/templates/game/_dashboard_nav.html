@@ -8,6 +8,10 @@
     {% elif active == "members" %}🪪 Membres
     {% elif active == "subscriptions" %}💳 Abonnements
     {% elif active == "shares" %}🤝 Reversements
+    {% elif active == "team" %}👩‍🏫 Équipe
+    {% elif active == "resources" %}📚 Ressources
+    {% elif active == "pins" %}🔑 Codes PIN
+    {% elif active == "reports" %}📨 Bilans parents
     {% elif active == "password" %}🔒 Mot de passe
     {% elif active == "journal" %}📜 Journal
     {% endif %} ▾
@@ -18,6 +22,10 @@
     <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">📝 Quiz</a>
     <a href="{% url 'dashboard_questions' space.slug %}" class="chip {% if active == 'questions' %}orange{% endif %}">❓ Questions</a>
     <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">🪪 Membres</a>
+    <a href="{% url 'dashboard_team' space.slug %}" class="chip {% if active == 'team' %}orange{% endif %}">👩‍🏫 Équipe</a>
+    <a href="{% url 'school_resources' space.slug %}" class="chip {% if active == 'resources' %}orange{% endif %}">📚 Ressources</a>
+    <a href="{% url 'dashboard_pins' space.slug %}" class="chip {% if active == 'pins' %}orange{% endif %}">🔑 Codes PIN</a>
+    <a href="{% url 'dashboard_reports' space.slug %}" class="chip {% if active == 'reports' %}orange{% endif %}">📨 Bilans parents</a>
     {% if space.subscription_required %}<a href="{% url 'dashboard_subscriptions' space.slug %}" class="chip {% if active == 'subscriptions' %}orange{% endif %}">💳 Abonnements</a>
     <a href="{% url 'dashboard_shares' space.slug %}" class="chip {% if active == 'shares' %}orange{% endif %}">🤝 Reversements</a>{% endif %}
     <a href="{% url 'dashboard_audit_log' space.slug %}" class="chip {% if active == 'journal' %}orange{% endif %}">📜 Journal</a>

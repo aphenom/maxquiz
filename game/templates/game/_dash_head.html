@@ -1,0 +1,13 @@
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;margin-bottom:6px;flex-wrap:wrap}
+.row form{display:flex;gap:6px;margin:0;flex-wrap:wrap;align-items:center}
+.row button,.mini{width:auto;padding:8px 12px;font-size:13px}
+.tag{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.tag.ok{background:rgba(11,154,92,.14);color:#0B9A5C}.tag.late{background:rgba(214,69,44,.14);color:var(--rouge)}
+.tag.wait{background:rgba(242,121,15,.14);color:#C2610A}.tag.mute{background:var(--sable);color:var(--brun)}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">{{ space.name }}</h1>
+  <p class="small" style="margin:0">{{ subtitle }}</p></div>
+</div>

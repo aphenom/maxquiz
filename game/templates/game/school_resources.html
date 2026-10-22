@@ -1,0 +1,66 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} — Ressources{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+{% if teacher and not is_direction %}{% include "game/_dash_head.html" with subtitle="Mes ressources · "|add:teacher.full_name %}
+<p class="small" style="text-align:right;margin:6px 0 0"><a href="{% url 'dashboard_logout' space.slug %}">🚪 Déconnexion</a></p>
+{% else %}{% include "game/_dash_head.html" with subtitle="Ressources des professeurs" %}
+{% include "game/_dashboard_nav.html" with active="resources" %}{% endif %}
+{% include "game/_messages.html" %}
+
+<h2 style="font-size:18px;margin:16px 0 8px">📅 Rythme des chapitres {% if late %}<span class="tag late">{{ late }} en retard</span>{% endif %}</h2>
+<p class="small" style="margin:0 0 8px">Les exercices d'un chapitre sont attendus au plus tard 7 jours après le cours.</p>
+{% for r in rhythm %}
+<div class="card row">
+  <span><strong>{{ r.theme.name }}</strong><br><span class="small">{{ r.theme.sub_category.category.name }} · {{ r.theme.sub_category.name }}{% if r.due %} · attendu le {{ r.due|date:"d/m" }}{% endif %}</span></span>
+  <span style="display:flex;gap:8px;align-items:center">
+    {% if r.state == "ok" %}<span class="tag ok">{{ r.count }} déposée{{ r.count|pluralize }}</span>
+    {% elif r.state == "late" %}<span class="tag late">en retard</span>
+    {% elif r.state == "upcoming" %}<span class="tag wait">à venir</span>
+    {% else %}<span class="tag mute">date du cours ?</span>{% endif %}
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="taught_on"><input type="hidden" name="theme_id" value="{{ r.theme.id }}">
+      <input type="date" name="taught_on" value="{{ r.theme.taught_on|date:'Y-m-d' }}" style="width:auto;padding:6px" onchange="this.form.submit()" aria-label="Date du cours"></form>
+  </span>
+</div>
+{% empty %}<p class="small">Aucun chapitre (thématique) dans tes matières. La direction peut les créer dans le tableau de bord.</p>{% endfor %}
+
+<form method="post" enctype="multipart/form-data" class="card" style="margin-top:16px">{% csrf_token %}
+  <input type="hidden" name="action" value="upload">
+  <p style="margin:0 0 8px;font-weight:700">📤 Déposer des exercices corrigés</p>
+  <select name="sub_category_id" required><option value="">Matière…</option>{% for s in subjects %}<option value="{{ s.id }}">{{ s.category.name }} · {{ s.name }}</option>{% endfor %}</select>
+  <select name="theme_id" style="margin-top:8px"><option value="">Chapitre (facultatif)…</option>{% for t in themes %}<option value="{{ t.id }}">{{ t.sub_category.name }} · {{ t.name }}</option>{% endfor %}</select>
+  <input type="text" name="title" required placeholder="Titre (ex. : Série 3 · équations du 1er degré)" style="margin-top:8px">
+  <input type="file" name="file" required accept=".pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png" style="margin-top:8px">
+  <textarea name="note" rows="2" placeholder="Commentaire pour MQ (facultatif)" style="margin-top:8px;width:100%;box-sizing:border-box"></textarea>
+  <button class="btn" style="margin-top:10px">Déposer</button>
+  <p class="small" style="margin:6px 0 0">PDF, Word, Excel ou photos · 5 Mo maximum. Le modèle Excel de questions (question, a, b, c, d, bonne, difficulte, explication) accélère la mise en ligne.</p>
+</form>
+
+<h2 style="font-size:18px;margin:18px 0 8px">Ressources déposées</h2>
+{% for r in resources %}
+<div class="card" style="padding:12px 14px;margin-bottom:8px">
+  <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+    <span><strong>{{ r.title }}</strong><br><span class="small">{{ r.sub_category.name }}{% if r.theme %} · {{ r.theme.name }}{% endif %}{% if r.teacher %} · {{ r.teacher.full_name }}{% endif %} · {{ r.created_at|date:"d/m" }}
+      · <a href="{% url 'resource_file' space.slug r.id %}">{{ r.file_name }}</a></span></span>
+    {% if r.status == "validated" %}<span class="tag ok">validée</span>{% elif r.status == "converted" %}<span class="tag wait">à valider</span>{% else %}<span class="tag mute">déposée</span>{% endif %}
+  </div>
+  {% if r.note %}<p class="small" style="margin:6px 0 0">💬 {{ r.note }}</p>{% endif %}
+  {% if r.status == "converted" %}
+  <details style="margin-top:8px"><summary class="small" style="font-weight:700;cursor:pointer">Vérifier les {{ r.questions.all|length }} question{{ r.questions.all|length|pluralize }}</summary>
+    {% for q in r.questions.all %}<p class="small" style="margin:6px 0 0"><strong>{{ forloop.counter }}.</strong> {{ q.text }}<br>
+      {% for o in q.options %}{% if forloop.counter0 == q.correct %}<strong>✅ {{ o }}</strong>{% else %}{{ o }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endfor %}
+  </details>
+  <form method="post" style="margin-top:8px">{% csrf_token %}<input type="hidden" name="action" value="validate"><input type="hidden" name="resource_id" value="{{ r.id }}">
+    <button class="btn vert mini">✅ Valider : publier pour les élèves</button></form>
+  {% endif %}
+  {% if is_direction and r.status != "validated" %}
+  <form method="post" enctype="multipart/form-data" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">{% csrf_token %}
+    <input type="hidden" name="action" value="convert"><input type="hidden" name="resource_id" value="{{ r.id }}">
+    <input type="file" name="questions_file" accept=".xlsx,.csv" style="width:auto;flex:1">
+    <button class="btn encre mini">Importer les questions</button>
+  </form>
+  {% endif %}
+</div>
+{% empty %}<p class="small">Aucune ressource déposée.</p>{% endfor %}
+{% endblock %}
