@@ -1,5 +1,6 @@
 import json
 import random
+import re
 
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
@@ -21,6 +22,24 @@ def _player(request):
     return Player.objects.filter(id=pid).first() if pid else None
 
 
+def _pick_by_difficulty(pool, n):
+    """Tire n questions réparties sur TOUTES les difficultés présentes (tour à tour
+    1, 2, 3, 4…), puis les range par difficulté croissante. Évite qu'un chapitre
+    riche en questions faciles ne serve que des difficultés 1."""
+    by_d = {}
+    for q in pool:
+        by_d.setdefault(q.difficulty, []).append(q)
+    for lst in by_d.values():
+        random.shuffle(lst)
+    picked, levels = [], sorted(by_d)
+    while len(picked) < n and any(by_d[d] for d in levels):
+        for d in levels:
+            if by_d[d] and len(picked) < n:
+                picked.append(by_d[d].pop())
+    picked.sort(key=lambda q: q.difficulty)
+    return picked
+
+
 def _difficulty_for_index(cfg, i, total):
     """Courbe de difficulté : les % du mix découpent la partie en tranches."""
     mix = cfg.difficulty_mix
@@ -37,7 +56,9 @@ def _difficulty_for_index(cfg, i, total):
 def _build_deck(cfg, total):
     """Tire des questions aléatoires PAR JOUEUR, difficulté croissante.
     Si une difficulté manque de questions, on complète avec les niveaux voisins."""
-    pools = {d: list(Question.objects.filter(active=True, difficulty=d)) for d in (1, 2, 3, 4)}
+    pools = {d: list(Question.objects.filter(active=True, difficulty=d, kind="quiz",
+                                             space__isnull=True, quiz__isnull=True))
+             for d in (1, 2, 3, 4)}
     for p in pools.values():
         random.shuffle(p)
     deck, used = [], set()
@@ -188,6 +209,10 @@ def answer(request):
         return JsonResponse({"error": "déjà répondu"}, status=400)
 
     idx = session.question_ids.index(question.id)
+    if idx != session.reached:
+        # Réponses strictement dans l'ordre : interdit de sauter à la dernière
+        # question, et de continuer après une erreur éliminatoire sans joker.
+        return JsonResponse({"error": "question hors séquence"}, status=400)
     timer_s = int(cfg.timer_by_difficulty.get(str(question.difficulty), 15))
     choice = int(data.get("choice", -1))
     time_ms = min(int(data.get("time_ms", timer_s * 1000)), timer_s * 1000)
@@ -442,15 +467,87 @@ def _space(slug):
     return get_object_or_404(Space, slug=slug, active=True)
 
 
+_LABEL_SYNONYMS = {
+    "troisieme": "3eme", "quatrieme": "4eme", "cinquieme": "5eme", "sixieme": "6eme",
+    "seconde": "2nde", "premiere": "1ere", "terminale": "tle", "term": "tle",
+    "maths": "mathematiques", "math": "mathematiques",
+    "pc": "physiquechimie", "spc": "physiquechimie", "sciencesphysiques": "physiquechimie",
+    "svt": "sciencesdelavieetdelaterre", "hg": "histoiregeographie", "histgeo": "histoiregeographie",
+}
+
+
+def label_key(label):
+    """Clé de rapprochement d'un libellé de niveau ou de matière entre le contenu
+    MQ et une école : sans accents, casse, espaces ni ponctuation, avec synonymes
+    courants (« 3e », « 3ème 2 », « Troisième » -> « 3eme » ; « Maths » ->
+    « mathematiques »). Un numéro ou une lettre de classe est ignoré."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(label or "")).encode("ascii", "ignore").decode().lower()
+    s = re.sub(r"[^a-z0-9]", "", s)
+    m = re.match(r"^([3-6])(e|eme|ieme)", s)            # 3e, 3eme, 3eme1, 3emea, 3ieme…
+    if m:
+        return f"{m.group(1)}eme"
+    for word, key in _LABEL_SYNONYMS.items():
+        if s == word or (word in ("troisieme", "quatrieme", "cinquieme", "sixieme") and s.startswith(word)):
+            return key
+    return s
+
+
 def _global_quizzes_for(category, sub_category=None):
-    """Quiz partagés (créés depuis l'admin, sans espace) dont le niveau/matière
-    correspond par nom (insensible à la casse) à cette catégorie/sous-catégorie
-    d'un espace précis — rendus automatiquement disponibles à cet espace."""
-    qs = Quiz.objects.filter(space__isnull=True, active=True,
-                             shared_level_name__iexact=category.name)
-    if sub_category:
-        return qs.filter(shared_subject_name__iexact=sub_category.name)
-    return qs.filter(shared_subject_name="")
+    """Quiz partagés (contenu MQ, sans espace) dont le niveau/matière correspond à
+    cette catégorie/sous-catégorie d'un espace, rapprochés par label_key() et non
+    par égalité stricte des libellés (« 3e » = « 3ème » = « Troisième »)."""
+    lvl = label_key(category.name)
+    sub = label_key(sub_category.name) if sub_category else ""
+    ids = [q.id for q in Quiz.objects.filter(space__isnull=True, active=True)
+           .only("id", "shared_level_name", "shared_subject_name")
+           if label_key(q.shared_level_name) == lvl and label_key(q.shared_subject_name) == sub]
+    return Quiz.objects.filter(id__in=ids)
+
+
+def shared_match(space, quiz):
+    """Sous-catégorie (ou catégorie si le quiz n'a pas de matière) de l'espace
+    qui reçoit ce quiz partagé, ou None."""
+    lvl, sub = label_key(quiz.shared_level_name), label_key(quiz.shared_subject_name)
+    for cat in Category.objects.filter(space=space).prefetch_related("subcategories"):
+        if label_key(cat.name) != lvl:
+            continue
+        if not sub:
+            return cat
+        for sc in cat.subcategories.all():
+            if label_key(sc.name) == sub:
+                return sc
+    return None
+
+
+
+def _answer_subject(question, space, cache=None):
+    """Matière d'une question pour les « points faibles » : sa sous-catégorie, ou,
+    pour une question de quiz partagé (contenu MQ, sans espace), la sous-catégorie
+    de CET espace qui porte le niveau/matière du quiz partagé."""
+    if question.sub_category_id:
+        return question.sub_category
+    qz = question.quiz
+    if not qz or not qz.shared_subject_name:
+        return None
+    cache = {} if cache is None else cache
+    if qz.id not in cache:                      # 1 recherche par quiz partagé, pas par réponse
+        cache[qz.id] = shared_match(space, qz)
+    return cache[qz.id]
+
+
+def _answer_theme(question, space, cache=None):
+    """Thématique (chapitre) : le Theme de la question, ou, pour un quiz partagé,
+    le quiz lui-même (un quiz partagé = un chapitre, cf. import_questions --shared)."""
+    from types import SimpleNamespace
+    if question.theme_id:
+        th = question.theme
+        return SimpleNamespace(key=f"t{th.id}", name=th.name, sub_category=th.sub_category)
+    qz = question.quiz
+    sub = _answer_subject(question, space, cache) if qz else None
+    if not qz or not sub:
+        return None
+    return SimpleNamespace(key=f"q{qz.id}", name=qz.name, sub_category=sub)
 
 
 def _resolve_quiz(space, quiz_slug):
@@ -464,10 +561,7 @@ def _resolve_quiz(space, quiz_slug):
     quiz = Quiz.objects.filter(space__isnull=True, slug=quiz_slug, active=True).first()
     if not quiz:
         return None
-    cats = Category.objects.filter(space=space, name__iexact=quiz.shared_level_name)
-    if quiz.shared_subject_name:
-        cats = SubCategory.objects.filter(category__in=cats, name__iexact=quiz.shared_subject_name)
-    return quiz if cats.exists() else None
+    return quiz if shared_match(space, quiz) else None
 
 
 def _quizzes_for_membership(space, membership):
@@ -604,33 +698,30 @@ def dashboard_logout(request, slug):
 
 
 def _quiz_dashboard_stats(space, sessions):
-    """Taux de bonne réponse par question quiz (pires en premier) et répartition
-    des sondages, pour un ensemble de sessions donné — deux requêtes groupées
-    au total plutôt qu'une (ou plusieurs) par question (N+1), pour rester
-    rapide sur un espace avec une grosse banque de questions."""
-    quiz_questions = list(Question.objects.filter(space=space, kind="quiz", active=True))
-    quiz_agg = (Answer.objects.filter(question__in=quiz_questions, session__in=sessions)
+    """Taux de bonne réponse par question (pires en premier) et répartition des
+    sondages, calculés à partir des RÉPONSES des sessions — couvre donc aussi les
+    quiz partagés (questions sans espace, rattachées à Question.quiz)."""
+    quiz_agg = (Answer.objects.filter(session__in=sessions, question__kind="quiz", question__active=True)
                .values("question_id")
                .annotate(n=Count("id"), ok=Count("id", filter=Q(is_correct=True))))
     quiz_agg_by_q = {a["question_id"]: a for a in quiz_agg}
-    quiz_stats = []
-    for q in quiz_questions:
-        a = quiz_agg_by_q.get(q.id)
-        if a and a["n"]:
-            quiz_stats.append({"q": q, "n": a["n"], "pct": round(100 * a["ok"] / a["n"])})
+    questions = Question.objects.in_bulk(list(quiz_agg_by_q))
+    quiz_stats = [{"q": questions[qid], "n": a["n"], "pct": round(100 * a["ok"] / a["n"])}
+                  for qid, a in quiz_agg_by_q.items() if a["n"] and qid in questions]
     quiz_stats.sort(key=lambda x: x["pct"])
 
-    survey_questions = list(Question.objects.filter(space=space, kind="survey", active=True))
-    survey_agg = (Answer.objects.filter(question__in=survey_questions, session__in=sessions, choice__gte=0)
+    survey_agg = (Answer.objects.filter(session__in=sessions, question__kind="survey",
+                                        question__active=True, choice__gte=0)
                  .values("question_id", "choice").annotate(c=Count("id")))
     counts_by_q = {}
     for row in survey_agg:
         counts_by_q.setdefault(row["question_id"], {})[row["choice"]] = row["c"]
+    survey_questions = Question.objects.in_bulk(list(counts_by_q))
     survey_stats = []
-    for q in survey_questions:
-        qcounts = counts_by_q.get(q.id, {})
+    for qid, qcounts in counts_by_q.items():
+        q = survey_questions.get(qid)
         n = sum(qcounts.values())
-        if n:
+        if q and n:
             dist = [{"opt": opt, "n": qcounts.get(i, 0), "pct": round(100 * qcounts.get(i, 0) / n)}
                     for i, opt in enumerate(q.options())]
             survey_stats.append({"q": q, "n": n, "dist": dist})
@@ -797,10 +888,8 @@ def space_start(request, slug):
     # Deck : quiz de l'espace (difficulté croissante) + sondages intercalés
     quiz_pool = list(Question.objects.filter(space=space, active=True, kind="quiz"))
     surveys = list(Question.objects.filter(space=space, active=True, kind="survey"))
-    random.shuffle(quiz_pool)
     random.shuffle(surveys)
-    quiz_pool.sort(key=lambda q: q.difficulty)
-    quiz_pool = quiz_pool[:space.question_count]
+    quiz_pool = _pick_by_difficulty(quiz_pool, space.question_count)
     deck = []
     for i, q in enumerate(quiz_pool, 1):
         deck.append(q)
@@ -931,10 +1020,8 @@ def quiz_start(request, slug, quiz_slug):
         else:
             quiz_pool = list(fallback_pool)
     surveys = list(Question.objects.filter(space=space, active=True, kind="survey"))
-    random.shuffle(quiz_pool)
     random.shuffle(surveys)
-    quiz_pool.sort(key=lambda q: q.difficulty)
-    quiz_pool = quiz_pool[:quiz.question_count]
+    quiz_pool = _pick_by_difficulty(quiz_pool, quiz.question_count)
     deck = []
     for i, q in enumerate(quiz_pool, 1):
         deck.append(q)
@@ -999,6 +1086,8 @@ def space_answer(request):
 
     cfg = GameConfig.get()
     idx = session.question_ids.index(question.id)
+    if idx != session.reached:
+        return JsonResponse({"error": "question hors séquence"}, status=400)
     timer_s = int(cfg.timer_by_difficulty.get(str(question.difficulty), 15))
     choice = int(data.get("choice", -1))
     time_ms = min(int(data.get("time_ms", timer_s * 1000)), timer_s * 1000)
@@ -1531,8 +1620,13 @@ def _rows_from_upload(f):
             if row and any(v is not None for v in row):
                 yield ["" if v is None else str(v).strip() for v in row]
     else:
-        raw = f.read().decode("utf-8-sig", errors="ignore")
-        for row in csv.reader(raw.splitlines()):
+        data = f.read()
+        try:
+            raw = data.decode("utf-8-sig")
+        except UnicodeDecodeError:              # « CSV (point-virgule) » d'Excel FR = Windows-1252
+            raw = data.decode("cp1252", errors="replace")
+        delim = ";" if raw.split("\n", 1)[0].count(";") > raw.split("\n", 1)[0].count(",") else ","
+        for row in csv.reader(raw.splitlines(), delimiter=delim):
             yield row
 
 
@@ -1552,7 +1646,7 @@ def _resolve_category_by_name(space, cat_name, sub_name):
 def _member_fields(post, space):
     return {
         "full_name": post.get("full_name", "").strip()[:120],
-        "phone": post.get("phone", "").strip()[:20],
+        "phone": normalize_phone(post.get("phone", "")) or "",
         "external_ref": post.get("external_ref", "").strip()[:60],
         "category": space.categories.filter(id=_post_int(post, "category_id")).first(),
         "sub_category": SubCategory.objects.filter(id=_post_int(post, "subcategory_id"),
@@ -1763,6 +1857,8 @@ def dashboard_members_template(request, slug):
     for i, width in enumerate([26, 18, 20, 22, 22], start=1):
         ws.column_dimensions[get_column_letter(i)].width = width
     ws.freeze_panes = "A2"
+    for r in range(2, 501):                    # colonne Téléphone au format Texte : garde le 0 initial
+        ws.cell(row=r, column=2).number_format = "@"
 
     ref_name = "Catégories disponibles"
     ref = wb.create_sheet(ref_name)
@@ -1821,11 +1917,17 @@ def dashboard_members(request, slug):
         action = request.POST.get("action")
         if action == "import_csv" and request.FILES.get("csv_file"):
             created, matched, skipped = 0, 0, 0
-            for row in _rows_from_upload(request.FILES["csv_file"]):
+            rejected = []  # lignes refusées, affichées à l'école au lieu de disparaître
+            duplicates, seen_in_file, already = [], {}, 0
+            for line_no, row in enumerate(_rows_from_upload(request.FILES["csv_file"]), start=1):
                 if not row or len(row) < 2:
                     continue
                 full_name = (row[0] or "").strip()[:120]
-                phone = (row[1] or "").strip()[:20]
+                raw_phone = (row[1] or "").strip()
+                phone = normalize_phone(raw_phone) or ""
+                if full_name and not phone and (re.search(r"\d", raw_phone) or line_no > 1):
+                    rejected.append(f"{full_name} ({raw_phone or 'sans téléphone'})")
+                    continue
                 external_ref = (row[2] or "").strip()[:60] if len(row) > 2 else ""
                 cat_name = row[3] if len(row) > 3 else ""
                 sub_name = row[4] if len(row) > 4 else ""
@@ -1840,9 +1942,17 @@ def dashboard_members(request, slug):
                     space=space, phone=phone, license=current_license,
                     defaults={"full_name": full_name, "external_ref": external_ref,
                              "category": category, "sub_category": sub_category})
+                if phone in seen_in_file:
+                    # même téléphone qu'une ligne précédente du fichier (frère/sœur) :
+                    # non créé, mais signalé à l'école au lieu de disparaître.
+                    duplicates.append(f"{full_name} (même téléphone que {seen_in_file[phone]})")
+                    continue
+                seen_in_file[phone] = full_name
                 if is_new:
                     created += 1
                     _log_action(space, "create", member, "import")
+                else:
+                    already += 1
                 existing_player = Player.objects.filter(phone=phone).first()
                 if existing_player and not member.player_id:
                     member.player = existing_player
@@ -1850,9 +1960,18 @@ def dashboard_members(request, slug):
                     member.save(update_fields=["player", "matched_at"])
                     matched += 1
             msg = f"{created} membre(s) importé(s), {matched} déjà apparié(s)."
+            if already:
+                msg += f" {already} déjà inscrit(s), inchangé(s)."
             if skipped:
                 msg += f" {skipped} ignoré(s) faute de sièges disponibles."
             messages.success(request, msg)
+            if duplicates:
+                messages.error(request, f"{len(duplicates)} ligne(s) non créée(s), téléphone en double : "
+                               + ", ".join(duplicates[:20]) + ("…" if len(duplicates) > 20 else "")
+                               + ". Une fiche par téléphone tant que la connexion par matricule n'est pas active.")
+            if rejected:
+                messages.error(request, f"{len(rejected)} ligne(s) refusée(s), téléphone invalide : "
+                               + ", ".join(rejected[:20]) + ("…" if len(rejected) > 20 else ""))
         elif action == "add_member":
             f = _member_fields(request.POST, space)
             if not f["full_name"] or not f["phone"]:
@@ -1932,7 +2051,7 @@ def dashboard_member_detail(request, slug, member_id):
             f = _member_fields(request.POST, space)
             if not f["full_name"] or not f["phone"]:
                 messages.error(request, "Nom et téléphone sont obligatoires.")
-            elif space.members.exclude(id=member.id).filter(phone=f["phone"]).exists():
+            elif space.members.exclude(id=member.id).filter(phone=f["phone"], license=member.license).exists():
                 messages.error(request, f"Un autre membre utilise déjà le téléphone {f['phone']}.")
             else:
                 member.full_name = f["full_name"]
@@ -1983,9 +2102,9 @@ def dashboard_member_detail(request, slug, member_id):
         overall_n = space_answers.count()
         overall_pct = round(100 * space_answers.filter(is_correct=True).count() / overall_n) if overall_n else None
 
-        sub_totals = {}
-        for a in space_answers.select_related("question__sub_category__category"):
-            sub = a.question.sub_category
+        sub_totals, shared_cache = {}, {}
+        for a in space_answers.select_related("question__sub_category__category", "question__quiz"):
+            sub = _answer_subject(a.question, space, shared_cache)
             if not sub:
                 continue
             row = sub_totals.setdefault(sub.id, {"sub": sub, "n": 0, "correct": 0})
@@ -1997,11 +2116,11 @@ def dashboard_member_detail(request, slug, member_id):
         ), key=lambda r: r["pct"])
 
         theme_totals = {}
-        for a in space_answers.select_related("question__theme"):
-            th = a.question.theme
+        for a in space_answers.select_related("question__theme__sub_category", "question__quiz"):
+            th = _answer_theme(a.question, space, shared_cache)
             if not th:
                 continue
-            row = theme_totals.setdefault(th.id, {"theme": th, "n": 0, "correct": 0})
+            row = theme_totals.setdefault(th.key, {"theme": th, "n": 0, "correct": 0})
             row["n"] += 1
             row["correct"] += 1 if a.is_correct else 0
         theme_breakdown = sorted((
@@ -2050,6 +2169,31 @@ OTP_VALIDITY_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5
 
 
+OTP_MAX_PER_WINDOW = 3
+OTP_WINDOW_MINUTES = 15
+
+
+def normalize_phone(raw):
+    """Numéro ivoirien au format unique 10 chiffres (« 0707070707 »), quelle
+    que soit la saisie (+225, 00225, espaces, points, tirets). None si invalide."""
+    raw = str(raw if raw is not None else "").strip()
+    if re.fullmatch(r"\d+\.0+", raw):      # cellule Excel numérique lue « 707070707.0 »
+        raw = raw.split(".")[0]
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("00225"):
+        digits = digits[5:]
+    elif digits.startswith("225") and len(digits) in (12, 13):
+        digits = digits[3:]
+    if len(digits) == 9:                       # Excel a mangé le 0 initial (0707… -> 707…)
+        digits = "0" + digits
+    return digits if len(digits) == 10 else None
+
+
+def _otp_rate_limited(phone):
+    since = timezone.now() - timedelta(minutes=OTP_WINDOW_MINUTES)
+    return OTPCode.objects.filter(phone=phone, created_at__gte=since).count() >= OTP_MAX_PER_WINDOW
+
+
 def _send_otp(phone):
     """Génère et « envoie » un code OTP. Stub dev : loggué console (point de
     branchement pour un vrai fournisseur SMS plus tard)."""
@@ -2066,10 +2210,14 @@ def account_login(request):
     dev_code = None
     error = None
     if request.method == "POST":
-        phone = request.POST.get("phone", "").strip()[:20]
+        phone = normalize_phone(request.POST.get("phone", ""))
         if space and space.access_code and request.POST.get("access_code", "").strip() != space.access_code:
             error = "Code d'accès incorrect."
-        elif phone:
+        elif not phone:
+            error = "Numéro invalide : 10 chiffres, ex. 07 07 07 07 07."
+        elif _otp_rate_limited(phone):
+            error = f"Trop de codes demandés — réessaie dans {OTP_WINDOW_MINUTES} minutes."
+        else:
             dev_code = _send_otp(phone)
             request.session["otp_phone"] = phone
             request.session["otp_space"] = space_slug
@@ -2301,9 +2449,9 @@ def account_home(request):
 
         # Points forts / points faibles par catégorie · sous-catégorie (matière) :
         # la moyenne globale de l'espace masque où sont réellement les lacunes.
-        sub_totals = {}
-        for a in space_answers.select_related("question__sub_category__category"):
-            sub = a.question.sub_category
+        sub_totals, shared_cache = {}, {}
+        for a in space_answers.select_related("question__sub_category__category", "question__quiz"):
+            sub = _answer_subject(a.question, sp, shared_cache)
             if not sub:
                 continue
             row = sub_totals.setdefault(sub.id, {"sub": sub, "n": 0, "correct": 0})
@@ -2317,11 +2465,11 @@ def account_home(request):
         # Même chose par thématique (quand les questions en portent une) — plus
         # fin que la matière, seulement affiché s'il y a des données à montrer.
         theme_totals = {}
-        for a in space_answers.select_related("question__theme"):
-            th = a.question.theme
+        for a in space_answers.select_related("question__theme__sub_category", "question__quiz"):
+            th = _answer_theme(a.question, sp, shared_cache)
             if not th:
                 continue
-            row = theme_totals.setdefault(th.id, {"theme": th, "n": 0, "correct": 0})
+            row = theme_totals.setdefault(th.key, {"theme": th, "n": 0, "correct": 0})
             row["n"] += 1
             row["correct"] += 1 if a.is_correct else 0
         theme_breakdown = sorted((
