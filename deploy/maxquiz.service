@@ -1,0 +1,15 @@
+# /etc/systemd/system/maxquiz.service
+[Unit]
+Description=MaxQuiz (gunicorn)
+After=network.target
+
+[Service]
+User=maxquiz
+Group=maxquiz
+WorkingDirectory=/opt/maxquiz
+EnvironmentFile=/etc/maxquiz.env
+ExecStart=/opt/maxquiz/.venv/bin/gunicorn maxquiz.wsgi:application --bind 127.0.0.1:8001 --workers 3 --timeout 60
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

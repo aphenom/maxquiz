@@ -554,3 +554,11 @@ Tout se décide côté serveur : un nouveau type de notification ne demande **ja
 **APK recommandé : TWA (Trusted Web Activity)**, générée avec PWABuilder ou Bubblewrap à partir de `https://<site>/manifest.webmanifest`. L'APK affiche le site via Chrome : notifications, mises à jour et nouvelles fonctions passent par le site, sans republier l'APK. Après génération, renseigner `ANDROID_PACKAGE_NAME` et `ANDROID_SHA256_FINGERPRINTS` (empreinte du certificat de signature, celle de Google Play si l'app y est publiée) : `/.well-known/assetlinks.json` lie alors l'APK au site (plein écran, sans barre d'adresse).
 
 **APK WebView ou natif (alternative)** : l'APK intègre Firebase Cloud Messaging et, une fois l'utilisateur connecté, transmet son jeton par `window.maxquizSetFcmToken(jeton)` dans la page (ou `POST /api/push/fcm/` avec les cookies de la WebView) ; au toucher d'une notification, il ouvre `data.url` dans la WebView. Côté serveur : `FCM_SERVICE_ACCOUNT_JSON` (contenu du fichier de compte de service Firebase).
+
+## Mise en ligne sur un VPS Debian (Apache + ISPConfig)
+
+Les fichiers du dossier `deploy/` servent à héberger MaxQuiz sur un VPS :
+`maxquiz.service` (gunicorn via systemd, port local 8001), `apache-directives.conf`
+(proxy à coller dans ISPConfig), `maxquiz.env.exemple` (variables d'environnement, à copier
+dans `/etc/maxquiz.env`) et `mettre-a-jour.sh` (récupère la dernière version, migre,
+redémarre). Django 6 demande Python 3.12 ou plus récent.
