@@ -298,3 +298,14 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ("title", "player", "teacher", "kind", "pushed", "created_at", "read_at")
     list_filter = ("kind",)
     search_fields = ("title", "body")
+
+
+from .models import AdAttribution
+
+
+@admin.register(AdAttribution)
+class AdAttributionAdmin(admin.ModelAdmin):
+    list_display = ("player", "utm_source", "utm_campaign", "utm_content", "consent", "created_at")
+    list_filter = ("utm_source", "consent")
+    search_fields = ("utm_campaign", "utm_content", "player__phone")
+    readonly_fields = [f.name for f in AdAttribution._meta.fields]

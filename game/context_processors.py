@@ -50,3 +50,16 @@ def product(request):
             "pro_actif": settings.PRO_ACTIF,
             "jeu_public_actif": settings.JEU_PUBLIC_ACTIF,
             "catalog_slug": settings.CATALOG_SPACE_SLUG}
+
+
+def ads(request):
+    """Pixel Meta : identifiant, consentement et événements en attente (MaxQuiz École)."""
+    from django.conf import settings
+    staff_page = "/tableau-de-bord" in request.path or "/ressources/" in request.path or request.path.startswith("/admin/")
+    if not settings.META_PIXEL_ID or getattr(request, "product", "ecole") != "ecole" or staff_page:
+        return {"meta_pixel_id": ""}
+    consent = request.COOKIES.get("mq_consent", "")
+    events = []
+    if consent == "1" and hasattr(request, "session") and request.session.get("pixel_events"):
+        events = request.session.pop("pixel_events")
+    return {"meta_pixel_id": settings.META_PIXEL_ID, "ad_consent": consent, "pixel_events": events}

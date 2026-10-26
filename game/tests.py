@@ -723,3 +723,71 @@ class StudentAppTests(TestCase):
         self.assertTrue(_access(school, player)["ok"])           # l'essai MaxQuiz École ouvre l'école
         self.client.post("/moi/", {"action": "parent", "parent_phone": "05 05 05 05 05"})
         self.assertEqual(Membership.objects.get(space=self.catalog, player=player).parent_phone, "0505050505")
+
+
+import json
+from .meta import build_event
+from .models import AdAttribution, Subscription
+from .subscriptions import validate as _validate
+
+
+@override_settings(META_PIXEL_ID="123456", META_CAPI_TOKEN="tok", META_SYNC=True, SITE_URL="https://maxquiz.net")
+class AdsTrackingTests(TestCase):
+    """Pixel Meta + API Conversions : provenance, consentement, achat au paiement validé,
+    aucune donnée personnelle de l'élève envoyée."""
+
+    def setUp(self):
+        self.catalog = catalog_space()
+        self.third = self.catalog.categories.get(name="3ème")
+
+    def _signup(self, consent=True):
+        if consent:
+            self.client.cookies["mq_consent"] = "1"
+        self.client.get("/?utm_source=facebook&utm_campaign=rentree&utm_content=video-aya&fbclid=ABC123")
+        self.client.post("/connexion/", {"phone": "0707070701"})
+        code = OTPCode.objects.filter(phone="0707070701").latest("created_at").code
+        self.client.post("/connexion/code/", {"code": code})
+        return self.client.post(reverse("student_profile"), {"first_name": "Aya", "category": self.third.id})
+
+    def test_attribution_events_and_purchase(self):
+        with mock.patch("game.meta._post", return_value=200) as post:
+            self._signup()
+            a = AdAttribution.objects.get(player__phone="0707070701")
+            self.assertEqual((a.utm_campaign, a.utm_content, a.consent), ("rentree", "video-aya", True))
+            self.assertTrue(a.fbc.endswith(".ABC123"))
+            names = [c.args[0]["data"][0]["event_name"] for c in post.call_args_list]
+            self.assertEqual(names, ["CompleteRegistration", "StartTrial"])
+            sent = json.dumps([c.args[0] for c in post.call_args_list])
+            for private in ("0707070701", "Aya", "3ème"):
+                self.assertNotIn(private, sent)          # rien sur l'élève
+            home = self.client.get(f"/e/{self.catalog.slug}/")
+            self.assertContains(home, "fbevents.js")
+            self.assertContains(home, "CompleteRegistration")    # rejoué par le pixel, même event_id
+            m = Membership.objects.get(space=self.catalog, player__phone="0707070701")
+            sub = Subscription.objects.create(membership=m, plan="yearly", amount=15000, payment_ref="OM123")
+            post.reset_mock()
+            _validate(sub)
+            ev = post.call_args.args[0]["data"][0]
+            self.assertEqual((ev["event_name"], ev["event_id"], ev["custom_data"]),
+                             ("Purchase", f"sub-{sub.id}", {"value": 15000, "currency": "XOF"}))
+        s = self.client.session
+        s[f"dash_{self.catalog.id}"] = self.catalog.dashboard_code
+        s.save()
+        r = self.client.get(f"/e/{self.catalog.slug}/tableau-de-bord/pubs/")
+        self.assertContains(r, "rentree")
+        self.assertContains(r, "15000 F")
+
+    def test_no_consent_no_sending(self):
+        with mock.patch("game.meta._post", return_value=200) as post:
+            self._signup(consent=False)
+            self.assertFalse(post.called)
+        home = self.client.get(f"/e/{self.catalog.slug}/")
+        self.assertNotContains(home, "fbevents.js\");")
+        self.assertContains(home, "On mesure l'efficacité de nos publicités")
+
+    def test_event_payload_shape(self):
+        a = AdAttribution(fbc="fb.1.1.X", fbp="fb.1.2.Y", user_agent="UA", ip="1.2.3.4", consent=True)
+        ev = build_event("Purchase", "sub-1", a, value=2000, source_url="https://maxquiz.net/x")
+        self.assertEqual(ev["user_data"], {"fbc": "fb.1.1.X", "fbp": "fb.1.2.Y",
+                                           "client_user_agent": "UA", "client_ip_address": "1.2.3.4"})
+        self.assertEqual(ev["action_source"], "website")

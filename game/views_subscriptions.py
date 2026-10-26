@@ -53,6 +53,9 @@ def space_subscribe(request, slug):
                 messages.error(request, "Cette référence de transaction a déjà été déclarée.")
         return redirect("space_subscribe", slug=slug)
 
+    if space.kind == "catalog" and membership and not (access.get("subscription")):
+        from . import meta
+        meta.track(request, "InitiateCheckout", getattr(player, "attribution", None))
     history = list(membership.subscriptions.all()[:10]) if membership else []
     return render(request, "game/space_subscribe.html", {
         "space": space, "player": player, "access": access, "membership": membership,
@@ -134,4 +137,50 @@ def dashboard_shares(request, slug):
         "space": space, "rows": rows,
         "total_share": sum(r["share"] for r in rows),
         "total_collected": sum(r["collected"] for r in rows),
+    })
+
+
+def ads_report(space, since=None):
+    """Résultats par campagne et par pub : inscrits, payants, chiffre d'affaires.
+    Calculé sur nos propres données (inscriptions et paiements validés), pas sur Meta."""
+    from .models import AdAttribution, Membership
+    members = Membership.objects.filter(space=space).select_related("player")
+    if since:
+        members = members.filter(created_at__gte=since)
+    members = list(members)
+    attrib = {a.player_id: a for a in AdAttribution.objects.filter(player_id__in=[m.player_id for m in members if m.player_id])}
+    paid = {}
+    for s in Subscription.objects.filter(membership__in=members, status="active"):
+        paid[s.membership_id] = paid.get(s.membership_id, 0) + s.amount
+    rows = {}
+    for m in members:
+        a = attrib.get(m.player_id)
+        campaign = (a.campaign_label() if a else "") or "Sans pub (direct, bouche-à-oreille, école)"
+        ad = (a.utm_content if a else "") or "—"
+        r = rows.setdefault((campaign, ad), {"campaign": campaign, "ad": ad, "signups": 0, "paying": 0, "revenue": 0})
+        r["signups"] += 1
+        if m.id in paid:
+            r["paying"] += 1
+            r["revenue"] += paid[m.id]
+    out = sorted(rows.values(), key=lambda r: (-r["revenue"], -r["signups"]))
+    for r in out:
+        r["rate"] = round(100 * r["paying"] / r["signups"]) if r["signups"] else 0
+    return out
+
+
+def dashboard_ads(request, slug):
+    """Tableau « Résultats des pubs » de l'espace MaxQuiz École."""
+    from django.conf import settings as dj_settings
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate:
+        return gate
+    period = request.GET.get("p", "30")
+    days = {"7": 7, "30": 30, "90": 90}.get(period)
+    since = timezone.now() - timedelta(days=days) if days else None
+    rows = ads_report(space, since)
+    return render(request, "game/dashboard_ads.html", {
+        "space": space, "rows": rows, "period": period if days else "all",
+        "totals": {k: sum(r[k] for r in rows) for k in ("signups", "paying", "revenue")},
+        "pixel_on": bool(dj_settings.META_PIXEL_ID), "capi_on": bool(dj_settings.META_CAPI_TOKEN),
     })

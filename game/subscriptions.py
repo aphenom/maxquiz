@@ -140,6 +140,8 @@ def validate(subscription, day=None):
     subscription.status = "active"
     subscription.validated_at = timezone.now()
     subscription.save(update_fields=["start_date", "end_date", "status", "validated_at"])
+    from .meta import track_purchase
+    track_purchase(subscription)          # MaxQuiz École : achat annoncé à Meta (si la mesure est active)
     return subscription
 
 

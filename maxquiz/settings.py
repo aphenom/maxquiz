@@ -77,6 +77,7 @@ TEMPLATES = [
                 'game.context_processors.notifications',
                 'game.context_processors.nav',
                 'game.context_processors.product',
+                'game.context_processors.ads',
             ],
         },
     },
@@ -173,3 +174,12 @@ CONTACT_WHATSAPP = os.environ.get("CONTACT_WHATSAPP", "")
 # Tant qu'aucun fournisseur SMS n'est branché : affiche le code de connexion à l'écran
 # (tests avec l'école pilote uniquement, jamais pour le grand public).
 OTP_AFFICHER_CODE = os.environ.get("OTP_AFFICHER_CODE", "False") == "True"
+
+SITE_URL = os.environ.get("SITE_URL", "")
+
+# Mesure des pubs Meta (pixel + API Conversions). Vide = rien n'est envoyé.
+META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "")
+META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "")
+META_API_VERSION = os.environ.get("META_API_VERSION", "v23.0")
+# Code de test du Gestionnaire d'événements (onglet « Tester les événements »), à vider ensuite.
+META_TEST_EVENT_CODE = os.environ.get("META_TEST_EVENT_CODE", "")

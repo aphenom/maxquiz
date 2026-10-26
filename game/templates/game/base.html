@@ -194,7 +194,15 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
   {% if unread_notifs %}<span class="badge">{% if unread_notifs > 9 %}9+{% else %}{{ unread_notifs }}{% endif %}</span>{% endif %}
 </a>
 {% endif %}
-<main>{% block content %}{% endblock %}</main>
+<main>{% if meta_pixel_id and not ad_consent %}
+<div id="adConsent" class="card" role="region" aria-label="Mesure d'audience" style="margin:0 0 12px;border:1.5px solid var(--sable)">
+  <p style="margin:0;font-size:13.5px;line-height:1.45">On mesure l'efficacité de nos publicités sur Facebook et Instagram. Aucune information sur toi (nom, numéro, classe, résultats) n'est partagée.</p>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button type="button" class="btn vert" style="padding:10px;font-size:15px" data-consent="1">Accepter</button>
+    <button type="button" class="btn encre" style="padding:10px;font-size:15px" data-consent="0">Refuser</button>
+  </div>
+</div>
+{% endif %}{% block content %}{% endblock %}</main>
 {% block tabs %}
 {% with ns=nav_space %}
 {% if ns and ns.members_only %}
@@ -227,6 +235,33 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
 {% endif %}
 {% endwith %}
 {% endblock %}
+{% if meta_pixel_id %}
+{{ pixel_events|json_script:"pixelEvents" }}
+<script>
+(function(){
+  var PIXEL = "{{ meta_pixel_id|escapejs }}";
+  function load(){
+    if (window.fbq) return;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;
+    s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', PIXEL);
+    fbq('track', 'PageView');
+    var evs = JSON.parse(document.getElementById('pixelEvents').textContent || '[]') || [];
+    evs.forEach(function(e){ fbq('track', e.name, e.params || {}, {eventID: e.id}); });
+  }
+  if (document.cookie.indexOf('mq_consent=1') !== -1) load();
+  document.querySelectorAll('[data-consent]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var v = btn.getAttribute('data-consent');
+      document.cookie = 'mq_consent=' + v + ';path=/;max-age=31536000;SameSite=Lax';
+      var box = document.getElementById('adConsent'); if (box) box.remove();
+      if (v === '1') load();
+    });
+  });
+})();
+</script>
+{% endif %}
 {% block js %}{% endblock %}
 <script src="{% static 'game/push.js' %}" defer></script>
 <script>

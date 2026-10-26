@@ -567,6 +567,21 @@ Dans ISPConfig, créez le site `maxquiz.net` et ajoutez `www.maxquiz.net` et `pr
 en domaines alias (Sites > Aliasdomain for website) : le certificat Let's Encrypt les couvre et
 les directives Apache du site servent les trois adresses.
 
+## Mesure des pubs Meta (MaxQuiz École)
+
+- `META_PIXEL_ID` et `META_CAPI_TOKEN` (Gestionnaire d'événements Meta) activent le pixel
+  et l'envoi serveur (API Conversions). Événements : PageView, CompleteRegistration et
+  StartTrial (inscription), InitiateCheckout (page d'abonnement), Purchase (paiement validé
+  dans le tableau de bord, envoyé par le serveur avec le montant en XOF). Le pixel et le
+  serveur partagent le même identifiant d'événement : Meta ne compte qu'une fois.
+- Uniquement après acceptation du bandeau de mesure d'audience. Rien sur l'élève n'est
+  envoyé (ni numéro, ni nom, ni classe, ni résultats).
+- La provenance (utm_source, utm_campaign, utm_content, fbclid) est enregistrée à
+  l'inscription. Tableau de bord MaxQuiz École > **Résultats des pubs** : inscrits, payants,
+  taux et chiffre d'affaires par campagne et par pub, d'après nos propres données.
+- Paramètres d'URL à mettre sur chaque pub :
+  `utm_source=facebook&utm_medium=paid&utm_campaign={{campaign.name}}&utm_content={{ad.name}}`
+
 ## Deux produits, une application : MaxQuiz École et MaxQuiz Pro
 
 - `maxquiz.net` (et l'APK) sert **MaxQuiz École** : accueil Bienvenue, connexion par numéro +

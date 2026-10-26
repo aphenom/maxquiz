@@ -9,7 +9,7 @@ que pour une école ; un client entreprise ne voit que ce qui le concerne.{% end
     {% elif active == "members" %}Élèves{% elif active == "pins" %}Codes PIN{% elif active == "reports" %}Bilans parents
     {% elif active == "quizzes" %}Quiz{% elif active == "questions" %}Questions{% elif active == "categories" %}{{ space.category_label_plural }}
     {% elif active == "resources" %}Exercices des profs{% elif active == "lessons" %}Cours
-    {% elif active == "sessions" %}Séances{% elif active == "subscriptions" %}Abonnements{% elif active == "shares" %}Reversements
+    {% elif active == "sessions" %}Séances{% elif active == "subscriptions" %}Abonnements{% elif active == "shares" %}Reversements{% elif active == "ads" %}Résultats des pubs
     {% elif active == "team" %}Équipe{% elif active == "journal" %}Journal{% elif active == "password" %}Mot de passe
     {% endif %}
     <svg class="burger-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
@@ -31,6 +31,7 @@ que pour une école ; un client entreprise ne voit que ce qui le concerne.{% end
     {% if space.subscription_required %}
     <a href="{% url 'dashboard_subscriptions' space.slug %}" class="chip {% if active == 'subscriptions' %}orange{% endif %}">Abonnements</a>
     <a href="{% url 'dashboard_shares' space.slug %}" class="chip {% if active == 'shares' %}orange{% endif %}">Reversements</a>
+    {% if space.kind == "catalog" %}<a href="{% url 'dashboard_ads' space.slug %}" class="chip {% if active == 'ads' %}orange{% endif %}">Résultats des pubs</a>{% endif %}
     {% endif %}
     <p class="nav-group">Réglages</p>
     <a href="{% url 'dashboard_team' space.slug %}" class="chip {% if active == 'team' %}orange{% endif %}">Équipe</a>

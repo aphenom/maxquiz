@@ -1,0 +1,52 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} : résultats des pubs{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--sable);vertical-align:top}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">Résultats des pubs</h1>
+  <p class="small" style="margin:0">Inscrits et payants par campagne, d'après nos propres données</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="ads" %}
+
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+  <a class="chip {% if period == '7' %}orange{% endif %}" href="?p=7">7 jours</a>
+  <a class="chip {% if period == '30' %}orange{% endif %}" href="?p=30">30 jours</a>
+  <a class="chip {% if period == '90' %}orange{% endif %}" href="?p=90">90 jours</a>
+  <a class="chip {% if period == 'all' %}orange{% endif %}" href="?p=all">Tout</a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px">
+  <div class="card" style="text-align:center"><p style="margin:0;font-size:26px;font-weight:800;color:var(--vert)" data-count="{{ totals.signups }}">{{ totals.signups }}</p><p class="small" style="margin:0">inscrits</p></div>
+  <div class="card" style="text-align:center"><p style="margin:0;font-size:26px;font-weight:800;color:var(--vert)" data-count="{{ totals.paying }}">{{ totals.paying }}</p><p class="small" style="margin:0">payants</p></div>
+  <div class="card" style="text-align:center"><p style="margin:0;font-size:26px;font-weight:800;color:var(--vert)">{{ totals.revenue }} F</p><p class="small" style="margin:0">encaissés</p></div>
+</div>
+
+{% if rows %}
+<div class="card" style="margin-top:10px;overflow-x:auto">
+<table>
+  <tr><th>Campagne</th><th>Pub</th><th>Inscrits</th><th>Payants</th><th>Taux</th><th>Encaissé</th></tr>
+  {% for r in rows %}
+  <tr><td><strong>{{ r.campaign }}</strong></td><td>{{ r.ad }}</td><td>{{ r.signups }}</td><td>{{ r.paying }}</td><td>{{ r.rate }} %</td><td><strong>{{ r.revenue }} F</strong></td></tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="small card" style="margin-top:10px">Aucune inscription sur cette période.</p>
+{% endif %}
+
+<div class="card small" style="margin-top:10px;line-height:1.5">
+  <p style="margin:0 0 6px;font-weight:700;color:var(--encre)">Pour que chaque pub soit reconnue</p>
+  Dans le Gestionnaire de publicités, champ « Paramètres d'URL » de chaque pub, collez :<br>
+  <code style="display:block;margin:6px 0;padding:8px;background:var(--ivoire);border-radius:8px;word-break:break-all">utm_source=facebook&amp;utm_medium=paid&amp;utm_campaign={% templatetag openvariable %}campaign.name{% templatetag closevariable %}&amp;utm_content={% templatetag openvariable %}ad.name{% templatetag closevariable %}</code>
+  Pixel Meta : {% if pixel_on %}<strong style="color:var(--vert)">actif</strong>{% else %}<strong style="color:var(--rouge)">non réglé</strong> (META_PIXEL_ID){% endif %}
+  · Envoi serveur : {% if capi_on %}<strong style="color:var(--vert)">actif</strong>{% else %}<strong style="color:var(--rouge)">non réglé</strong> (META_CAPI_TOKEN){% endif %}.
+  Seuls les élèves qui ont accepté la mesure d'audience sont comptés par Meta ; ce tableau, lui, les compte tous.
+</div>
+{% endblock %}

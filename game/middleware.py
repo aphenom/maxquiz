@@ -11,4 +11,7 @@ class ProductMiddleware:
     def __call__(self, request):
         host = request.get_host().split(":")[0].lower()
         request.product = "pro" if host.startswith(settings.PRO_HOST_PREFIX) else "ecole"
+        if request.product == "ecole":
+            from .meta import capture
+            capture(request)            # provenance publicitaire (utm_*, fbclid), premier contact
         return self.get_response(request)

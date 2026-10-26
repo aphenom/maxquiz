@@ -901,3 +901,32 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class AdAttribution(models.Model):
+    """D'où vient l'élève (premier contact) : campagne publicitaire, pub, clic Meta.
+    Sert au tableau « Résultats des pubs » et à l'envoi des conversions à Meta.
+    Aucune donnée personnelle de l'élève n'est transmise à Meta (ni numéro, ni nom)."""
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="attribution")
+    utm_source = models.CharField("Source", max_length=100, blank=True, default="")
+    utm_medium = models.CharField("Support", max_length=100, blank=True, default="")
+    utm_campaign = models.CharField("Campagne", max_length=150, blank=True, default="")
+    utm_content = models.CharField("Pub", max_length=150, blank=True, default="")
+    fbclid = models.CharField("Identifiant de clic Meta", max_length=255, blank=True, default="")
+    fbc = models.CharField(max_length=300, blank=True, default="")
+    fbp = models.CharField(max_length=100, blank=True, default="")
+    user_agent = models.CharField(max_length=300, blank=True, default="")
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    landing_path = models.CharField("Page d'arrivée", max_length=200, blank=True, default="")
+    consent = models.BooleanField("Mesure d'audience acceptée", default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Provenance publicitaire"
+        verbose_name_plural = "Provenances publicitaires"
+
+    def __str__(self):
+        return f"{self.player} · {self.utm_campaign or self.utm_source or 'direct'}"
+
+    def campaign_label(self):
+        return self.utm_campaign or (f"{self.utm_source} (sans campagne)" if self.utm_source else "")

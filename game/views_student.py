@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from .models import Category, Player
 from .student import (catalog_space, join_school, school_memberships, save_profile,
                       student_membership)
+from . import meta
 from .subscriptions import access_status
 from .views import _check_otp, _match_by_phone, _otp_rate_limited, _send_otp, normalize_phone, OTP_WINDOW_MINUTES
 
@@ -85,6 +86,7 @@ def student_code(request):
             request.session.pop("otp_phone", None)
             from .models import Membership
             _match_by_phone(Membership.objects.all(), phone, player)
+            meta.attach(request, player)
             if student_membership(player):
                 return redirect(_student_home_url())
             return redirect("student_profile")
@@ -115,6 +117,12 @@ def student_profile(request):
         else:
             save_profile(player, first_name, cat)
             if not mine:
+                attribution = meta.attach(request, player)
+                if meta.has_consent(request) and not attribution.consent:
+                    meta.set_consent(attribution, request)
+                meta.track(request, "CompleteRegistration", attribution)
+                if space.trial_enabled:
+                    meta.track(request, "StartTrial", attribution, value=0)
                 messages.success(request, f"Bienvenue {first_name} ! Ton essai gratuit commence aujourd'hui."
                                  if space.trial_enabled else f"Bienvenue {first_name} !")
             return redirect(_student_home_url())
