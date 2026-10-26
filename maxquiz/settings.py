@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'game.middleware.ProductMiddleware',
 ]
 
 ROOT_URLCONF = 'maxquiz.urls'
@@ -75,6 +76,7 @@ TEMPLATES = [
                 'game.context_processors.navigation',
                 'game.context_processors.notifications',
                 'game.context_processors.nav',
+                'game.context_processors.product',
             ],
         },
     },
@@ -153,3 +155,21 @@ ANDROID_SHA256_FINGERPRINTS = os.environ.get("ANDROID_SHA256_FINGERPRINTS", "")
 # Jeton de l'adresse /cron/rappels/ (service de tâches planifiées externe).
 CRON_TOKEN = os.environ.get("CRON_TOKEN", "")
 APP_VERSION = os.environ.get("APP_VERSION", "1")
+
+
+# Deux produits, une seule application : MaxQuiz École (maxquiz.net, l'APK, la pub)
+# et MaxQuiz Pro pour les entreprises (pro.maxquiz.net). Le produit se déduit de
+# l'adresse : tout nom d'hôte qui commence par « pro. » sert MaxQuiz Pro.
+PRO_HOST_PREFIX = os.environ.get("PRO_HOST_PREFIX", "pro.")
+# MaxQuiz Pro en pause : la page d'accueil Pro annonce « bientôt disponible ».
+# Les espaces entreprise déjà ouverts restent accessibles par leur lien direct.
+PRO_ACTIF = os.environ.get("PRO_ACTIF", "False") == "True"
+# Ancien jeu public (défi du jour, jokers, portefeuille, classement public) :
+# désactivé par défaut, hors du parcours élève.
+JEU_PUBLIC_ACTIF = os.environ.get("JEU_PUBLIC_ACTIF", "False") == "True"
+# Espace des élèves inscrits seuls depuis l'application (créé automatiquement).
+CATALOG_SPACE_SLUG = os.environ.get("CATALOG_SPACE_SLUG", "maxquiz")
+CONTACT_WHATSAPP = os.environ.get("CONTACT_WHATSAPP", "")
+# Tant qu'aucun fournisseur SMS n'est branché : affiche le code de connexion à l'écran
+# (tests avec l'école pilote uniquement, jamais pour le grand public).
+OTP_AFFICHER_CODE = os.environ.get("OTP_AFFICHER_CODE", "False") == "True"

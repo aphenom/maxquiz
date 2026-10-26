@@ -502,8 +502,11 @@ class SmokeTests(TestCase):
                                   external_ref="M1", category=cat, player=self.player)
 
     def test_public_and_student_pages(self):
-        for url in ("/", "/classement/", "/e/college/", "/e/college/connexion-eleve/", "/e/banque/"):
+        for url in ("/", "/e/college/", "/e/college/connexion-eleve/", "/e/banque/"):
             self.assertEqual(self.client.get(url).status_code, 200, url)
+        self.assertRedirects(self.client.get("/classement/"), "/", fetch_redirect_response=False)
+        with self.settings(JEU_PUBLIC_ACTIF=True):
+            self.assertEqual(self.client.get("/classement/").status_code, 200)
         s = self.client.session
         s["player_id"] = s["verified_player_id"] = self.player.id
         s.save()
@@ -641,3 +644,82 @@ class PushTests(TestCase):
             data = self.client.get("/.well-known/assetlinks.json").json()
         self.assertEqual(data[0]["target"]["package_name"], "ci.mqtech.maxquiz")
         self.assertEqual(self.client.get("/cron/rappels/").status_code, 404)        # sans jeton
+
+
+
+from .models import OTPCode
+from .student import catalog_space
+from .subscriptions import access_status as _access
+
+
+class StudentAppTests(TestCase):
+    """MaxQuiz École : inscription par code SMS, classe, essai gratuit réglable,
+    école facultative ; MaxQuiz Pro servi sur pro.<domaine>."""
+
+    def setUp(self):
+        self.catalog = catalog_space()
+        self.third = self.catalog.categories.get(name="3ème")
+
+    def _signup(self, phone="0707070701", name="Aya"):
+        r = self.client.post("/connexion/", {"phone": phone})
+        self.assertRedirects(r, reverse("student_code"), fetch_redirect_response=False)
+        code = OTPCode.objects.filter(phone=phone).latest("created_at").code
+        return self.client.post("/connexion/code/", {"code": code})
+
+    def test_products_by_host(self):
+        self.assertContains(self.client.get("/"), "Commencer")
+        r = self.client.get("/", HTTP_HOST="pro.maxquiz.net")
+        self.assertContains(r, "MaxQuiz Pro")
+        self.assertContains(r, "bientôt")
+        with self.settings(PRO_ACTIF=True):
+            self.assertContains(self.client.get("/", HTTP_HOST="pro.maxquiz.net"), "Accéder à mon espace")
+        self.assertRedirects(self.client.get("/defi-du-jour/"), "/", fetch_redirect_response=False)
+
+    def test_signup_then_return_by_sms_code(self):
+        r = self._signup()
+        self.assertRedirects(r, reverse("student_profile"), fetch_redirect_response=False)
+        r = self.client.post(reverse("student_profile"), {"first_name": "Aya", "category": self.third.id})
+        self.assertRedirects(r, f"/e/{self.catalog.slug}/", fetch_redirect_response=False)
+        m = Membership.objects.get(space=self.catalog, player__phone="0707070701")
+        self.assertEqual((m.full_name, m.category), ("Aya", self.third))
+        home = self.client.get(f"/e/{self.catalog.slug}/")
+        self.assertContains(home, "Essai gratuit : encore 7 jours")
+        self.assertContains(home, "Moi")
+        self.assertContains(self.client.get("/moi/"), "Mon école")
+        self.client.post(reverse("student_logout"))
+        r = self._signup()                       # même chemin pour revenir : directement l'accueil
+        self.assertRedirects(r, f"/e/{self.catalog.slug}/", fetch_redirect_response=False)
+        self.assertEqual(Membership.objects.filter(space=self.catalog).count(), 1)
+
+    def test_trial_is_set_in_admin(self):
+        self._signup()
+        self.client.post(reverse("student_profile"), {"first_name": "Aya", "category": self.third.id})
+        player = Player.objects.get(phone="0707070701")
+        self.assertTrue(_access(self.catalog, player)["ok"])
+        m = Membership.objects.get(space=self.catalog, player=player)
+        Membership.objects.filter(id=m.id).update(created_at=timezone.now() - timedelta(days=7))
+        self.assertFalse(_access(self.catalog, player)["ok"])       # 7 jours écoulés
+        self.catalog.trial_days = 30
+        self.catalog.save()
+        self.assertTrue(_access(self.catalog, player)["ok"])
+        self.catalog.trial_enabled = False
+        self.catalog.save()
+        self.assertEqual(_access(self.catalog, player)["reason"], "no_subscription")
+
+    def test_join_school_with_code_is_optional(self):
+        school = Space.objects.create(name="Collège La Réussite", slug="reussite", dashboard_code="x1234567",
+                                      kind="school", join_code="REUSSITE", members_only=True,
+                                      subscription_required=True, consent_required=False)
+        cat = Category.objects.create(space=school, name="3e", slug="3e")
+        self._signup()
+        self.client.post(reverse("student_profile"), {"first_name": "Aya", "category": self.third.id})
+        player = Player.objects.get(phone="0707070701")
+        self.assertFalse(_access(school, player)["ok"])
+        self.client.post("/moi/", {"action": "school", "join_code": "faux"})
+        self.assertFalse(Membership.objects.filter(space=school).exists())
+        self.client.post("/moi/", {"action": "school", "join_code": " reussite "})
+        m = Membership.objects.get(space=school, player=player)
+        self.assertEqual(m.category, cat)                        # « 3ème » = « 3e »
+        self.assertTrue(_access(school, player)["ok"])           # l'essai MaxQuiz École ouvre l'école
+        self.client.post("/moi/", {"action": "parent", "parent_phone": "05 05 05 05 05"})
+        self.assertEqual(Membership.objects.get(space=self.catalog, player=player).parent_phone, "0505050505")

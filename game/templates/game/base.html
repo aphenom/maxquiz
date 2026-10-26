@@ -36,8 +36,24 @@ h1{font-size:32px;font-weight:800;letter-spacing:-1px;margin:8px 0 2px}
 .btn.vert{background:var(--vert)} .btn.encre{background:var(--encre)}
 .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
-input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--sable);
+input[type=text],input[type=tel]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--sable);
   font-size:16px;font-family:inherit;background:var(--ivoire)}
+/* Parcours élève MaxQuiz École */
+.back{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-weight:700;text-decoration:none;color:var(--vert)}
+.field-label{display:block;font-size:13px;font-weight:700;color:#4A4038;margin:14px 0 6px}
+.big-input{font-size:20px!important;font-weight:700;letter-spacing:1px;background:#fff!important;border:2px solid var(--vert)!important}
+.otp{font-size:28px!important;font-weight:800;letter-spacing:12px;text-align:center}
+.pick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pick{position:relative}
+.pick input{position:absolute;opacity:0;inset:0;pointer-events:none}
+.pick span{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#fff;
+  border:1.5px solid var(--sable);font-weight:700;font-size:15px;cursor:pointer;transition:transform .12s}
+.pick input:checked+span{background:var(--vert);border-color:var(--vert);color:#fff}
+.pick input:focus-visible+span{outline:3px solid var(--orange);outline-offset:2px}
+.row-link{display:flex;gap:12px;align-items:center;padding:13px 14px;text-decoration:none;color:inherit}
+.row-link+.row-link,.row-sep{border-top:1px solid #F3EADC}
+.row-ico{width:38px;height:38px;border-radius:11px;background:var(--sable);display:flex;align-items:center;justify-content:center;flex:none}
+.pill-ok{display:block;text-align:center;font-weight:700;color:#0B5A36;background:#DFF5E9;border-radius:99px;padding:8px 12px}
 .tabbar{display:flex;border-top:1px solid var(--sable);background:#fff;position:sticky;bottom:0}
 .tab{flex:1;padding:12px 0 14px;text-align:center;font-size:12px;font-weight:700;
   color:#8B7D6B;text-decoration:none;transition:transform .15s}
@@ -186,16 +202,21 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
   <a class="tab {% if tab == 'home' %}on{% endif %}" href="{% url 'space_home' ns.slug %}"{% if tab == 'home' %} aria-current="page"{% endif %}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</a>
   <a class="tab {% if tab == 'lessons' %}on{% endif %}" href="{% url 'lessons_list' ns.slug %}"{% if tab == 'lessons' %} aria-current="page"{% endif %}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/></svg>Cours</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/></svg>Réviser</a>
   <a class="tab {% if tab == 'sessions' %}on{% endif %}" href="{% url 'sessions_list' ns.slug %}"{% if tab == 'sessions' %} aria-current="page"{% endif %}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>Séances</a>
+  {% if ns.kind == "catalog" %}
+  <a class="tab {% if tab == 'me' or tab == 'account' %}on{% endif %}" href="{% url 'student_me' %}"{% if tab == 'me' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Moi</a>
+  {% else %}
   <a class="tab {% if tab == 'account' %}on{% endif %}" href="{% url 'account_home' %}"{% if tab == 'account' %} aria-current="page"{% endif %}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progrès</a>
+  {% endif %}
 </nav>
 {% else %}
 <nav class="tabbar">
   <a class="tab {% if tab == 'home' %}on{% endif %}"
-     href="{% if space %}{% url 'space_home' space.slug %}{% else %}{% url 'public_daily' %}{% endif %}">🎮<br>Jouer</a>
+     href="{% if space %}{% url 'space_home' space.slug %}{% else %}{% url 'home' %}{% endif %}">🎮<br>Jouer</a>
   <a class="tab {% if tab == 'board' %}on{% endif %}"
      href="{% if space and quiz %}{% url 'quiz_leaderboard' space.slug quiz.slug %}{% else %}/classement/{% endif %}">🏅<br>Classement</a>
   {% if nav_show_wallet %}

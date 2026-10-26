@@ -50,6 +50,15 @@ def current_subscription(membership, day=None):
             .order_by("-end_date").first())
 
 
+def trial_end(space, membership):
+    """Dernier jour de l'essai gratuit individuel de cet élève (réglé dans
+    l'administration : activé ou non, durée en jours), ou None."""
+    if not (space.trial_enabled and space.trial_days and membership):
+        return None
+    start = timezone.localtime(membership.created_at).date()
+    return start + timedelta(days=space.trial_days - 1)
+
+
 def access_status(space, player, day=None):
     """Décide si le joueur peut lancer un quiz de l'espace.
 
@@ -63,6 +72,9 @@ def access_status(space, player, day=None):
     res = {"ok": True, "reason": "open", "message": "", "membership": m,
            "subscription": None, "trial": False}
     if not (space.members_only or space.subscription_required):
+        return res
+    if not m and space.kind == "catalog":
+        res.update(ok=False, reason="not_member", message="Choisis ta classe pour commencer.")
         return res
     if not m:
         res.update(ok=False, reason="not_member",
@@ -78,8 +90,22 @@ def access_status(space, player, day=None):
         res.update(reason="subscribed", subscription=sub)
         return res
     if space.free_until and day <= space.free_until:
-        res.update(reason="trial", trial=True)
+        res.update(reason="trial", trial=True, trial_end=space.free_until)
         return res
+    end = trial_end(space, m)
+    if end and day <= end:
+        res.update(reason="trial", trial=True, trial_end=end, trial_days_left=(end - day).days + 1)
+        return res
+    if space.kind == "school":
+        # Élève inscrit seul sur MaxQuiz École puis rattaché à son école :
+        # son abonnement (ou son essai) MaxQuiz École lui ouvre aussi l'école.
+        from .models import Space
+        catalog = Space.objects.filter(kind="catalog", active=True).first()
+        if catalog and catalog.id != space.id:
+            via = access_status(catalog, player, day)
+            if via["ok"]:
+                via.update(membership=m, via_catalog=True)
+                return via
     pending = m.subscriptions.filter(status="pending").exists()
     res.update(ok=False, reason="pending" if pending else "no_subscription",
                message=("Ton paiement est en cours de vérification. L'accès s'ouvre dès sa validation."

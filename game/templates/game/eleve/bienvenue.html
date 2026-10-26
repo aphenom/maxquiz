@@ -1,0 +1,22 @@
+{% extends "game/base.html" %}
+{% block title %}MaxQuiz : réussis ton année{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<div class="stagger" style="display:flex;flex-direction:column;gap:16px;flex:1">
+  <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+    <span style="width:44px;height:44px;border-radius:12px;background:var(--vert);color:var(--ivoire);font-weight:800;display:flex;align-items:center;justify-content:center">MQ</span>
+    <span style="font-size:22px;font-weight:800">MaxQuiz</span>
+  </div>
+  <h1 style="font-size:34px;line-height:1.08;margin-top:14px">Réussis ton année, chapitre par chapitre.</h1>
+  <p style="margin:0;font-size:16px;line-height:1.45;color:#4A4038">Cours, quiz corrigés et séances avec des profs, pour ta classe, de la 6ème à la Terminale.</p>
+  <div style="display:flex;flex-direction:column;gap:12px;font-size:15.5px">
+    <p style="margin:0">📘 Le cours du programme officiel, en vidéo et en fiche</p>
+    <p style="margin:0">✅ Des quiz corrigés, l'explication à chaque erreur</p>
+    <p style="margin:0">📊 Un bilan de tes révisions pour tes parents</p>
+  </div>
+  <div style="flex:1"></div>
+  {% if catalog_trial_days %}<p class="pill-ok">{{ catalog_trial_days }} jours gratuits, sans paiement</p>{% endif %}
+  <a class="btn" href="{% url 'student_phone' %}">Commencer</a>
+  <a href="{% url 'student_phone' %}" style="text-align:center;font-weight:700;color:var(--vert);padding:6px">J'ai déjà un compte</a>
+</div>
+{% endblock %}

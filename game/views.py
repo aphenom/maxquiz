@@ -881,6 +881,8 @@ def space_home(request, slug):
         "all_categories": all_categories,
         "can_declare_level": can_declare_level,
         "access": access_status(space, player) if player else None,
+        "my_schools": (__import__("game.student", fromlist=["school_memberships"]).school_memberships(player)
+                       if player and space.kind == "catalog" else []),
         "tab": "home",
     })
 
@@ -2312,6 +2314,25 @@ def _send_otp(phone):
     return code
 
 
+def _check_otp(phone, submitted):
+    """Vérifie le dernier code envoyé à ce numéro. None si le code est bon
+    (il est alors consommé), sinon le message d'erreur à afficher."""
+    submitted = re.sub(r"\D", "", str(submitted or ""))
+    otp = OTPCode.objects.filter(phone=phone, consumed=False).order_by("-created_at").first()
+    expired = not otp or otp.created_at < timezone.now() - timedelta(minutes=OTP_VALIDITY_MINUTES)
+    if not otp or expired:
+        return "Code expiré : demande un nouveau code."
+    if otp.attempts >= OTP_MAX_ATTEMPTS:
+        return "Trop de tentatives : demande un nouveau code."
+    if submitted != otp.code:
+        otp.attempts += 1
+        otp.save(update_fields=["attempts"])
+        return "Code incorrect."
+    otp.consumed = True
+    otp.save(update_fields=["consumed"])
+    return None
+
+
 def account_login(request):
     space_slug = request.GET.get("space") or request.POST.get("space") or ""
     next_url = request.GET.get("next") or request.POST.get("next") or ""
@@ -2349,20 +2370,8 @@ def account_verify(request):
 
     error = None
     if request.method == "POST":
-        submitted = request.POST.get("code", "").strip()
-        otp = OTPCode.objects.filter(phone=phone, consumed=False).order_by("-created_at").first()
-        expired = not otp or otp.created_at < timezone.now() - timedelta(minutes=OTP_VALIDITY_MINUTES)
-        if not otp or expired:
-            error = "Code expiré — demande un nouveau code."
-        elif otp.attempts >= OTP_MAX_ATTEMPTS:
-            error = "Trop de tentatives — demande un nouveau code."
-        elif submitted != otp.code:
-            otp.attempts += 1
-            otp.save(update_fields=["attempts"])
-            error = "Code incorrect."
-        else:
-            otp.consumed = True
-            otp.save(update_fields=["consumed"])
+        error = _check_otp(phone, request.POST.get("code", ""))
+        if not error:
             player, created = Player.objects.get_or_create(phone=phone, defaults={"pseudo": ""})
             request.session["player_id"] = player.id
             request.session["verified_player_id"] = player.id

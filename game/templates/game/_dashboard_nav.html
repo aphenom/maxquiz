@@ -19,12 +19,12 @@ que pour une école ; un client entreprise ne voit que ce qui le concerne.{% end
     {% if school %}
     <p class="nav-group">Élèves</p>
     <a href="{% url 'dashboard_members' space.slug %}" class="chip {% if active == 'members' %}orange{% endif %}">Liste des élèves</a>
-    <a href="{% url 'dashboard_pins' space.slug %}" class="chip {% if active == 'pins' %}orange{% endif %}">Codes PIN</a>
+    {% if space.kind != "catalog" %}<a href="{% url 'dashboard_pins' space.slug %}" class="chip {% if active == 'pins' %}orange{% endif %}">Codes PIN</a>{% endif %}
     <a href="{% url 'dashboard_reports' space.slug %}" class="chip {% if active == 'reports' %}orange{% endif %}">Bilans parents</a>
     <p class="nav-group">Contenu</p>
     <a href="{% url 'staff_lessons' space.slug %}" class="chip {% if active == 'lessons' %}orange{% endif %}">Cours</a>
     <a href="{% url 'dashboard_quizzes' space.slug %}" class="chip {% if active == 'quizzes' %}orange{% endif %}">Quiz</a>
-    <a href="{% url 'school_resources' space.slug %}" class="chip {% if active == 'resources' %}orange{% endif %}">Exercices des profs</a>
+    {% if space.kind != "catalog" %}<a href="{% url 'school_resources' space.slug %}" class="chip {% if active == 'resources' %}orange{% endif %}">Exercices des profs</a>{% endif %}
     <a href="{% url 'dashboard_categories' space.slug %}" class="chip {% if active == 'categories' %}orange{% endif %}">{{ space.category_label_plural }} et matières</a>
     <p class="nav-group">Séances et paiements</p>
     <a href="{% url 'dashboard_sessions' space.slug %}" class="chip {% if active == 'sessions' %}orange{% endif %}">Séances</a>

@@ -164,6 +164,7 @@ class Command(BaseCommand):
             space.price_monthly, space.price_quarterly, space.price_yearly = 2000, 6000, 15000
             space.school_share_per_month = 500
             space.payment_number = space.payment_number or "07 00 00 00 00 (démo)"
+            space.kind, space.join_code = "school", space.join_code or "REUSSITE"
             space.save()
             self.stdout.write("Abonnements activés : accès gratuit jusqu'au 18/12/2026, puis abonnement requis.")
 

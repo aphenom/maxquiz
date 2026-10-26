@@ -4,9 +4,16 @@ from . import views_subscriptions as subs
 from . import views_school as school_views
 from . import views_learning as learn
 from . import views_push as pushv
+from . import views_student as eleve
+from .views_student import jeu_public
 
 urlpatterns = [
-    path("", views.public_daily, name="home"),
+    path("", eleve.home, name="home"),
+    path("connexion/", eleve.student_phone, name="student_phone"),
+    path("connexion/code/", eleve.student_code, name="student_code"),
+    path("bienvenue/profil/", eleve.student_profile, name="student_profile"),
+    path("moi/", eleve.student_me, name="student_me"),
+    path("deconnexion/", eleve.student_logout, name="student_logout"),
     path("sw.js", pushv.service_worker, name="service_worker"),
     path("manifest.webmanifest", pushv.manifest, name="manifest"),
     path(".well-known/assetlinks.json", pushv.assetlinks, name="assetlinks"),
@@ -17,13 +24,13 @@ urlpatterns = [
     path("notifications/", pushv.notifications_page, name="notifications"),
     path("notifications/<int:notif_id>/", pushv.notification_open, name="notification_open"),
     path("cron/rappels/", pushv.cron_reminders, name="cron_reminders"),
-    path("defi-du-jour/", views.public_daily, name="public_daily"),
-    path("start/", views.start, name="start"),
-    path("api/answer/", views.answer, name="answer"),
+    path("defi-du-jour/", jeu_public(views.public_daily), name="public_daily"),
+    path("start/", jeu_public(views.start), name="start"),
+    path("api/answer/", jeu_public(views.answer), name="answer"),
     path("api/joker/", views.joker, name="joker"),
     path("api/abandon/", views.give_up, name="give_up"),
-    path("classement/", views.leaderboard, name="leaderboard"),
-    path("portefeuille/", views.wallet, name="wallet"),
+    path("classement/", jeu_public(views.leaderboard), name="leaderboard"),
+    path("portefeuille/", jeu_public(views.wallet), name="wallet"),
     path("api/space-answer/", views.space_answer, name="space_answer"),
     path("e/<slug:slug>/", views.space_home, name="space_home"),
     path("e/<slug:slug>/jouer/", views.space_start, name="space_start"),

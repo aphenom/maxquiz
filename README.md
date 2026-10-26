@@ -562,3 +562,28 @@ Les fichiers du dossier `deploy/` servent à héberger MaxQuiz sur un VPS :
 (proxy à coller dans ISPConfig), `maxquiz.env.exemple` (variables d'environnement, à copier
 dans `/etc/maxquiz.env`) et `mettre-a-jour.sh` (récupère la dernière version, migre,
 redémarre). Django 6 demande Python 3.12 ou plus récent.
+
+Dans ISPConfig, créez le site `maxquiz.net` et ajoutez `www.maxquiz.net` et `pro.maxquiz.net`
+en domaines alias (Sites > Aliasdomain for website) : le certificat Let's Encrypt les couvre et
+les directives Apache du site servent les trois adresses.
+
+## Deux produits, une application : MaxQuiz École et MaxQuiz Pro
+
+- `maxquiz.net` (et l'APK) sert **MaxQuiz École** : accueil Bienvenue, connexion par numéro +
+  code SMS, prénom et classe, puis l'espace « MaxQuiz École » (`/e/maxquiz/`) créé
+  automatiquement avec les classes et matières du programme. Le contenu commun (quiz et cours
+  sans espace) y apparaît par classe et matière. Rubrique **Moi** : progrès, abonnement,
+  numéro du parent, et code école facultatif pour rejoindre une école partenaire.
+- `pro.maxquiz.net` sert **MaxQuiz Pro** (entreprises). `PRO_ACTIF=False` : page « bientôt
+  disponible » ; les espaces entreprise existants restent ouverts par leur lien `/e/<slug>/`.
+- L'ancien jeu public (défi du jour, portefeuille, classement public) est coupé tant que
+  `JEU_PUBLIC_ACTIF` vaut False.
+- Administration > Espaces : type d'espace (MaxQuiz École, école partenaire, entreprise),
+  **code école**, et **essai gratuit** (activé ou non, durée en jours), modifiables
+  directement dans la liste.
+- Démonstration : `python manage.py seed_demo_catalog` (espace MaxQuiz École, un cours et un
+  quiz communs de 3ème), puis `python manage.py seed_demo_school_space --abonnements` (école
+  partenaire, code école REUSSITE).
+- Envoi des SMS : la fonction `_send_otp` (game/views.py) affiche le code dans les journaux
+  du serveur ; à brancher sur un fournisseur SMS avant l'ouverture au public. En attendant,
+  `OTP_AFFICHER_CODE=True` affiche le code à l'écran pour les tests (jamais pour le grand public).

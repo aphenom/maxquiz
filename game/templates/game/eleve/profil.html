@@ -1,0 +1,24 @@
+{% extends "game/base.html" %}
+{% block title %}Ta classe · MaxQuiz{% endblock %}
+{% block tabs %}{% if editing %}{{ block.super }}{% endif %}{% endblock %}
+{% block content %}
+{% if editing %}<a class="back" href="{% url 'student_me' %}">‹ Moi</a>{% else %}
+<p class="small" style="margin:6px 0 0;font-weight:800;color:var(--vert);text-transform:uppercase;letter-spacing:.5px">Dernière étape</p>{% endif %}
+<h1 style="font-size:28px;line-height:1.15">{% if editing %}Ton prénom et ta classe{% else %}Bienvenue ! Deux infos et c'est parti.{% endif %}</h1>
+<form method="post" style="display:flex;flex-direction:column;flex:1">
+  {% csrf_token %}
+  <label class="field-label" for="fn">Ton prénom</label>
+  <input id="fn" type="text" name="first_name" value="{{ first_name }}" maxlength="60" required autocomplete="given-name">
+  <p class="field-label">Ta classe</p>
+  <div class="pick-grid" role="radiogroup" aria-label="Ta classe">
+    {% for c in classes %}
+    <label class="pick"><input type="radio" name="category" value="{{ c.id }}"{% if c.id == picked %} checked{% endif %} required><span>{{ c.name }}</span></label>
+    {% endfor %}
+  </div>
+  <p class="small" style="margin:10px 0 0">Tu verras les cours et les quiz du programme officiel de ta classe.</p>
+  {% if error %}<p style="color:var(--rouge);font-weight:700;margin:10px 0 0">{{ error }}</p>{% endif %}
+  {% if not editing %}<p class="small" style="margin:14px 0 0">Ton école utilise MaxQuiz ? Tu pourras ajouter son code ensuite, dans « Moi ».</p>{% endif %}
+  <div style="flex:1;min-height:24px"></div>
+  <button class="btn" type="submit">{% if editing %}Enregistrer{% else %}C'est parti{% endif %}</button>
+</form>
+{% endblock %}

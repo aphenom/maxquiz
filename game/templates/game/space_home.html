@@ -6,7 +6,8 @@
 <div class="stagger">
   {% if not player %}
   <p class="small" style="text-align:right;margin:8px 0 0">
-    {% if space.members_only %}<a href="{% url 'student_login' space.slug %}">🔑 Connexion élève (matricule + code)</a>
+    {% if space.kind == "catalog" %}<a href="{% url 'student_phone' %}">🔑 Se connecter avec mon numéro</a>
+    {% elif space.members_only %}<a href="{% url 'student_login' space.slug %}">🔑 Connexion élève (matricule + code)</a>
     {% else %}<a href="{% url 'account_login' %}?space={{ space.slug }}">🔑 Se connecter / mes résultats</a>{% endif %}</p>
   {% elif not space.members_only %}
   <p class="small" style="text-align:right;margin:8px 0 0"><a href="{% url 'account_home' %}">📋 Mes résultats</a></p>
@@ -17,8 +18,14 @@
   {% elif space.welcome %}
   <div class="card" style="margin-top:14px"><p style="margin:0;font-size:15px">{{ space.welcome }}</p></div>
   {% endif %}
+  {% include "game/_messages.html" %}
   {% include "game/_access_banner.html" %}
   {% if player %}{% include "game/_push_card.html" %}{% endif %}
+  {% for s in my_schools %}
+  <a class="card" href="{% url 'space_home' s.space.slug %}" style="margin-top:12px;display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit">
+    <span aria-hidden="true" style="font-size:24px">🏫</span>
+    <span style="flex:1"><strong>{{ s.space.name }}</strong><br><span class="small">Exercices de tes profs et séances de ton école</span></span>›</a>
+  {% endfor %}
 
   {% if next_quiz or new_lesson %}
   <div class="card" style="margin-top:12px;background:var(--encre);color:var(--ivoire)">

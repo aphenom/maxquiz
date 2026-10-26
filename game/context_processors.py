@@ -21,11 +21,13 @@ def navigation(request):
     slug = match.kwargs.get("slug") if match else None
     if slug:
         space = Space.objects.filter(slug=slug, active=True).first()
-    elif request.path.startswith(("/compte/", "/notifications/")):
+    elif request.path.startswith(("/compte/", "/notifications/", "/moi/")):
         pid = request.session.get("player_id")
         if pid:
-            m = (Membership.objects.filter(player_id=pid, space__members_only=True, space__active=True)
-                 .select_related("space").order_by("-created_at").first())
+            ms = list(Membership.objects.filter(player_id=pid, space__members_only=True, space__active=True)
+                      .select_related("space").order_by("-created_at"))
+            # L'espace MaxQuiz École d'abord : l'école rejointe s'ajoute, elle ne remplace pas.
+            m = next((x for x in ms if x.space.kind == "catalog"), ms[0] if ms else None)
             space = m.space if m else None
     return {"nav_space": space}
 
@@ -39,3 +41,12 @@ def notifications(request):
     qs = Notification.objects.filter(read_at__isnull=True)
     qs = qs.filter(player_id=pid) if pid else qs.filter(teacher_id=tid)
     return {"unread_notifs": qs.count()}
+
+
+def product(request):
+    """Produit servi (École ou Pro) et réglages utiles aux gabarits."""
+    from django.conf import settings
+    return {"product": getattr(request, "product", "ecole"),
+            "pro_actif": settings.PRO_ACTIF,
+            "jeu_public_actif": settings.JEU_PUBLIC_ACTIF,
+            "catalog_slug": settings.CATALOG_SPACE_SLUG}

@@ -1,0 +1,20 @@
+{% extends "game/base.html" %}
+{% block title %}Ton numéro · MaxQuiz{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'home' %}">‹ Retour</a>
+<h1 style="font-size:28px;line-height:1.15">Ton numéro de téléphone</h1>
+<p style="margin:6px 0 0;font-size:15.5px;line-height:1.45;color:#4A4038">On t'envoie un code par SMS. Pas de mot de passe à retenir : c'est le même chemin pour t'inscrire et pour revenir.</p>
+<form method="post" style="display:flex;flex-direction:column;flex:1;margin-top:8px">
+  {% csrf_token %}
+  <label class="field-label" for="tel">Numéro</label>
+  <div style="display:flex;gap:8px">
+    <span style="display:flex;align-items:center;padding:0 12px;border-radius:10px;border:1.5px solid var(--sable);background:#fff;font-weight:700">+225</span>
+    <input id="tel" class="big-input" type="tel" name="phone" inputmode="numeric" autocomplete="tel-national" placeholder="07 07 07 07 07" value="{{ phone }}" required autofocus>
+  </div>
+  {% if error %}<p style="color:var(--rouge);font-weight:700;margin:10px 0 0">{{ error }}</p>{% endif %}
+  <p class="small" style="margin:10px 0 0">Pas de téléphone à toi ? Le numéro d'un parent marche aussi.</p>
+  <div style="flex:1;min-height:24px"></div>
+  <button class="btn" type="submit">Recevoir mon code</button>
+</form>
+{% endblock %}

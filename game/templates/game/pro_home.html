@@ -1,0 +1,22 @@
+{% extends "game/base.html" %}
+{% block title %}MaxQuiz Pro : quiz pour vos équipes{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<div class="stagger" style="display:flex;flex-direction:column;gap:14px;flex:1">
+  <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+    <span style="width:44px;height:44px;border-radius:12px;background:var(--encre);color:var(--ivoire);font-weight:800;display:flex;align-items:center;justify-content:center">MQ</span>
+    <span style="font-size:22px;font-weight:800">MaxQuiz Pro</span>
+  </div>
+  <h1 style="font-size:32px;line-height:1.1;margin-top:14px">Des quiz pour former et animer vos équipes.</h1>
+  {% if pro_actif %}
+  <p style="margin:0;font-size:16px;line-height:1.45;color:#4A4038">Votre espace à vos couleurs : quiz de formation, de conformité ou d'animation, suivi des résultats par équipe, sur mobile, même en 3G.</p>
+  <div style="flex:1"></div>
+  <a class="btn encre" href="{% url 'dashboard_login_common' %}">Accéder à mon espace</a>
+  {% else %}
+  <p class="card" style="margin:0;font-size:16px;line-height:1.45">MaxQuiz Pro arrive bientôt. Vous voulez être parmi les premières entreprises à l'utiliser ? Écrivez-nous.</p>
+  <div style="flex:1"></div>
+  <a class="btn encre" href="{% url 'dashboard_login_common' %}">Déjà client : accéder à mon espace</a>
+  {% endif %}
+  {% if contact_whatsapp %}<a href="https://wa.me/{{ contact_whatsapp }}" style="text-align:center;font-weight:700;color:var(--vert);padding:8px">Nous écrire sur WhatsApp</a>{% endif %}
+</div>
+{% endblock %}

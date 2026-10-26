@@ -238,8 +238,9 @@ def _generate_dashboard_username():
 
 
 class Space(models.Model):
-    """Espace cloisonné d'une entreprise cliente (multi-tenant)."""
-    name = models.CharField("Nom de l'entreprise", max_length=80)
+    """Espace cloisonné (multi-tenant) : l'espace MaxQuiz École des élèves
+    individuels, une école partenaire ou une entreprise cliente (MaxQuiz Pro)."""
+    name = models.CharField("Nom", max_length=80)
     slug = models.SlugField("Identifiant d'URL", unique=True)
     dashboard_username = models.CharField(
         "Identifiant du tableau de bord", max_length=30, unique=True,
@@ -318,11 +319,28 @@ class Space(models.Model):
         "Consignes de paiement", blank=True,
         default="Indique le matricule de l'élève en motif du paiement, puis saisis ci-dessous "
                 "la référence de la transaction reçue par SMS.")
+    # --- Produit : MaxQuiz École (catalogue + écoles) ou MaxQuiz Pro (entreprises) ---
+    KINDS = [("catalog", "MaxQuiz École : élèves inscrits seuls (contenu commun)"),
+             ("school", "École partenaire"),
+             ("company", "Entreprise (MaxQuiz Pro)")]
+    kind = models.CharField(
+        "Type d'espace", max_length=10, choices=KINDS, default="company",
+        help_text="« MaxQuiz École » : l'espace unique des élèves inscrits depuis l'application. "
+                  "« École partenaire » : un établissement que l'élève rejoint avec le code école. "
+                  "« Entreprise » : un client MaxQuiz Pro.")
+    join_code = models.CharField(
+        "Code école", max_length=20, blank=True, default="",
+        help_text="Code que l'élève saisit dans l'application (rubrique Moi > Mon école) pour "
+                  "rejoindre cet établissement. Lettres et chiffres, sans espace. Vide = pas de rattachement.")
+    trial_enabled = models.BooleanField(
+        "Essai gratuit pour chaque nouvel élève", default=False,
+        help_text="Chaque élève qui s'inscrit a accès à tout pendant la durée ci-dessous, sans payer.")
+    trial_days = models.PositiveSmallIntegerField("Durée de l'essai gratuit (jours)", default=7)
     active = models.BooleanField("Actif", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "Espace entreprise"
+        verbose_name = "Espace"
 
     def __str__(self):
         return self.name
