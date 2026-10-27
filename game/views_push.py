@@ -79,7 +79,7 @@ def _attach(request, kind, endpoint, p256dh="", auth=""):
     player, teacher = _recipient(request)
     if not (player or teacher):
         return JsonResponse({"error": "connexion requise"}, status=401)
-    if not endpoint or len(endpoint) > 2000:
+    if not endpoint or len(endpoint) > 700:
         return HttpResponseBadRequest("abonnement invalide")
     PushDevice.objects.update_or_create(endpoint=endpoint, defaults=dict(
         kind=kind, player=player, teacher=teacher, p256dh=p256dh[:200], auth=auth[:100], active=True,

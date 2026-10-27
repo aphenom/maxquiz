@@ -866,7 +866,8 @@ class PushDevice(models.Model):
     player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.CASCADE, related_name="devices")
     teacher = models.ForeignKey("Teacher", null=True, blank=True, on_delete=models.CASCADE, related_name="devices")
     kind = models.CharField(max_length=8, choices=KINDS)
-    endpoint = models.TextField("Adresse Web Push ou jeton FCM", unique=True)
+    # CharField (et non TextField) : MariaDB/MySQL n'indexe pas un TEXT unique sans longueur.
+    endpoint = models.CharField("Adresse Web Push ou jeton FCM", max_length=700, unique=True)
     p256dh = models.CharField(max_length=200, blank=True, default="")
     auth = models.CharField(max_length=100, blank=True, default="")
     user_agent = models.CharField(max_length=200, blank=True, default="")

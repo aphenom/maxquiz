@@ -561,7 +561,9 @@ Les fichiers du dossier `deploy/` servent à héberger MaxQuiz sur un VPS :
 `maxquiz.service` (gunicorn via systemd, port local 8001), `apache-directives.conf`
 (proxy à coller dans ISPConfig), `maxquiz.env.exemple` (variables d'environnement, à copier
 dans `/etc/maxquiz.env`) et `mettre-a-jour.sh` (récupère la dernière version, migre,
-redémarre). Django 6 demande Python 3.12 ou plus récent.
+redémarre). MaxQuiz utilise Django 5.2 LTS (suivi jusqu'en avril 2028), compatible avec
+MariaDB 10.5 (Debian 11) et plus : la base peut être créée dans ISPConfig
+(`DATABASE_URL=mysql://…`, avec `pip install mysqlclient`). Python 3.10 ou plus récent.
 
 Dans ISPConfig, créez le site `maxquiz.net` et ajoutez `www.maxquiz.net` et `pro.maxquiz.net`
 en domaines alias (Sites > Aliasdomain for website) : le certificat Let's Encrypt les couvre et

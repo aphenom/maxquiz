@@ -49,8 +49,8 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "endpoint",
-                    models.TextField(
-                        unique=True, verbose_name="Adresse Web Push ou jeton FCM"
+                    models.CharField(
+                        max_length=700, unique=True, verbose_name="Adresse Web Push ou jeton FCM"
                     ),
                 ),
                 ("p256dh", models.CharField(blank=True, default="", max_length=200)),

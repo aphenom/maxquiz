@@ -103,6 +103,12 @@ DATABASES = {
         conn_max_age=600,
     )
 }
+if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
+    # MariaDB / MySQL (base créée dans ISPConfig) : emojis et accents complets, mode strict.
+    DATABASES['default'].setdefault('OPTIONS', {}).update({
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    })
 
 
 # Password validation
@@ -191,3 +197,6 @@ META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "")
 META_API_VERSION = os.environ.get("META_API_VERSION", "v23.0")
 # Code de test du Gestionnaire d'événements (onglet « Tester les événements »), à vider ensuite.
 META_TEST_EVENT_CODE = os.environ.get("META_TEST_EVENT_CODE", "")
+
+# Identifiants 64 bits (valeur par défaut de Django 6, explicite pour Django 5.2 LTS).
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
