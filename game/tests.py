@@ -791,3 +791,24 @@ class AdsTrackingTests(TestCase):
         self.assertEqual(ev["user_data"], {"fbc": "fb.1.1.X", "fbp": "fb.1.2.Y",
                                            "client_user_agent": "UA", "client_ip_address": "1.2.3.4"})
         self.assertEqual(ev["action_source"], "website")
+
+
+class OtpDisplayTests(TestCase):
+    """Sans fournisseur SMS : OTP_AFFICHER_CODE affiche le code, quelle que soit la casse."""
+
+    def test_code_shown_when_enabled(self):
+        import os
+        from importlib import reload
+        from maxquiz import settings as s
+        for raw, shown in (("True", True), ("true", True), (" oui ", True), ("False", False)):
+            os.environ["OTP_AFFICHER_CODE"] = raw
+            self.assertEqual(reload(s).OTP_AFFICHER_CODE, shown, raw)
+        os.environ.pop("OTP_AFFICHER_CODE")
+        reload(s)
+        with self.settings(DEBUG=False, OTP_AFFICHER_CODE=True):
+            r = self.client.post("/connexion/", {"phone": "0707070709"})
+            self.assertIn("dev_code=", r["Location"])
+            self.assertContains(self.client.get(r["Location"]), "Ton code")
+        with self.settings(DEBUG=False, OTP_AFFICHER_CODE=False):
+            r = self.client.post("/connexion/", {"phone": "0707070708"})
+            self.assertNotIn("dev_code=", r["Location"])

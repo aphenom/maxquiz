@@ -33,7 +33,15 @@ except ImportError:
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-insecure-key-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+def env_bool(name, default=False):
+    """Réglage oui/non : True, true, 1, oui, yes ou on (espaces et guillemets ignorés)."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().strip('"\'').lower() in ("true", "1", "oui", "yes", "on")
+
+
+DEBUG = env_bool('DEBUG', True)
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
@@ -178,16 +186,16 @@ APP_VERSION = os.environ.get("APP_VERSION", "1")
 PRO_HOST_PREFIX = os.environ.get("PRO_HOST_PREFIX", "pro.")
 # MaxQuiz Pro en pause : la page d'accueil Pro annonce « bientôt disponible ».
 # Les espaces entreprise déjà ouverts restent accessibles par leur lien direct.
-PRO_ACTIF = os.environ.get("PRO_ACTIF", "False") == "True"
+PRO_ACTIF = env_bool("PRO_ACTIF")
 # Ancien jeu public (défi du jour, jokers, portefeuille, classement public) :
 # désactivé par défaut, hors du parcours élève.
-JEU_PUBLIC_ACTIF = os.environ.get("JEU_PUBLIC_ACTIF", "False") == "True"
+JEU_PUBLIC_ACTIF = env_bool("JEU_PUBLIC_ACTIF")
 # Espace des élèves inscrits seuls depuis l'application (créé automatiquement).
 CATALOG_SPACE_SLUG = os.environ.get("CATALOG_SPACE_SLUG", "maxquiz")
 CONTACT_WHATSAPP = os.environ.get("CONTACT_WHATSAPP", "")
 # Tant qu'aucun fournisseur SMS n'est branché : affiche le code de connexion à l'écran
 # (tests avec l'école pilote uniquement, jamais pour le grand public).
-OTP_AFFICHER_CODE = os.environ.get("OTP_AFFICHER_CODE", "False") == "True"
+OTP_AFFICHER_CODE = env_bool("OTP_AFFICHER_CODE")
 
 SITE_URL = os.environ.get("SITE_URL", "")
 

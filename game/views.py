@@ -2353,7 +2353,7 @@ def account_login(request):
             request.session["otp_space"] = space_slug
             request.session["otp_next"] = next_url
             url = reverse("account_verify")
-            if settings.DEBUG:
+            if settings.DEBUG or settings.OTP_AFFICHER_CODE:
                 url += f"?dev_code={dev_code}"
             return redirect(url)
     return render(request, "game/account_login.html", {
@@ -2402,7 +2402,7 @@ def account_verify(request):
                 return redirect("space_confirm", slug=space.slug)
             return redirect("account_home")
 
-    dev_code = request.GET.get("dev_code") if settings.DEBUG else None
+    dev_code = request.GET.get("dev_code") if (settings.DEBUG or settings.OTP_AFFICHER_CODE) else None
     return render(request, "game/account_verify.html", {
         "space": space, "phone": phone, "error": error, "dev_code": dev_code,
     })
