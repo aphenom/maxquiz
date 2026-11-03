@@ -57,6 +57,9 @@ def manifest(request):
         "display_override": ["standalone", "minimal-ui"], "orientation": "portrait",
         "categories": ["education", "kids"],
         "prefer_related_applications": False,
+        "related_applications": ([{"platform": "play", "id": settings.ANDROID_PACKAGE_NAME,
+                                   "url": f"https://play.google.com/store/apps/details?id={settings.ANDROID_PACKAGE_NAME}"}]
+                                 if getattr(settings, "ANDROID_PACKAGE_NAME", "") else []),
         "launch_handler": {"client_mode": "navigate-existing"},
         "background_color": "#FDF6EC", "theme_color": "#0B9A5C",
         "shortcuts": [

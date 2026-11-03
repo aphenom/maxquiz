@@ -827,3 +827,16 @@ class PwaTests(TestCase):
         self.assertIn("/hors-ligne/", sw)
         self.assertContains(self.client.get("/hors-ligne/"), "Pas de connexion")
         self.assertContains(self.client.get("/"), "serviceWorker.register('/sw.js'")
+
+
+@override_settings(ANDROID_PACKAGE_NAME="net.maxquiz.twa", APK_URL="https://maxquiz.net/telecharger/maxquiz.apk")
+class AppHandoffTests(TestCase):
+    """Sur Android, la page propose d'ouvrir l'application installée (ou de l'installer)."""
+
+    def test_manifest_and_banner(self):
+        m = self.client.get("/manifest.webmanifest").json()
+        self.assertEqual(m["related_applications"][0]["id"], "net.maxquiz.twa")
+        home = self.client.get("/")
+        self.assertContains(home, "appHandoff")
+        self.assertContains(home, "package=")
+        self.assertNotContains(self.client.get("/tableau-de-bord/connexion/"), 'id="appHandoff"')

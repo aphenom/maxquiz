@@ -94,6 +94,7 @@ TEMPLATES = [
                 'game.context_processors.nav',
                 'game.context_processors.product',
                 'game.context_processors.ads',
+                'game.context_processors.app_handoff',
             ],
         },
     },
@@ -208,3 +209,7 @@ META_TEST_EVENT_CODE = os.environ.get("META_TEST_EVENT_CODE", "")
 
 # Identifiants 64 bits (valeur par défaut de Django 6, explicite pour Django 5.2 LTS).
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Lien de téléchargement de l'APK (ou de la fiche Play Store) proposé aux visiteurs
+# Android qui n'ont pas encore l'application. Vide = pas de proposition d'installation.
+APK_URL = os.environ.get("APK_URL", "")

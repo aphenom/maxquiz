@@ -16,6 +16,7 @@
   --rouge:#D6452C; --or:#E9A820; --sable:#EADFCE; --brun:#6E6152;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--ivoire);color:var(--encre);
   font-family:'Bricolage Grotesque',system-ui,sans-serif;
@@ -194,7 +195,14 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
   {% if unread_notifs %}<span class="badge">{% if unread_notifs > 9 %}9+{% else %}{{ unread_notifs }}{% endif %}</span>{% endif %}
 </a>
 {% endif %}
-<main>{% if meta_pixel_id and not ad_consent %}
+<main>{% if android_package or apk_url %}
+<div id="appHandoff" class="card" hidden style="margin:0 0 12px;display:flex;gap:12px;align-items:center;border:1.5px solid var(--sable)">
+  <span style="width:40px;height:40px;border-radius:11px;background:var(--vert);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">MQ</span>
+  <span style="flex:1;font-size:14px;line-height:1.35"><strong id="appHandoffTitle">L'application MaxQuiz</strong><br><span class="small" id="appHandoffText">Plus rapide et en plein écran.</span></span>
+  <a id="appHandoffBtn" class="btn" style="width:auto;padding:10px 14px;font-size:15px" href="#">Ouvrir</a>
+  <button type="button" id="appHandoffClose" aria-label="Fermer" style="background:none;border:0;font-size:20px;color:var(--brun);min-width:44px;min-height:44px;cursor:pointer">×</button>
+</div>
+{% endif %}{% if meta_pixel_id and not ad_consent %}
 <div id="adConsent" class="card" role="region" aria-label="Mesure d'audience" style="margin:0 0 12px;border:1.5px solid var(--sable)">
   <p style="margin:0;font-size:13.5px;line-height:1.45">On mesure l'efficacité de nos publicités sur Facebook et Instagram. Aucune information sur toi (nom, numéro, classe, résultats) n'est partagée.</p>
   <div style="display:flex;gap:8px;margin-top:10px">
@@ -263,6 +271,42 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
 </script>
 {% endif %}
 {% block js %}{% endblock %}
+{% if android_package or apk_url %}
+<script>
+/* Sur Android, dans le navigateur : si l'application est installée, proposer de l'ouvrir
+   (même page) ; sinon, proposer de l'installer. Rien dans l'application elle-même. */
+(function(){
+  var PKG = "{{ android_package|escapejs }}", APK = "{{ apk_url|escapejs }}";
+  var box = document.getElementById('appHandoff');
+  if (!box || !/Android/i.test(navigator.userAgent)) return;
+  var inApp = document.referrer.indexOf('android-app://') === 0 || /source=app/.test(location.search)
+    || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  try { if (inApp) sessionStorage.setItem('mqInApp', '1'); if (sessionStorage.getItem('mqInApp')) return;
+        if (localStorage.getItem('mqHandoffClosed') === new Date().toDateString()) return; } catch (e) {}
+  var btn = document.getElementById('appHandoffBtn');
+  function show(installed){
+    if (installed && PKG) {
+      btn.textContent = 'Ouvrir';
+      btn.href = 'intent://' + location.host + location.pathname + location.search
+        + '#Intent;scheme=https;package=' + PKG + ';S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+      document.getElementById('appHandoffTitle').textContent = 'MaxQuiz est installé sur ce téléphone';
+      document.getElementById('appHandoffText').textContent = 'Continue dans l\'application.';
+    } else if (APK) {
+      btn.textContent = 'Installer'; btn.href = APK;
+    } else { return; }
+    box.hidden = false;
+  }
+  document.getElementById('appHandoffClose').addEventListener('click', function(){
+    box.hidden = true; try { localStorage.setItem('mqHandoffClosed', new Date().toDateString()); } catch (e) {}
+  });
+  if (navigator.getInstalledRelatedApps && PKG) {
+    navigator.getInstalledRelatedApps().then(function(apps){
+      show(apps.some(function(a){ return a.id === PKG; }));
+    }).catch(function(){ show(false); });
+  } else { show(false); }
+})();
+</script>
+{% endif %}
 <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/'}).catch(function(){}); }</script>
 <script src="{% static 'game/push.js' %}" defer></script>
 <script>

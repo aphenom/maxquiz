@@ -63,3 +63,13 @@ def ads(request):
     if consent == "1" and hasattr(request, "session") and request.session.get("pixel_events"):
         events = request.session.pop("pixel_events")
     return {"meta_pixel_id": settings.META_PIXEL_ID, "ad_consent": consent, "pixel_events": events}
+
+
+def app_handoff(request):
+    """Ouvrir l'application Android quand elle est installée (MaxQuiz École, pages élèves)."""
+    from django.conf import settings
+    staff_page = "/tableau-de-bord" in request.path or "/ressources/" in request.path or request.path.startswith("/admin/")
+    pkg = getattr(settings, "ANDROID_PACKAGE_NAME", "")
+    if staff_page or getattr(request, "product", "ecole") != "ecole" or not (pkg or settings.APK_URL):
+        return {"android_package": ""}
+    return {"android_package": pkg, "apk_url": settings.APK_URL}
