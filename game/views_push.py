@@ -39,6 +39,7 @@ def offline(request):
     return render(request, "game/hors_ligne.html")
 
 
+@cache_control(max_age=0, no_cache=True)
 def service_worker(request):
     resp = render(request, "game/sw.js", {"version": getattr(settings, "APP_VERSION", "1")},
                   content_type="application/javascript")
