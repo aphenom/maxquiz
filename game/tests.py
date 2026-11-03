@@ -812,3 +812,18 @@ class OtpDisplayTests(TestCase):
         with self.settings(DEBUG=False, OTP_AFFICHER_CODE=False):
             r = self.client.post("/connexion/", {"phone": "0707070708"})
             self.assertNotIn("dev_code=", r["Location"])
+
+
+class PwaTests(TestCase):
+    """Ce que PWABuilder et Android vérifient : manifeste complet, service worker avec mode hors connexion."""
+
+    def test_manifest_service_worker_offline(self):
+        m = self.client.get("/manifest.webmanifest").json()
+        for key in ("id", "name", "short_name", "start_url", "icons", "orientation", "screenshots", "categories"):
+            self.assertIn(key, m)
+        self.assertEqual(len(m["screenshots"]), 3)
+        sw = self.client.get("/sw.js").content.decode()
+        self.assertIn("addEventListener('fetch'", sw)
+        self.assertIn("/hors-ligne/", sw)
+        self.assertContains(self.client.get("/hors-ligne/"), "Pas de connexion")
+        self.assertContains(self.client.get("/"), "serviceWorker.register('/sw.js'")

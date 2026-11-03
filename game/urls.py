@@ -15,6 +15,7 @@ urlpatterns = [
     path("moi/", eleve.student_me, name="student_me"),
     path("deconnexion/", eleve.student_logout, name="student_logout"),
     path("sw.js", pushv.service_worker, name="service_worker"),
+    path("hors-ligne/", pushv.offline, name="offline"),
     path("manifest.webmanifest", pushv.manifest, name="manifest"),
     path(".well-known/assetlinks.json", pushv.assetlinks, name="assetlinks"),
     path("api/push/config/", pushv.push_config, name="push_config"),

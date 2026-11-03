@@ -263,6 +263,7 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
 </script>
 {% endif %}
 {% block js %}{% endblock %}
+<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/'}).catch(function(){}); }</script>
 <script src="{% static 'game/push.js' %}" defer></script>
 <script>
 (function(){

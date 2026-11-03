@@ -34,6 +34,11 @@ def _recipient(request):
 
 # --- Application installable ---------------------------------------------------
 @cache_control(max_age=0, no_cache=True)
+def offline(request):
+    """Page affichée par l'application quand le réseau ne répond pas (mise en cache par le service worker)."""
+    return render(request, "game/hors_ligne.html")
+
+
 def service_worker(request):
     resp = render(request, "game/sw.js", {"version": getattr(settings, "APP_VERSION", "1")},
                   content_type="application/javascript")
@@ -43,11 +48,24 @@ def service_worker(request):
 
 @cache_control(max_age=3600)
 def manifest(request):
+    shot = lambda name, label: {"src": static(f"game/screenshots/{name}.png"), "sizes": "1080x1920",
+                                "type": "image/png", "form_factor": "narrow", "label": label}
     data = {
-        "name": "MaxQuiz", "short_name": "MaxQuiz", "lang": "fr",
-        "description": "Cours, quiz et séances en direct de ton école.",
+        "id": "/", "name": "MaxQuiz", "short_name": "MaxQuiz", "lang": "fr", "dir": "ltr",
+        "description": "Cours, quiz corrigés et séances avec des profs, de la 6ème à la Terminale.",
         "start_url": "/?source=app", "scope": "/", "display": "standalone",
+        "display_override": ["standalone", "minimal-ui"], "orientation": "portrait",
+        "categories": ["education", "kids"],
+        "prefer_related_applications": False,
+        "launch_handler": {"client_mode": "navigate-existing"},
         "background_color": "#FDF6EC", "theme_color": "#0B9A5C",
+        "shortcuts": [
+            {"name": "Réviser", "url": "/?source=raccourci-reviser",
+             "icons": [{"src": static("game/icons/icon-192.png"), "sizes": "192x192"}]},
+            {"name": "Moi", "url": "/moi/", "icons": [{"src": static("game/icons/icon-192.png"), "sizes": "192x192"}]},
+        ],
+        "screenshots": [shot("bienvenue", "Bienvenue"), shot("accueil", "Accueil de l'élève"),
+                        shot("quiz", "Quiz corrigé")],
         "icons": [
             {"src": static("game/icons/icon-192.png"), "sizes": "192x192", "type": "image/png"},
             {"src": static("game/icons/icon-512.png"), "sizes": "512x512", "type": "image/png"},
