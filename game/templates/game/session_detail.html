@@ -43,7 +43,9 @@
     <div class="card" style="margin-top:12px"><p style="margin:0">Ton paiement est en cours de vérification. L'accès s'ouvrira ici.</p></div>
   {% endif %}
 
-  {% if not rights.replay_booked and not rights.pending %}
+  {% if store_build and not rights.replay_booked and not rights.pending and s.price_live|add:s.price_replay %}
+  <div class="card" style="margin-top:14px"><p style="margin:0">L'inscription à cette séance n'est pas disponible dans l'application.</p></div>
+  {% elif not rights.replay_booked and not rights.pending %}
   <form method="post" style="margin-top:14px">{% csrf_token %}
     <p style="font-weight:700;margin:0 0 8px">S'inscrire</p>
     {% if not rights.ended and left != 0 %}

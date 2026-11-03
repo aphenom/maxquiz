@@ -125,3 +125,18 @@ def join_school(player, raw_code):
         phone=player.phone or "", parent_phone=mine.parent_phone if mine else "",
         matched_at=timezone.now())
     return school, None
+
+
+def delete_account(player):
+    """Suppression du compte demandée par l'élève : sa fiche MaxQuiz École, ses
+    abonnements, ses résultats, sa provenance publicitaire, ses appareils et ses
+    notifications sont effacés. Les fiches tenues par une école partenaire ne lui
+    sont plus reliées (elles relèvent de l'école)."""
+    from .models import OTPCode
+    phone = player.phone
+    with transaction.atomic():
+        Membership.all_objects.filter(player=player, space__kind="catalog").delete()
+        Membership.all_objects.filter(player=player).update(player=None)
+        if phone:
+            OTPCode.objects.filter(phone=phone).delete()
+        player.delete()

@@ -2,6 +2,7 @@
 {% block title %}MaxQuiz : réussis ton année{% endblock %}
 {% block tabs %}{% endblock %}
 {% block content %}
+{% include "game/_messages.html" %}
 <div class="stagger" style="display:flex;flex-direction:column;gap:16px;flex:1">
   <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
     <span style="width:44px;height:44px;border-radius:12px;background:var(--vert);color:var(--ivoire);font-weight:800;display:flex;align-items:center;justify-content:center">MQ</span>
@@ -18,5 +19,6 @@
   {% if catalog_trial_days %}<p class="pill-ok">{{ catalog_trial_days }} jours gratuits, sans paiement</p>{% endif %}
   <a class="btn" href="{% url 'student_phone' %}">Commencer</a>
   <a href="{% url 'student_phone' %}" style="text-align:center;font-weight:700;color:var(--vert);padding:6px">J'ai déjà un compte</a>
+  <p class="small" style="text-align:center;margin:0"><a href="{% url 'privacy' %}">Confidentialité</a></p>
 </div>
 {% endblock %}

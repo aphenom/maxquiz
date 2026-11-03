@@ -92,6 +92,8 @@ def session_detail(request, slug, session_id):
         return redirect("student_login", slug=slug)
     session = get_object_or_404(LiveSession.objects.select_related("teacher", "sub_category", "theme"),
                                 id=session_id, space=space, cancelled=False)
+    if request.method == "POST" and getattr(request, "store_build", False) and (session.price_live or session.price_replay):
+        return redirect("session_detail", slug=slug, session_id=session_id)
     if request.method == "POST":
         kind = request.POST.get("kind")
         price = session.price_live if kind == "live" else session.price_replay if kind == "replay" else None

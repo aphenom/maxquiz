@@ -11,11 +11,12 @@
   <div class="card" style="margin-top:14px;padding:0;overflow:hidden">
     <a class="row-link" href="{% url 'account_home' %}"><span class="row-ico" aria-hidden="true">📊</span>
       <span style="flex:1"><strong>Mes progrès</strong><br><span class="small">Résultats, points faibles, quiz à faire</span></span>›</a>
-    <a class="row-link" href="{% url 'space_subscribe' space.slug %}"><span class="row-ico" aria-hidden="true">💳</span>
-      <span style="flex:1"><strong>Mon abonnement</strong><br><span class="small">
+    <a class="row-link" href="{% url 'space_subscribe' space.slug %}"><span class="row-ico" aria-hidden="true">{% if store_build %}🎓{% else %}💳{% endif %}</span>
+      <span style="flex:1"><strong>{% if store_build %}Mon accès{% else %}Mon abonnement{% endif %}</strong><br><span class="small">
         {% if access.reason == "subscribed" %}Actif jusqu'au {{ access.subscription.end_date|date:"d/m/Y" }}
         {% elif access.reason == "trial" %}Essai gratuit{% if access.trial_days_left %} · encore {{ access.trial_days_left }} jour{{ access.trial_days_left|pluralize }}{% endif %}
         {% elif access.reason == "pending" %}Paiement en cours de vérification
+        {% elif store_build %}Pas actif pour le moment
         {% else %}2 000 F par mois ou 15 000 F l'année{% endif %}</span></span>›</a>
     <a class="row-link" href="{% url 'notifications' %}"><span class="row-ico" aria-hidden="true">🔔</span>
       <span style="flex:1"><strong>Notifications</strong></span>›</a>
@@ -50,7 +51,8 @@
     {% endif %}
   </div>
 
-  <form method="post" action="{% url 'student_logout' %}" style="margin-top:14px;text-align:center">
+  <p class="small" style="margin:14px 0 0;text-align:center"><a href="{% url 'privacy' %}">Confidentialité</a> · <a href="{% url 'account_delete' %}" style="color:var(--rouge)">Supprimer mon compte</a></p>
+  <form method="post" action="{% url 'student_logout' %}" style="margin-top:4px;text-align:center">
     {% csrf_token %}
     <button type="submit" style="background:none;border:0;color:var(--rouge);font:inherit;font-weight:700;min-height:44px;cursor:pointer">Se déconnecter</button>
   </form>

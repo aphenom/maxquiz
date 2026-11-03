@@ -49,14 +49,18 @@ def product(request):
     return {"product": getattr(request, "product", "ecole"),
             "pro_actif": settings.PRO_ACTIF,
             "jeu_public_actif": settings.JEU_PUBLIC_ACTIF,
-            "catalog_slug": settings.CATALOG_SPACE_SLUG}
+            "catalog_slug": settings.CATALOG_SPACE_SLUG,
+            "in_app": getattr(request, "in_app", False),
+            "contact_email": getattr(settings, "CONTACT_EMAIL", ""),
+            "store_build": getattr(request, "store_build", False)}
 
 
 def ads(request):
     """Pixel Meta : identifiant, consentement et événements en attente (MaxQuiz École)."""
     from django.conf import settings
     staff_page = "/tableau-de-bord" in request.path or "/ressources/" in request.path or request.path.startswith("/admin/")
-    if not settings.META_PIXEL_ID or getattr(request, "product", "ecole") != "ecole" or staff_page:
+    in_app = getattr(request, "in_app", False)       # rien vers Meta depuis l'application installée
+    if not settings.META_PIXEL_ID or getattr(request, "product", "ecole") != "ecole" or staff_page or in_app:
         return {"meta_pixel_id": ""}
     consent = request.COOKIES.get("mq_consent", "")
     events = []

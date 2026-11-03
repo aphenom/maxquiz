@@ -840,3 +840,56 @@ class AppHandoffTests(TestCase):
         self.assertContains(home, "appHandoff")
         self.assertContains(home, "package=")
         self.assertNotContains(self.client.get("/tableau-de-bord/connexion/"), 'id="appHandoff"')
+
+
+from .models import GameConfig
+
+
+class PlayStoreTests(TestCase):
+    """Version Play Store (/?source=play) : aucun paiement ni renvoi vers un paiement ;
+    le site et l'APK du site gardent le paiement. Numéro de test, confidentialité, suppression."""
+
+    def setUp(self):
+        self.catalog = catalog_space()
+        self.third = self.catalog.categories.get(name="3ème")
+
+    def _signup(self, source=None, phone="0707070701"):
+        if source:
+            self.client.get(f"/?source={source}")
+        self.client.post("/connexion/", {"phone": phone})
+        code = OTPCode.objects.filter(phone=phone).latest("created_at").code
+        self.client.post("/connexion/code/", {"code": code})
+        self.client.post(reverse("student_profile"), {"first_name": "Aya", "category": self.third.id})
+
+    def test_play_build_hides_payment(self):
+        self._signup("play")
+        home = self.client.get(f"/e/{self.catalog.slug}/")
+        self.assertNotContains(home, "formules d'abonnement")
+        sub = self.client.get(f"/e/{self.catalog.slug}/abonnement/")
+        self.assertContains(sub, "Mon accès")
+        self.assertNotContains(sub, "15000")
+        self.assertNotContains(sub, "mobile money")
+        r = self.client.post(f"/e/{self.catalog.slug}/abonnement/", {"plan": "monthly", "payment_ref": "OM12345"})
+        self.assertFalse(Subscription.objects.exists())
+        cfg = GameConfig.get()
+        cfg.play_payments_enabled = True
+        cfg.save()
+        self.assertContains(self.client.get(f"/e/{self.catalog.slug}/"), "formules d'abonnement")
+
+    def test_site_apk_keeps_payment(self):
+        self._signup("app")
+        self.assertContains(self.client.get(f"/e/{self.catalog.slug}/"), "formules d'abonnement")
+
+    @override_settings(OTP_NUMEROS_TEST={"0700000000": "123456"}, META_PIXEL_ID="1")
+    def test_test_number_privacy_delete_and_no_pixel_in_app(self):
+        self.client.get("/?source=app")
+        self.client.post("/connexion/", {"phone": "0700000000"})
+        r = self.client.post("/connexion/code/", {"code": "123456"})
+        self.assertRedirects(r, reverse("student_profile"), fetch_redirect_response=False)
+        self.client.post(reverse("student_profile"), {"first_name": "Test", "category": self.third.id})
+        self.assertNotContains(self.client.get(f"/e/{self.catalog.slug}/"), "fbevents.js")
+        self.assertContains(self.client.get("/confidentialite/"), "2013-450")
+        self.assertContains(self.client.get("/supprimer-mon-compte/"), "Supprimer mon compte")
+        self.client.post(reverse("account_delete"), {"confirm": "oui"})
+        self.assertFalse(Player.objects.filter(phone="0700000000").exists())
+        self.assertFalse(Membership.objects.filter(space=self.catalog).exists())

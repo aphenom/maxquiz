@@ -2301,13 +2301,20 @@ def normalize_phone(raw):
 
 
 def _otp_rate_limited(phone):
+    if phone in settings.OTP_NUMEROS_TEST:
+        return False
     since = timezone.now() - timedelta(minutes=OTP_WINDOW_MINUTES)
     return OTPCode.objects.filter(phone=phone, created_at__gte=since).count() >= OTP_MAX_PER_WINDOW
 
 
 def _send_otp(phone):
     """Génère et « envoie » un code OTP. Stub dev : loggué console (point de
-    branchement pour un vrai fournisseur SMS plus tard)."""
+    branchement pour un vrai fournisseur SMS plus tard). Numéro de test
+    (OTP_NUMEROS_TEST) : code fixe, jamais de SMS."""
+    fixed = settings.OTP_NUMEROS_TEST.get(phone)
+    if fixed:
+        OTPCode.objects.create(phone=phone, code=fixed)
+        return fixed
     code = f"{random.randint(0, 999999):06d}"
     OTPCode.objects.create(phone=phone, code=code)
     print(f"[OTP] {phone} -> {code}")

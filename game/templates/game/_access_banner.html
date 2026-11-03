@@ -8,17 +8,21 @@
     <p style="margin:0;font-weight:700">🎁 Accès gratuit jusqu'au {{ access.trial_end|date:"d/m/Y" }}</p>
     {% endif %}
     <p class="small" style="margin:4px 0 0">Tout est ouvert pendant l'essai.
-      <a href="{{ sub_url }}">Voir les formules d'abonnement</a></p>
+      {% if not store_build %}<a href="{{ sub_url }}">Voir les formules d'abonnement</a>{% endif %}</p>
   {% elif access.reason == "subscribed" %}
     <p style="margin:0;font-weight:700">✅ Abonné jusqu'au {{ access.subscription.end_date|date:"d/m/Y" }}</p>
-    <p class="small" style="margin:4px 0 0"><a href="{{ sub_url }}">Mon abonnement</a></p>
+    {% if not store_build %}<p class="small" style="margin:4px 0 0"><a href="{{ sub_url }}">Mon abonnement</a></p>{% endif %}
   {% elif access.reason == "member" %}
   {% elif access.reason == "not_member" and space.kind == "catalog" %}
     <p style="margin:0;font-weight:700">{{ access.message }}</p>
     <p class="small" style="margin:6px 0 0"><a href="{% url 'student_profile' %}">Choisir ma classe</a></p>
   {% else %}
+    {% if store_build and access.reason != "not_member" %}
+    <p style="margin:0;font-weight:700">🔒 Ton accès n'est pas actif pour le moment.</p>
+    {% else %}
     <p style="margin:0;font-weight:700">🔒 {{ access.message }}</p>
-    {% if access.reason != "not_member" %}
+    {% endif %}
+    {% if access.reason != "not_member" and not store_build %}
     <p class="small" style="margin:6px 0 0"><a href="{% url 'space_subscribe' space.slug %}">S'abonner ou suivre mon paiement</a></p>
     {% endif %}
   {% endif %}

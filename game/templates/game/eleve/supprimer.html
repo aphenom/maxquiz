@@ -1,0 +1,15 @@
+{% extends "game/base.html" %}
+{% block title %}Supprimer mon compte · MaxQuiz{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'student_me' %}">‹ Moi</a>
+<h1 style="font-size:26px">Supprimer mon compte</h1>
+<div class="card" style="margin-top:12px">
+  <p style="margin:0;font-size:15px;line-height:1.5">Seront effacés définitivement : ton prénom, ta classe, ton numéro, tes résultats de quiz, ton abonnement et tes notifications.</p>
+  <p class="small" style="margin:8px 0 0">Si tu as rejoint une école, la fiche que ton école tient sur toi n'est plus reliée à ton compte ; pour la faire effacer, adresse-toi à ton école.</p>
+</div>
+<form method="post" style="margin-top:14px">
+  {% csrf_token %}
+  <label style="display:flex;gap:10px;align-items:flex-start;font-size:15px"><input type="checkbox" name="confirm" value="oui" required style="width:22px;height:22px;margin-top:2px">J'ai compris : mon compte sera supprimé et ne pourra pas être récupéré.</label>
+  <button class="btn" type="submit" style="margin-top:14px;background:var(--rouge)">Supprimer mon compte</button>
+</form>
+{% endblock %}

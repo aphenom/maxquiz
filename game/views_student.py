@@ -170,3 +170,25 @@ def student_me(request):
 def student_logout(request):
     request.session.flush()
     return redirect("home")
+
+
+def privacy(request):
+    return render(request, "game/eleve/confidentialite.html", {"tab": None})
+
+
+def account_delete_info(request):
+    """Page publique (exigée par Google Play) : comment demander la suppression du compte."""
+    return render(request, "game/eleve/suppression_info.html", {"tab": None})
+
+
+def account_delete(request):
+    player = _verified_player(request)
+    if not player:
+        return redirect("student_phone")
+    if request.method == "POST" and request.POST.get("confirm") == "oui":
+        from .student import delete_account
+        delete_account(player)
+        request.session.flush()
+        messages.success(request, "Ton compte et tes données ont été supprimés.")
+        return redirect("home")
+    return render(request, "game/eleve/supprimer.html", {"player": player, "tab": "me"})

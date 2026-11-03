@@ -28,6 +28,10 @@ def space_subscribe(request, slug):
         return redirect(f"/compte/connexion/?space={space.slug}")
     access = access_status(space, player)
     membership = access["membership"] or current_membership(space, player)
+    if getattr(request, "store_build", False):
+        # Version Play Store : ni formules, ni paiement, ni renvoi vers un autre moyen de paiement.
+        return render(request, "game/eleve/acces.html", {"space": space, "player": player,
+                                                          "access": access, "tab": "me"})
     plans = plan_prices(space)
 
     if request.method == "POST" and membership:

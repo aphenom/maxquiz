@@ -28,6 +28,11 @@ class GameConfig(models.Model):
     # Interrupteur général : récompenses et jokers ne sont plus le cœur du jeu,
     # désactivés par défaut sur une nouvelle installation.
     rewards_enabled = models.BooleanField("Récompenses et jokers activés (jeu public)", default=False)
+    play_payments_enabled = models.BooleanField(
+        "Paiement visible dans l'application Google Play", default=False,
+        help_text="À laisser décoché : Google interdit le paiement hors Google Play dans une appli du Play Store "
+                  "(en Côte d'Ivoire, à ce jour). Ne concerne que la version Play Store (adresse de démarrage "
+                  "/?source=play) ; le site et l'APK téléchargé depuis le site gardent le paiement.")
     # Jokers
     joker_paid_enabled = models.BooleanField("Joker payant activé", default=True)
     joker_ad_enabled = models.BooleanField("Joker publicité activé", default=True)

@@ -1,0 +1,17 @@
+{% extends "game/base.html" %}
+{% block title %}Mon accès · MaxQuiz{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'student_me' %}">‹ Moi</a>
+<h1 style="font-size:26px">Mon accès</h1>
+<div class="card" style="margin-top:12px;border-left:4px solid {% if access.ok %}var(--vert){% else %}var(--rouge){% endif %}">
+  {% if access.reason == "subscribed" %}
+  <p style="margin:0;font-weight:700">Accès actif jusqu'au {{ access.subscription.end_date|date:"d/m/Y" }}</p>
+  {% elif access.reason == "trial" %}
+  <p style="margin:0;font-weight:700">Essai gratuit{% if access.trial_days_left %} : encore {{ access.trial_days_left }} jour{{ access.trial_days_left|pluralize }}{% endif %}</p>
+  {% elif access.ok %}
+  <p style="margin:0;font-weight:700">Accès actif</p>
+  {% else %}
+  <p style="margin:0;font-weight:700">Ton accès n'est pas actif pour le moment.</p>
+  {% endif %}
+</div>
+{% endblock %}

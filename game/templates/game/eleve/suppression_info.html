@@ -1,0 +1,16 @@
+{% extends "game/base.html" %}
+{% block title %}Supprimer son compte MaxQuiz{% endblock %}
+{% block tabs %}{% endblock %}
+{% block content %}
+<h1 style="font-size:26px">Supprimer son compte MaxQuiz</h1>
+<div class="card" style="margin-top:12px;line-height:1.55;font-size:15px">
+  <ol style="margin:0;padding-left:20px">
+    <li>Connecte-toi avec ton numéro et le code reçu.</li>
+    <li>Ouvre <strong>Moi</strong>, puis <strong>Supprimer mon compte</strong> en bas de la page.</li>
+    <li>Confirme : ton compte et tes données sont effacés immédiatement.</li>
+  </ol>
+  <p class="small" style="margin:10px 0 0">Tu ne peux plus te connecter ? Écris-nous{% if contact_email %} à {{ contact_email }}{% endif %} depuis le numéro du compte, nous le supprimons sous 30 jours.</p>
+</div>
+<a class="btn" href="{% url 'student_phone' %}" style="margin-top:14px">Me connecter</a>
+<p class="small" style="text-align:center;margin-top:10px"><a href="{% url 'privacy' %}">Politique de confidentialité</a></p>
+{% endblock %}

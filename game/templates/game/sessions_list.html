@@ -17,9 +17,10 @@
       {% elif r.rights.live_booked %}<span class="tag" style="background:var(--sable)">Inscrit</span>
       {% elif r.rights.pending %}<span class="tag" style="background:var(--sable)">Paiement en vérification</span>{% endif %}
     </div>
-    <p class="small" style="margin:8px 0 0">{{ r.s.starts_at|date:"l d/m à H:i" }} · {{ r.s.duration_min }} min ·
+    <p class="small" style="margin:8px 0 0">{{ r.s.starts_at|date:"l d/m à H:i" }} · {{ r.s.duration_min }} min
+      {% if not store_build %}·
       {% if r.s.price_live %}direct {{ r.s.price_live }} F{% else %}direct gratuit{% endif %} ·
-      {% if r.s.price_replay %}différé {{ r.s.price_replay }} F{% else %}différé gratuit{% endif %}
+      {% if r.s.price_replay %}différé {{ r.s.price_replay }} F{% else %}différé gratuit{% endif %}{% endif %}
       {% if r.left is not None %} · {{ r.left }} place{{ r.left|pluralize }}{% endif %}</p>
   </a>
   {% empty %}
