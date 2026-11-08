@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from .models import Category, Membership, Space, SubCategory
 
-COLLEGE = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie"]
+COLLEGE = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie", "EDHC"]
 LYCEE_A = ["Français", "Anglais", "Histoire-Géographie", "Mathématiques"]
 LYCEE_CD = ["Mathématiques", "Physique-Chimie", "SVT", "Français", "Anglais", "Histoire-Géographie"]
 CLASSES = [
