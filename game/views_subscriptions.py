@@ -125,6 +125,8 @@ def jeko_webhook(request):
     """Notification de Jèko (signée). Répond 200 vite ; 400 si la signature est fausse."""
     from . import jeko
     if not jeko.valid_signature(request.body, request.headers.get("Jeko-Signature", "")):
+        # Après 15 refus de suite, Jèko désactive le webhook sans prévenir : à surveiller.
+        log.warning("Webhook Jèko refusé : signature invalide ou JEKO_WEBHOOK_SECRET absent")
         return HttpResponse(status=400)
     try:
         body = json.loads(request.body or b"{}")

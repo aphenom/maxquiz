@@ -59,10 +59,12 @@ class JekoTests(TestCase):
         self.assertRedirects(r, self.url, fetch_redirect_response=False)
         self.assertEqual(Subscription.objects.get().status, "failed")
 
-    def webhook(self, sub, status="success", amount=2000, secret_ok=True):
+    def webhook(self, sub, status="success", amount=200000, secret_ok=True):
         body = {"id": "txn_9", "status": status, "transactionType": "payment",
                 "amount": {"amount": amount, "currency": "XOF"},
                 "transactionDetails": {"reference": sub.payment_ref}}
+        if amount is None:
+            del body["amount"]
         raw, sig = signed(body)
         return self.client.post("/paiement/jeko/webhook/", raw, content_type="application/json",
                                 HTTP_JEKO_SIGNATURE=sig if secret_ok else "0" * 64,
@@ -92,14 +94,49 @@ class JekoTests(TestCase):
         sub.refresh_from_db()
         self.assertEqual(sub.status, "pending")
 
+    def test_webhook_montant_en_francs_refuse(self):
+        # Jèko envoie des centimes : 2000 pour une formule à 2 000 F, c'est 20 F payés.
+        self.pay()
+        sub = Subscription.objects.get()
+        self.webhook(sub, amount=2000)
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "pending")
+
+    def test_webhook_sans_montant(self):
+        self.pay()
+        sub = Subscription.objects.get()
+        self.webhook(sub, amount=None)
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "pending")
+
+    def test_webhook_montant_faux_ne_retrograde_pas(self):
+        self.pay()
+        sub = Subscription.objects.get()
+        self.webhook(sub)
+        self.webhook(sub, amount=100)
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "active")
+
     def test_retour_interroge_le_statut(self):
         self.pay()
         sub = Subscription.objects.get()
-        with mock.patch("game.jeko._call", return_value={"id": "pr_1", "status": "success"}):
+        with mock.patch("game.jeko._call", return_value={
+                "id": "pr_1", "status": "success",
+                "transaction": {"id": "txn_9", "amount": {"amount": 200000, "currency": "XOF"}}}):
             r = self.client.get(f"/paiement/jeko/retour/?ref={sub.payment_ref}")
         self.assertRedirects(r, f"/e/{self.space.slug}/", fetch_redirect_response=False)
         sub.refresh_from_db()
         self.assertEqual(sub.status, "active")
+
+    def test_retour_montant_inattendu(self):
+        self.pay()
+        sub = Subscription.objects.get()
+        with mock.patch("game.jeko._call", return_value={
+                "id": "pr_1", "status": "success",
+                "transaction": {"id": "txn_9", "amount": {"amount": 100, "currency": "XOF"}}}):
+            self.client.get(f"/paiement/jeko/retour/?ref={sub.payment_ref}")
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "pending")
 
     def test_retour_echec(self):
         self.pay()

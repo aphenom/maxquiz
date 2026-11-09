@@ -126,6 +126,24 @@ def confirm(sub, source, transaction_id=""):
     return sub, True
 
 
+def amount_ok(sub, amount):
+    """Jèko donne les montants en centimes (plus petite unité) : 2 000 F = 200000."""
+    try:
+        return int(amount) == sub.amount * 100
+    except (TypeError, ValueError):
+        return False
+
+
+def hold(sub, amount, source):
+    """Montant reçu inattendu ou absent : validation manuelle dans le tableau de bord.
+    Un abonnement déjà actif n'est jamais rétrogradé."""
+    from .models import Subscription
+    log.warning("Jèko (%s) : montant inattendu pour %s (%s au lieu de %s centimes)",
+                source, sub.payment_ref, amount, sub.amount * 100)
+    return bool(Subscription.objects.filter(pk=sub.pk).exclude(status="active").update(
+        status="pending", note=f"Montant reçu {amount} centimes au lieu de {sub.amount * 100} : à vérifier"[:200]))
+
+
 def mark_failed(sub, reason=""):
     from .models import Subscription
     updated = Subscription.objects.filter(pk=sub.pk, status="initiated").update(
@@ -140,7 +158,12 @@ def refresh(sub):
     res = _call("GET", f"/partner_api/payment_requests/{sub.provider_id}")
     status = str(res.get("status", "")).lower()
     if status == "success":
-        confirm(sub, "statut")
+        txn = res.get("transaction") or {}
+        amount = (txn.get("amount") or {}).get("amount")
+        if amount_ok(sub, amount):
+            confirm(sub, "statut", txn.get("id", ""))
+        else:
+            hold(sub, amount, "statut")
     elif status in ("error", "failed", "expired", "cancelled", "canceled"):
         mark_failed(sub, res.get("errorReason") or "Paiement non abouti")
     return status
@@ -173,15 +196,8 @@ def handle_webhook(event, body):
             mark_failed(sub, "Paiement refusé")
         return f"{ref} : {status}"
     amount = (body.get("amount") or {}).get("amount")
-    try:
-        amount = float(amount)
-    except (TypeError, ValueError):
-        amount = None
-    if amount is not None and amount not in (float(sub.amount), float(sub.amount) * 100):
-        sub.note = f"Montant reçu {amount} différent de {sub.amount} : à vérifier"[:200]
-        sub.status = "pending"                  # validation manuelle dans le tableau de bord
-        sub.save(update_fields=["note", "status"])
-        log.warning("Jèko : montant inattendu pour %s (%s au lieu de %s)", ref, amount, sub.amount)
+    if not amount_ok(sub, amount):
+        hold(sub, amount, "webhook")
         return f"{ref} : montant à vérifier"
     confirm(sub, "webhook", body.get("id", ""))
     return f"{ref} : activé"
