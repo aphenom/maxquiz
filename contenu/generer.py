@@ -12,6 +12,7 @@ import sys
 
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
+from reportlab import rl_config
 from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -22,10 +23,12 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table,
                                 TableStyle)
 
+rl_config.invariant = 1                                  # PDF identiques d'une génération à l'autre
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "3eme")
-SOURCES = ["maths3_a.py", "maths3_b.py", "pc3.py"]
-FREE = {"Calcul littéral", "Lentilles minces"}          # chapitres ouverts sans abonnement
+SOURCES = ["maths3_a.py", "maths3_b.py", "pc3.py", "svt3.py", "anglais3.py", "hg3.py"]
+FREE = {"Calcul littéral", "Lentilles minces", "Les micro-organismes et les maladies infectieuses",
+        "Simple past et present perfect", "La Seconde Guerre mondiale"}          # chapitres ouverts sans abonnement
 
 ORANGE, VERT, ENCRE, IVOIRE, BRUN, SABLE = (HexColor(c) for c in
                                             ("#F2790F", "#0B9A5C", "#221A12", "#FDF6EC", "#6E6152", "#EADFCE"))

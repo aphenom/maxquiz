@@ -6,15 +6,18 @@ Cours et quiz originaux MaxQuiz, visibles par tous les élèves de la classe con
 
 | Matière | Chapitres | Questions |
 | --- | --- | --- |
-| Mathématiques | 14 chapitres + Révision BEPC | 185 |
-| Physique-Chimie | 9 chapitres + Révision BEPC | 125 |
+| Mathématiques | 14 chapitres + Révision BEPC | 187 |
+| Physique-Chimie | 9 chapitres + Révision BEPC | 123 |
+| SVT | 7 chapitres + Révision BEPC | 99 |
+| Anglais | 8 chapitres + Révision BEPC | 112 |
+| Histoire-Géographie | 9 chapitres + Révision BEPC | 123 |
 
 Chaque chapitre comprend :
 - une **fiche de cours** affichée dans l'application. Elle contient l'essentiel, la méthode, un exemple corrigé, les pièges à éviter et ce qui tombe au BEPC ;
 - la même fiche en **PDF** (à garder ou à imprimer), avec 4 questions « Teste-toi » corrigées ;
 - un **quiz** de 12 à 15 questions de difficulté 1 à 4, avec une explication pour chaque réponse.
 
-Les chapitres « Calcul littéral » et « Lentilles minces » sont ouverts sans abonnement, pour faire découvrir.
+Le premier chapitre de chaque matière est ouvert sans abonnement, pour faire découvrir.
 
 ## Mettre le contenu en ligne (sur le serveur)
 

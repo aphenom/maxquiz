@@ -59,8 +59,11 @@ class ContenuTests(TestCase):
         call_command("import_questions", os.path.join(CONTENU, "quiz.xlsx"), "--shared", verbosity=0)
         call_command("import_cours", os.path.join(CONTENU, "cours.xlsx"),
                      "--fiches", os.path.join(CONTENU, "fiches"), verbosity=0)
-        self.assertEqual(Quiz.objects.filter(space__isnull=True, shared_level_name="3ème").count(), 25)
-        self.assertGreaterEqual(Question.objects.filter(quiz__shared_level_name="3ème").count(), 300)
+        ws = openpyxl.load_workbook(os.path.join(CONTENU, "quiz.xlsx"), read_only=True).worksheets[0]
+        rows = list(ws.iter_rows(min_row=2, values_only=True))
+        chapitres = {(r[1], r[2]) for r in rows}
+        self.assertEqual(Quiz.objects.filter(space__isnull=True, shared_level_name="3ème").count(), len(chapitres))
+        self.assertEqual(Question.objects.filter(quiz__shared_level_name="3ème").count(), len(rows))
         for quiz in Quiz.objects.filter(space__isnull=True, shared_level_name="3ème"):
             lesson = Lesson.objects.get(space__isnull=True, shared_level_name="3ème",
                                         shared_subject_name=quiz.shared_subject_name, shared_theme_name=quiz.name)
