@@ -1,6 +1,8 @@
 """Abonnements des élèves : page famille (choisir une formule, déclarer un
 paiement mobile money), et pages du tableau de bord (valider les paiements,
 suivre les échéances, relevé de la part de l'établissement)."""
+import json
+import logging
 from datetime import timedelta
 
 import openpyxl
@@ -9,6 +11,8 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from openpyxl.styles import Font
 
 from django.urls import reverse
@@ -18,6 +22,8 @@ from .models import Subscription
 from .subscriptions import (access_status, current_membership, plan_prices,
                             share_report, validate)
 from .views import _dashboard_gate, _log_action, _player, _space, normalize_phone
+
+log = logging.getLogger(__name__)
 
 
 def space_subscribe(request, slug):
@@ -33,6 +39,22 @@ def space_subscribe(request, slug):
         return render(request, "game/eleve/acces.html", {"space": space, "player": player,
                                                           "access": access, "tab": "me"})
     plans = plan_prices(space)
+
+    from . import jeko
+    online = jeko.available_for(space)
+    if request.method == "POST" and membership and request.POST.get("action") == "jeko":
+        chosen = next((p for p in plans if p["code"] == request.POST.get("plan", "")), None)
+        method = request.POST.get("method", "")
+        if not (online and chosen and method in dict(jeko.METHODS)):
+            messages.error(request, "Choisis ta formule et ton moyen de paiement.")
+            return redirect("space_subscribe", slug=slug)
+        try:
+            _sub, url = jeko.start_payment(request, membership, chosen, method)
+        except jeko.JekoError:
+            messages.error(request, "Le paiement en ligne est momentanément indisponible. "
+                                    "Réessaie dans quelques minutes.")
+            return redirect("space_subscribe", slug=slug)
+        return redirect(url)
 
     if request.method == "POST" and membership:
         plan = request.POST.get("plan", "")
@@ -64,7 +86,53 @@ def space_subscribe(request, slug):
     return render(request, "game/space_subscribe.html", {
         "space": space, "player": player, "access": access, "membership": membership,
         "plans": plans, "history": history, "tab": "home",
+        "online": online, "methods": jeko.METHODS,
     })
+
+
+def jeko_return(request):
+    """Retour de l'élève après le paiement Jèko (succès ou échec). Le webhook reste la source de
+    vérité ; ici on interroge Jèko si la confirmation n'est pas encore arrivée."""
+    from . import jeko
+    sub = (Subscription.objects.filter(provider="jeko", payment_ref=request.GET.get("ref", ""))
+           .select_related("membership__space").first())
+    player = _player(request)
+    if not sub or not player or sub.membership.player_id != player.id:
+        return redirect("home")
+    if sub.status == "initiated":
+        try:
+            jeko.refresh(sub)
+        except jeko.JekoError:
+            pass
+        sub.refresh_from_db()
+    slug = sub.membership.space.slug
+    if sub.status == "active":
+        messages.success(request, f"Paiement reçu, merci ! Ton accès est ouvert jusqu'au {sub.end_date:%d/%m/%Y}.")
+        return redirect("space_home", slug=slug)
+    if sub.status == "failed" or (request.GET.get("echec") and sub.status == "initiated"):
+        if sub.status == "initiated":
+            jeko.mark_failed(sub, "Paiement abandonné ou refusé")
+        messages.error(request, "Le paiement n'a pas abouti. Aucun montant n'a été prélevé : tu peux réessayer.")
+        return redirect("space_subscribe", slug=slug)
+    messages.success(request, "Paiement en cours de confirmation. Ton accès s'ouvrira automatiquement "
+                              "dans quelques instants : tu recevras une notification.")
+    return redirect("space_subscribe", slug=slug)
+
+
+@csrf_exempt
+@require_POST
+def jeko_webhook(request):
+    """Notification de Jèko (signée). Répond 200 vite ; 400 si la signature est fausse."""
+    from . import jeko
+    if not jeko.valid_signature(request.body, request.headers.get("Jeko-Signature", "")):
+        return HttpResponse(status=400)
+    try:
+        body = json.loads(request.body or b"{}")
+    except ValueError:
+        return HttpResponse(status=400)
+    result = jeko.handle_webhook(request.headers.get("Jeko-Event", ""), body)
+    log.info("Webhook Jèko : %s", result)
+    return HttpResponse("ok")
 
 
 def dashboard_subscriptions(request, slug):

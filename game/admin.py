@@ -112,8 +112,9 @@ class ResourceAdmin(admin.ModelAdmin):
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ("membership", "plan", "amount", "payment_ref", "status", "start_date", "end_date", "created_at")
-    list_filter = ("status", "plan", "membership__space")
+    list_display = ("membership", "plan", "amount", "provider", "payment_method", "payment_ref", "status",
+                    "start_date", "end_date", "created_at")
+    list_filter = ("status", "provider", "payment_method", "plan", "membership__space")
     search_fields = ("membership__full_name", "membership__external_ref", "payment_ref", "payer_phone")
 
 

@@ -200,6 +200,14 @@ OTP_AFFICHER_CODE = env_bool("OTP_AFFICHER_CODE")
 
 SITE_URL = os.environ.get("SITE_URL", "")
 
+# Paiement en ligne Jèko (MaxQuiz École) : clés du Dashboard Business, Paramètres > API & Webhooks.
+# Sans ces réglages, seul le paiement déclaré (référence à valider à la main) est proposé.
+JEKO_API_URL = os.environ.get("JEKO_API_URL", "https://api.jeko.africa")
+JEKO_API_KEY = os.environ.get("JEKO_API_KEY", "")
+JEKO_API_KEY_ID = os.environ.get("JEKO_API_KEY_ID", "")
+JEKO_STORE_ID = os.environ.get("JEKO_STORE_ID", "")
+JEKO_WEBHOOK_SECRET = os.environ.get("JEKO_WEBHOOK_SECRET", "")
+
 # Mesure des pubs Meta (pixel + API Conversions). Vide = rien n'est envoyé.
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "")
 META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "")

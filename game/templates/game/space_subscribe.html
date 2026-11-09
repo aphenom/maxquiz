@@ -7,6 +7,10 @@
 .plan b{font-size:18px;color:var(--orange)}
 .plan{border:2px solid transparent;transition:border-color .15s ease,transform .2s cubic-bezier(.34,1.56,.64,1)}
 .plan:has(input:checked){border-color:var(--vert);transform:scale(1.02)}
+.methods{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.method{display:flex;gap:8px;align-items:center;padding:12px;margin:0;cursor:pointer;border:2px solid transparent;font-weight:700}
+.method input{width:auto;margin:0}
+.method:has(input:checked){border-color:var(--vert)}
 </style>
 {% include "game/_space_banner.html" with subtitle="Mon abonnement" %}
 <div class="stagger">
@@ -30,6 +34,63 @@
     <p style="margin:0;font-weight:700">{{ membership.full_name }}{% if membership.external_ref %} · matricule {{ membership.external_ref }}{% endif %}</p>
   </div>
 
+  {% if online %}
+  <form method="post" style="margin-top:12px" id="payOnline">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="jeko">
+    <p style="font-weight:700;margin:0 0 8px">1. Choisis ta formule</p>
+    {% for p in plans %}
+    <label class="card plan">
+      <input type="radio" name="plan" value="{{ p.code }}" data-price="{{ p.price }}" {% if forloop.first %}checked{% endif %}>
+      <span style="flex:1"><strong>{{ p.label }}</strong><br><span class="small">{{ p.duration }}</span></span>
+      <b>{{ p.price }} F</b>
+    </label>
+    {% endfor %}
+    <p style="font-weight:700;margin:14px 0 8px">2. Choisis ton moyen de paiement</p>
+    <div class="methods">
+      {% for code, label in methods %}
+      <label class="card method"><input type="radio" name="method" value="{{ code }}" required{% if forloop.first %} checked{% endif %}><span>{{ label }}</span></label>
+      {% endfor %}
+    </div>
+    <button class="btn" type="submit" id="payBtn" style="margin-top:12px">Payer</button>
+    <p class="small" style="margin:8px 0 0;text-align:center">🔒 Paiement sécurisé par Jèko. Ton accès s'ouvre automatiquement dès le paiement confirmé.</p>
+  </form>
+  {% if space.payment_number %}
+  <details class="card" style="margin-top:12px">
+    <summary class="small" style="cursor:pointer;font-weight:700">Tu as déjà payé autrement ? Déclare ton paiement</summary>
+  <form method="post" style="margin-top:10px">
+    {% csrf_token %}
+    <p style="font-weight:700;margin:0 0 8px">1. Choisis ta formule</p>
+    {% for p in plans %}
+    <label class="card plan">
+      <input type="radio" name="plan" value="{{ p.code }}" {% if forloop.first %}checked{% endif %}>
+      <span style="flex:1"><strong>{{ p.label }}</strong><br><span class="small">{{ p.duration }}</span></span>
+      <b>{{ p.price }} F</b>
+    </label>
+    {% endfor %}
+
+    <p style="font-weight:700;margin:14px 0 8px">2. Paie par mobile money</p>
+    <div class="card">
+      {% if space.payment_number %}
+      <p style="margin:0">Numéro : <strong style="font-size:18px">{{ space.payment_number }}</strong></p>
+      {% else %}
+      <p style="margin:0">Le numéro de paiement sera communiqué par l'établissement.</p>
+      {% endif %}
+      {% if space.payment_instructions %}<p class="small" style="margin:6px 0 0">{{ space.payment_instructions|linebreaksbr }}</p>{% endif %}
+    </div>
+
+    <p style="font-weight:700;margin:14px 0 8px">3. Déclare ton paiement</p>
+    <div class="card">
+      <label class="small" style="font-weight:700;display:block;margin-bottom:4px">Référence de la transaction (reçue par SMS)</label>
+      <input type="text" name="payment_ref" required maxlength="60" placeholder="Ex. : CI261022.1530.A12345">
+      <label class="small" style="font-weight:700;display:block;margin:10px 0 4px">Numéro qui a payé (facultatif)</label>
+      <input type="text" name="payer_phone" maxlength="20" placeholder="07 07 07 07 07">
+    </div>
+    <button class="btn" type="submit" style="margin-top:12px">Envoyer pour vérification</button>
+  </form>
+  </details>
+  {% endif %}
+  {% else %}
   <form method="post" style="margin-top:12px">
     {% csrf_token %}
     <p style="font-weight:700;margin:0 0 8px">1. Choisis ta formule</p>
@@ -60,6 +121,7 @@
     </div>
     <button class="btn" type="submit" style="margin-top:12px">Envoyer pour vérification</button>
   </form>
+  {% endif %}
 
   {% if history %}
   <p style="font-weight:700;margin:18px 0 8px">Historique</p>
@@ -73,4 +135,17 @@
   {% endif %}
   {% endif %}
 </div>
+{% endblock %}
+{% block js %}
+<script>
+/* Le bouton affiche le montant de la formule choisie ; un seul envoi. */
+(function(){
+  var f = document.getElementById('payOnline'); if (!f) return;
+  var btn = document.getElementById('payBtn');
+  function label(){ var p = f.querySelector('input[name=plan]:checked');
+    btn.textContent = p ? 'Payer ' + Number(p.dataset.price).toLocaleString('fr-FR') + ' F' : 'Payer'; }
+  f.addEventListener('change', label); label();
+  f.addEventListener('submit', function(){ btn.disabled = true; btn.textContent = 'Redirection vers le paiement…'; });
+})();
+</script>
 {% endblock %}

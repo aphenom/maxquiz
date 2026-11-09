@@ -643,7 +643,9 @@ class Subscription(models.Model):
     n'est pas validé, l'abonnement est « en attente » et ne donne pas accès."""
     PLANS = [("monthly", "Mensuel"), ("quarterly", "Trimestriel"), ("yearly", "Annuel")]
     PLAN_MONTHS = {"monthly": 1, "quarterly": 3, "yearly": 12}
-    STATUS = [("pending", "En attente de validation"), ("active", "Validé"), ("rejected", "Refusé")]
+    STATUS = [("pending", "En attente de validation"), ("active", "Validé"), ("rejected", "Refusé"),
+              ("initiated", "Paiement en ligne en cours"), ("failed", "Paiement en ligne échoué")]
+    PROVIDERS = [("manual", "Déclaré par l'élève"), ("jeko", "Jèko (en ligne)")]
 
     membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="subscriptions")
     plan = models.CharField("Formule", max_length=10, choices=PLANS)
@@ -656,6 +658,10 @@ class Subscription(models.Model):
     validated_at = models.DateTimeField("Validé le", null=True, blank=True)
     note = models.CharField("Note interne", max_length=200, blank=True, default="")
     expiry_notified_at = models.DateTimeField("Rappel d'échéance envoyé le", null=True, blank=True)
+    provider = models.CharField("Moyen", max_length=10, choices=PROVIDERS, default="manual")
+    provider_id = models.CharField("Identifiant chez le prestataire", max_length=80, blank=True, default="",
+                                   db_index=True)
+    payment_method = models.CharField("Opérateur", max_length=12, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
