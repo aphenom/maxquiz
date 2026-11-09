@@ -1,30 +1,72 @@
 {% extends "game/base.html" %}
+{% load fiche %}
 {% block title %}{{ space.name }} — Cours{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
-.les{display:flex;gap:12px;align-items:center;padding:12px 14px;margin-bottom:8px;text-decoration:none;color:inherit}
-.badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--sable);color:var(--brun);white-space:nowrap}</style>
+.les{display:flex;gap:12px;align-items:center;padding:10px 12px;margin-top:8px;border-radius:12px;background:var(--ivoire);text-decoration:none;color:inherit}
+.les:active{background:var(--sable)}
+.les-ico{width:38px;height:38px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brun)}
+.chap{margin:14px 0 0;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--brun)}
+.badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--sable);color:var(--brun);white-space:nowrap}
+.subj summary .count{font-weight:400;font-size:13px;color:var(--brun);margin-left:auto;margin-right:6px}
+.subj{margin-top:10px}</style>
 {% include "game/_space_banner.html" with subtitle="Mes cours" %}
 <div class="stagger">
   <p class="small" style="margin:8px 0 0"><a href="{% url 'space_home' space.slug %}">← Quiz</a> · <a href="{% url 'sessions_list' space.slug %}">Séances en direct</a></p>
   {% include "game/_access_banner.html" %}
+  {% if subjects %}
+  {% include "game/_search.html" with scope="#revise" placeholder="Rechercher un chapitre, une notion…" %}
+  {% with subjects.0.sub.category.name as classe %}
+  <p class="small" style="margin:14px 0 0">{{ classe }} · {{ subjects|length }} matière{{ subjects|length|pluralize }}</p>
+  {% endwith %}
+  {% endif %}
+  <div id="revise">
   {% for g in subjects %}
-  <h2 style="font-size:19px;margin:18px 0 6px">{{ g.sub.name }} <span class="small" style="font-weight:600">· {{ g.sub.category.name }}</span></h2>
-  {% for c in g.chapters %}
-  <p class="small" style="margin:10px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">{{ c.name }}</p>
-  {% for l in c.lessons %}
-  <a class="card les reveal" href="{% url 'lesson_detail' space.slug l.id %}">
-    <span style="width:40px;height:40px;border-radius:10px;background:var(--sable);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      {% if l.video_id %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-      {% else %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>{% endif %}
-    </span>
-    <span style="flex:1"><strong>{{ l.title }}</strong><br><span class="small">{% if l.video_id %}Vidéo{% endif %}{% if l.video_id and l.has_pdf %} + {% endif %}{% if l.has_pdf %}Fiche PDF{% endif %}{% if not l.space_id %} · cours MaxQuiz{% endif %}</span></span>
-    {% if l.free_preview %}<span class="badge">Gratuit</span>{% endif %}
-  </a>
-  {% endfor %}
-  {% endfor %}
+  <details class="dash-accordion subj" data-group data-key="{{ g.sub.id }}"{% if subjects|length == 1 %} open{% endif %}>
+    <summary><span>{{ g.sub.name }}</span><span class="count">{{ g.chapters|length }} chapitre{{ g.chapters|length|pluralize }}</span></summary>
+    <div class="accordion-body">
+      {% for c in g.chapters %}
+      <div data-chap>
+        {% if c.lessons|length > 1 or c.lessons.0.title != c.name %}<p class="chap">{{ c.name }}</p>{% endif %}
+        {% for l in c.lessons %}
+        <a class="les" href="{% url 'lesson_detail' space.slug l.id %}"
+           data-title="{{ l.title|add:' '|add:c.name|cherchable }}"
+           data-search="{{ l.title|add:' '|add:c.name|add:' '|add:g.sub.name|add:' '|add:l.summary|cherchable }}">
+          <span class="les-ico">
+            {% if l.video_id %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            {% else %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>{% endif %}
+          </span>
+          <span style="flex:1;min-width:0"><strong>{{ l.title }}</strong><br>
+            <span class="small">{% if l.video_id %}Vidéo{% endif %}{% if l.video_id and l.has_pdf %} + {% endif %}{% if l.has_pdf %}Fiche PDF{% endif %}{% if not l.video_id and not l.has_pdf %}Fiche{% endif %}</span>
+            <span class="mq-hit" hidden>· trouvé dans la fiche</span></span>
+          {% if l.free_preview %}<span class="badge">Gratuit</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
   {% empty %}
   <div class="card" style="margin-top:14px"><p style="margin:0">Aucun cours publié pour ta classe pour l'instant. Tes professeurs les ajoutent au fil des chapitres.</p></div>
   {% endfor %}
+  </div>
 </div>
+{% endblock %}
+{% block js %}
+<script>
+/* Garde ouvertes les matières que l'élève avait ouvertes (sur cet appareil). */
+(function(){
+  var KEY = 'mq-reviser-{{ space.slug }}';
+  var subs = document.querySelectorAll('#revise details.subj');
+  var open = [];
+  try { open = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) {}
+  var searching = !!(document.getElementById('mqSearch') || {}).value;
+  if (!searching) subs.forEach(function(d){ if (open.indexOf(d.dataset.key) >= 0) d.open = true; });
+  subs.forEach(function(d){ d.addEventListener('toggle', function(){
+    if ((document.getElementById('mqSearch') || {}).value) return;
+    var keys = Array.prototype.filter.call(subs, function(x){ return x.open; }).map(function(x){ return x.dataset.key; });
+    try { localStorage.setItem(KEY, JSON.stringify(keys)); } catch (e) {}
+  }); });
+})();
+</script>
 {% endblock %}

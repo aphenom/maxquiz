@@ -32,3 +32,14 @@ def fiche(text):
             indent = " fiche-in" if raw.startswith("   ") else ""
             out.append(f'<p class="fiche-p{indent}">{escape(line)}</p>')
     return mark_safe("\n".join(out))
+
+
+@register.filter
+def cherchable(text, limit=4000):
+    """Texte normalisé pour la recherche instantanée : minuscules, sans accents,
+    sans puces, espaces simplifiés (comparé au texte saisi, normalisé pareil)."""
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(text or ""))
+    t = "".join(c for c in t if not unicodedata.combining(c)).lower()
+    t = re.sub(r"[■•#→⇔]+", " ", t)
+    return re.sub(r"\s+", " ", t).strip()[:int(limit)]

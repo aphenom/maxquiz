@@ -74,3 +74,25 @@ class ContenuTests(TestCase):
         self.assertIn('<h3 class="fiche-h">Titre</h3>', html)
         self.assertIn("a &lt; b", html)
         self.assertNotIn("<script>", html)
+
+
+class RechercheTests(TestCase):
+    def test_cherchable_normalise(self):
+        from game.templatetags.fiche import cherchable
+        self.assertEqual(cherchable("■ Théorème  de\nPythagore • Égalité"), "theoreme de pythagore egalite")
+
+    def test_reviser_accordeons_et_recherche(self):
+        from game.models import Category, Membership, Player
+        from game.student import save_profile
+        space = catalog_space()
+        Lesson.objects.create(space=None, shared_level_name="3ème", shared_subject_name="SVT",
+                              shared_theme_name="Le sol", title="Le sol", summary="■ Composition\n• L'humus")
+        player = Player.objects.create(phone="0701010101", pseudo="")
+        save_profile(player, "Awa", Category.objects.get(space=space, name="3ème"))
+        s = self.client.session
+        s["player_id"] = s["verified_player_id"] = player.id
+        s.save()
+        html = self.client.get(f"/e/{space.slug}/cours/").content.decode()
+        self.assertIn('id="mqSearch"', html)
+        self.assertIn('class="dash-accordion subj"', html)
+        self.assertIn("l'humus", html.replace("&#x27;", "'"))

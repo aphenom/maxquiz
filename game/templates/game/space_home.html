@@ -1,4 +1,5 @@
 {% extends "game/base.html" %}
+{% load fiche %}
 {% block title %}{{ space.name }} × MaxQuiz{% endblock %}
 {% block content %}
 <style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}</style>
@@ -86,7 +87,8 @@
   {% endif %}
 
   {% if has_catalog %}
-  <div class="card" style="margin-top:12px">
+  {% if categories %}{% include "game/_search.html" with scope="#quizList" placeholder="Rechercher un quiz, un chapitre…" %}{% endif %}
+  <div class="card" style="margin-top:12px" id="quizList">
     <p style="margin:0 0 10px;font-weight:700">{% if space.members_only %}Mes matières{% else %}🔎 {% if profile_filtered %}Ton quiz{% else %}Choisis ton quiz{% endif %}{% endif %}</p>
     {% if profile_filtered and not space.members_only %}
     <p class="small" style="margin:0 0 10px">🎯 Filtré sur ton profil ({{ space.category_label|default:"catégorie" }}/{{ space.subcategory_label|default:"sous-catégorie" }})</p>
@@ -96,10 +98,11 @@
       <a href="{% url 'account_home' %}">voir mon parcours</a></p>
     {% endif %}
     {% for c in categories %}
+    <div data-group>
     <p class="small" style="margin:10px 0 4px;font-weight:700;text-transform:uppercase">{{ c.category.name }}</p>
     {% for s in c.subs %}
     {% if multi_subject %}
-    <details class="dash-accordion" style="margin-bottom:8px">
+    <details class="dash-accordion" style="margin-bottom:8px" data-group>
       <summary style="font-size:14px">{{ s.sub.name }}
         <span class="small" style="font-weight:400">· {{ s.count }} quiz</span></summary>
       <div class="accordion-body">
@@ -113,11 +116,14 @@
     {% endfor %}
     {% for q in c.direct %}
     <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       data-search="{{ q.name|add:' '|add:c.category.name|cherchable }}"
        href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
     {% endfor %}
+    </div>
     {% endfor %}
     {% for q in orphan_quizzes %}
     <a class="btn {% if q.id in played_quiz_ids %}encre{% endif %}" style="margin-bottom:6px;padding:10px 14px;font-size:14px"
+       data-search="{{ q.name|cherchable }}"
        href="{% url 'quiz_home' space.slug q.slug %}">{{ q.name }}{% if q.id in played_quiz_ids %} · ✅ déjà joué{% endif %}</a>
     {% endfor %}
   </div>
