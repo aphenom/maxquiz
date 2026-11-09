@@ -21,7 +21,7 @@ def navigation(request):
     slug = match.kwargs.get("slug") if match else None
     if slug:
         space = Space.objects.filter(slug=slug, active=True).first()
-    elif request.path.startswith(("/compte/", "/notifications/", "/moi/", "/aide/")):
+    elif request.path.startswith(("/compte/", "/notifications/", "/moi/", "/aide/", "/application/")):
         pid = request.session.get("player_id")
         if pid:
             ms = list(Membership.objects.filter(player_id=pid, space__members_only=True, space__active=True)
@@ -70,10 +70,15 @@ def ads(request):
 
 
 def app_handoff(request):
-    """Ouvrir l'application Android quand elle est installée (MaxQuiz École, pages élèves)."""
+    """Application sur le téléphone (MaxQuiz École, pages élèves) : passer la main à
+    l'application Android installée, ou proposer de l'installer (voir base.html)."""
     from django.conf import settings
+    from django.urls import reverse
     staff_page = "/tableau-de-bord" in request.path or "/ressources/" in request.path or request.path.startswith("/admin/")
-    pkg = getattr(settings, "ANDROID_PACKAGE_NAME", "")
-    if staff_page or getattr(request, "product", "ecole") != "ecole" or not (pkg or settings.APK_URL):
-        return {"android_package": ""}
-    return {"android_package": pkg, "apk_url": settings.APK_URL}
+    if staff_page or getattr(request, "product", "ecole") != "ecole":
+        return {"app_banner": False, "android_package": ""}
+    return {"app_banner": True,
+            "app_banner_soft": request.path != reverse("app_install"),
+            "android_package": getattr(settings, "ANDROID_PACKAGE_NAME", ""),
+            "apk_url": settings.APK_URL,
+            "play_url": getattr(settings, "PLAY_STORE_URL", "")}

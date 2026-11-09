@@ -213,6 +213,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Lien de téléchargement de l'APK (ou de la fiche Play Store) proposé aux visiteurs
 # Android qui n'ont pas encore l'application. Vide = pas de proposition d'installation.
 APK_URL = os.environ.get("APK_URL", "")
+# Lien Google Play de l'application, une fois publiée : le bouton « Installer » y mène alors.
+PLAY_STORE_URL = os.environ.get("PLAY_STORE_URL", "")
 
 # Numéros de test : code fixe, sans SMS (vérificateurs Google Play, démos).
 # Format : 0700000000:123456,0700000001:654321

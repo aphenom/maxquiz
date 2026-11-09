@@ -22,6 +22,9 @@
       <span style="flex:1"><strong>Notifications</strong></span>›</a>
     <a class="row-link" href="{% url 'student_profile' %}"><span class="row-ico" aria-hidden="true">🎓</span>
       <span style="flex:1"><strong>Changer de prénom ou de classe</strong></span>›</a>
+    {% if not in_app %}<a class="row-link" href="{% url 'app_install' %}" id="rowInstall"><span class="row-ico" aria-hidden="true">📲</span>
+      <span style="flex:1"><strong>Installer l'application</strong><br><span class="small">Gratuite, en plein écran, avec des rappels</span></span>›</a>
+    <script>if ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone) document.getElementById('rowInstall').hidden = true;</script>{% endif %}
     <a class="row-link" href="{% url 'aide' %}"><span class="row-ico" aria-hidden="true">💬</span>
       <span style="flex:1"><strong>Aide et contact</strong><br><span class="small">WhatsApp, questions fréquentes, signaler un problème</span></span>›</a>
   </div>

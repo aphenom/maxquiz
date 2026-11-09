@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{% block title %}MaxQuiz{% endblock %}</title>
 <link rel="manifest" href="/manifest.webmanifest">
+<script>window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.mqInstallPrompt=e;});</script>
 <meta name="theme-color" content="#0B9A5C">
 <link rel="icon" href="{% static 'game/icons/icon-192.png' %}">
 <link rel="apple-touch-icon" href="{% static 'game/icons/icon-192.png' %}">
@@ -195,12 +196,12 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
   {% if unread_notifs %}<span class="badge">{% if unread_notifs > 9 %}9+{% else %}{{ unread_notifs }}{% endif %}</span>{% endif %}
 </a>
 {% endif %}
-<main>{% if android_package or apk_url %}
+<main>{% if app_banner %}
 <div id="appHandoff" class="card" hidden style="margin:0 0 12px;display:flex;gap:12px;align-items:center;border:1.5px solid var(--sable)">
   <span style="width:40px;height:40px;border-radius:11px;background:var(--vert);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">MQ</span>
-  <span style="flex:1;font-size:14px;line-height:1.35"><strong id="appHandoffTitle">L'application MaxQuiz</strong><br><span class="small" id="appHandoffText">Plus rapide et en plein écran.</span></span>
-  <a id="appHandoffBtn" class="btn" style="width:auto;padding:10px 14px;font-size:15px" href="#">Ouvrir</a>
-  <button type="button" id="appHandoffClose" aria-label="Fermer" style="background:none;border:0;font-size:20px;color:var(--brun);min-width:44px;min-height:44px;cursor:pointer">×</button>
+  <span style="flex:1;font-size:14px;line-height:1.35"><strong id="appHandoffTitle">L'application MaxQuiz</strong><br><span class="small" id="appHandoffText">Gratuite, légère, en plein écran.</span></span>
+  <a id="appHandoffBtn" class="btn" style="width:auto;padding:10px 14px;font-size:15px" href="{% url 'app_install' %}">Installer</a>
+  <button type="button" id="appHandoffClose" aria-label="Plus tard" style="background:none;border:0;font-size:20px;color:var(--brun);min-width:44px;min-height:44px;cursor:pointer">×</button>
 </div>
 {% endif %}{% if meta_pixel_id and not ad_consent %}
 <div id="adConsent" class="card" role="region" aria-label="Mesure d'audience" style="margin:0 0 12px;border:1.5px solid var(--sable)">
@@ -271,39 +272,90 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
 </script>
 {% endif %}
 {% block js %}{% endblock %}
-{% if android_package or apk_url %}
+{% if app_banner %}
 <script>
-/* Sur Android, dans le navigateur : si l'application est installée, proposer de l'ouvrir
-   (même page) ; sinon, proposer de l'installer. Rien dans l'application elle-même. */
+/* Application MaxQuiz sur le téléphone.
+   - Déjà installée (Android, Chrome) : on passe la main à l'application, automatiquement à
+     l'arrivée sur le site quand Chrome le permet, sinon avec un bouton « Ouvrir ».
+   - Pas installée : proposition discrète, à partir de la 2e page vue, refusable
+     (on ne redemande pas avant 7 jours, et plus du tout après 3 refus).
+   - Navigateur de Facebook, Instagram… : on propose d'ouvrir MaxQuiz dans le navigateur
+     du téléphone, seul endroit où l'installation est possible.
+   Rien ne s'affiche dans l'application elle-même. */
 (function(){
-  var PKG = "{{ android_package|escapejs }}", APK = "{{ apk_url|escapejs }}";
-  var box = document.getElementById('appHandoff');
-  if (!box || !/Android/i.test(navigator.userAgent)) return;
-  var inApp = document.referrer.indexOf('android-app://') === 0 || /source=app/.test(location.search)
-    || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-  try { if (inApp) sessionStorage.setItem('mqInApp', '1'); if (sessionStorage.getItem('mqInApp')) return;
-        if (localStorage.getItem('mqHandoffClosed') === new Date().toDateString()) return; } catch (e) {}
+  var PKG = "{{ android_package|escapejs }}", PLAY = "{{ play_url|escapejs }}";
+  var INSTALL_PAGE = "{% url 'app_install' %}", SOFT = {{ app_banner_soft|yesno:"true,false" }};
+  var box = document.getElementById('appHandoff'); if (!box) return;
+  var ua = navigator.userAgent, android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua);
+  var embedded = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|TikTok|Snapchat|musical_ly/i.test(ua);
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone
+    || document.referrer.indexOf('android-app://') === 0 || /source=(app|play)/.test(location.search);
+  var store = {get: function(k){ try { return localStorage.getItem(k); } catch (e) { return null; } },
+               set: function(k, v){ try { localStorage.setItem(k, v); } catch (e) {} },
+               sget: function(k){ try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+               sset: function(k, v){ try { sessionStorage.setItem(k, v); } catch (e) {} }};
+  if (standalone) { store.sset('mqInApp', '1'); return; }
+  if (store.sget('mqInApp') || !(android || ios)) return;
+  var views = (parseInt(store.sget('mqViews') || '0', 10) || 0) + 1; store.sset('mqViews', String(views));
+  var title = document.getElementById('appHandoffTitle'), text = document.getElementById('appHandoffText');
   var btn = document.getElementById('appHandoffBtn');
-  function show(installed){
-    if (installed && PKG) {
-      btn.textContent = 'Ouvrir';
-      btn.href = 'intent://' + location.host + location.pathname + location.search
-        + '#Intent;scheme=https;package=' + PKG + ';S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
-      document.getElementById('appHandoffTitle').textContent = 'MaxQuiz est installé sur ce téléphone';
-      document.getElementById('appHandoffText').textContent = 'Continue dans l\'application.';
-    } else if (APK) {
-      btn.textContent = 'Installer'; btn.href = APK;
-    } else { return; }
+  function here(){ return location.host + location.pathname + location.search; }
+  function intentFor(pkg){
+    return 'intent://' + here() + '#Intent;scheme=https;package=' + pkg
+      + ';S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+  }
+  function refused(){
+    var r = {}; try { r = JSON.parse(store.get('mqInstallRefus') || '{}'); } catch (e) {}
+    return (r.n || 0) >= 3 || (r.until || 0) > Date.now();
+  }
+  function show(t, d, label, href){
+    title.textContent = t; text.textContent = d; btn.textContent = label; if (href) btn.href = href;
     box.hidden = false;
   }
   document.getElementById('appHandoffClose').addEventListener('click', function(){
-    box.hidden = true; try { localStorage.setItem('mqHandoffClosed', new Date().toDateString()); } catch (e) {}
+    box.hidden = true;
+    var r = {}; try { r = JSON.parse(store.get('mqInstallRefus') || '{}'); } catch (e) {}
+    r.n = (r.n || 0) + 1; r.until = Date.now() + 7 * 864e5; store.set('mqInstallRefus', JSON.stringify(r));
   });
-  if (navigator.getInstalledRelatedApps && PKG) {
+  function offerInstall(){
+    if (refused() || (SOFT && views < 2)) return;
+    if (embedded) {
+      if (android) return show('Installe MaxQuiz sur ton téléphone', 'Ouvre d\'abord MaxQuiz dans Chrome.',
+                               'Ouvrir', intentFor('com.android.chrome'));
+      return show('Installe MaxQuiz sur ton téléphone', 'Touche ••• puis « Ouvrir dans le navigateur ».', 'Comment ?', INSTALL_PAGE);
+    }
+    if (android && PLAY) return show('L\'application MaxQuiz', 'Gratuite sur Google Play, en plein écran.', 'Installer',
+                                     'intent://details?id=' + PKG + '#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=' + encodeURIComponent(PLAY) + ';end');
+    if (window.mqInstallPrompt) {
+      show('Ajoute MaxQuiz à ton téléphone', 'Gratuit, léger, en plein écran. Une seule touche.', 'Installer');
+      btn.onclick = function(ev){
+        var p = window.mqInstallPrompt; if (!p) return; ev.preventDefault();
+        p.prompt(); p.userChoice.then(function(c){ window.mqInstallPrompt = null; if (c.outcome === 'accepted') box.hidden = true; });
+      };
+      return;
+    }
+    if (ios) return show('Ajoute MaxQuiz à ton écran d\'accueil', 'Comme une application, en deux touches.', 'Comment ?', INSTALL_PAGE);
+    show('L\'application MaxQuiz', 'Gratuite, légère, en plein écran.', 'Installer', INSTALL_PAGE);
+  }
+  window.addEventListener('appinstalled', function(){ box.hidden = true; store.set('mqInstalled', '1'); });
+  window.addEventListener('beforeinstallprompt', function(){ if (box.hidden) setTimeout(offerInstall, 0); });
+  if (android && PKG && navigator.getInstalledRelatedApps && !embedded) {
     navigator.getInstalledRelatedApps().then(function(apps){
-      show(apps.some(function(a){ return a.id === PKG; }));
-    }).catch(function(){ show(false); });
-  } else { show(false); }
+      var twa = apps.some(function(a){ return a.id === PKG; });
+      var pwa = apps.some(function(a){ return a.platform === 'webapp'; });
+      if (twa) {
+        var href = intentFor(PKG);
+        show('MaxQuiz est installé sur ce téléphone', 'Continue dans l\'application.', 'Ouvrir', href);
+        btn.onclick = null;
+        var external = !document.referrer || document.referrer.indexOf(location.host) < 0;
+        if (external && !store.sget('mqAutoOpen')) { store.sset('mqAutoOpen', '1'); location.href = href; }
+        return;
+      }
+      if (pwa) { show('MaxQuiz est installé sur ce téléphone', 'Ouvre-le depuis ton écran d\'accueil.', 'OK', '#');
+                 btn.onclick = function(ev){ ev.preventDefault(); box.hidden = true; }; return; }
+      offerInstall();
+    }).catch(offerInstall);
+  } else { offerInstall(); }
 })();
 </script>
 {% endif %}

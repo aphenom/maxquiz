@@ -1,0 +1,93 @@
+{% extends "game/base.html" %}
+{% block title %}Installer l'application · MaxQuiz{% endblock %}
+{% block tabs %}{% if nav_space %}{{ block.super }}{% endif %}{% endblock %}
+{% block content %}
+<style>
+.step{display:flex;gap:12px;align-items:flex-start;margin:10px 0 0}
+.step b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--vert);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
+.step span{font-size:15px;line-height:1.45}
+.plat[hidden]{display:none!important}
+</style>
+<div class="stagger">
+  <h1 style="font-size:26px;margin:10px 0 4px">L'application MaxQuiz</h1>
+  <p class="small" style="margin:0">Gratuite et légère. Elle s'ouvre en plein écran, fonctionne même avec une petite connexion et t'envoie des rappels.</p>
+
+  <div class="card" id="installed" style="margin-top:14px" hidden>
+    <p style="margin:0 0 10px;font-weight:700">✅ MaxQuiz est déjà installé sur ce téléphone.</p>
+    <a class="btn vert" id="openApp" href="#">Ouvrir l'application</a>
+  </div>
+
+  <div class="card" id="inapp" style="margin-top:14px" hidden>
+    <p style="margin:0 0 6px;font-weight:700">Tu es dans le navigateur de Facebook, Instagram ou TikTok.</p>
+    <p class="small" style="margin:0 0 10px">L'installation n'est possible que dans le navigateur de ton téléphone.</p>
+    <a class="btn" id="openChrome" href="#" hidden>Ouvrir MaxQuiz dans Chrome</a>
+    <div class="step" id="inappIos" hidden><b>1</b><span>Touche <strong>•••</strong> (en haut ou en bas de l'écran), puis <strong>« Ouvrir dans le navigateur »</strong> ou <strong>« Ouvrir dans Safari »</strong>.</span></div>
+  </div>
+
+  <div class="card plat" id="android" style="margin-top:14px">
+    <p style="margin:0 0 4px;font-weight:800">📱 Sur Android</p>
+    {% if play_url %}
+    <a class="btn" href="{{ play_url }}" target="_blank" rel="noopener" style="margin-top:10px">Installer depuis Google Play</a>
+    {% else %}
+    <button class="btn" type="button" id="oneTap" style="margin-top:10px" hidden>Installer en une touche</button>
+    <div id="manualAndroid">
+      <div class="step"><b>1</b><span>Ouvre <strong>maxquiz.net</strong> dans <strong>Chrome</strong>.</span></div>
+      <div class="step"><b>2</b><span>Touche le menu <strong>⋮</strong> en haut à droite.</span></div>
+      <div class="step"><b>3</b><span>Choisis <strong>« Installer l'application »</strong> (ou « Ajouter à l'écran d'accueil »), puis confirme.</span></div>
+    </div>
+    {% if apk_url %}
+    <details style="margin-top:14px"><summary class="small" style="cursor:pointer;font-weight:700">Autre solution : télécharger le fichier d'installation (APK)</summary>
+      <p class="small" style="margin:8px 0">Android te demandera d'autoriser l'installation depuis Chrome : c'est normal pour une application qui ne vient pas de Google Play.</p>
+      <a class="btn encre" href="{{ apk_url }}">Télécharger l'APK</a>
+    </details>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="card plat" id="iphone" style="margin-top:14px">
+    <p style="margin:0 0 4px;font-weight:800">🍎 Sur iPhone</p>
+    <div class="step"><b>1</b><span>Ouvre <strong>maxquiz.net</strong> dans <strong>Safari</strong>.</span></div>
+    <div class="step"><b>2</b><span>Touche le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut).</span></div>
+    <div class="step"><b>3</b><span>Choisis <strong>« Sur l'écran d'accueil »</strong>, puis <strong>Ajouter</strong>.</span></div>
+  </div>
+
+  <p class="small" style="margin:16px 0 0;text-align:center">Un souci ? <a href="{% url 'aide' %}">Aide et contact</a></p>
+</div>
+{% endblock %}
+{% block js %}
+<script>
+(function(){
+  var PKG = "{{ android_package|escapejs }}";
+  var ua = navigator.userAgent, android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua);
+  var embedded = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|TikTok|Snapchat|musical_ly/i.test(ua);
+  var $ = function(id){ return document.getElementById(id); };
+  // On montre d'abord la plateforme du visiteur (les deux restent visibles sur ordinateur).
+  if (android) $('iphone').hidden = true;
+  if (ios) $('android').hidden = true;
+  if (embedded) {
+    $('inapp').hidden = false;
+    if (android) { $('openChrome').hidden = false;
+      $('openChrome').href = 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;end'; }
+    else { $('inappIos').hidden = false; }
+  }
+  function oneTap(){
+    var b = $('oneTap'); if (!b || !window.mqInstallPrompt) return;
+    b.hidden = false; if ($('manualAndroid')) $('manualAndroid').hidden = true;
+    b.onclick = function(){ var p = window.mqInstallPrompt; if (!p) return;
+      p.prompt(); p.userChoice.then(function(c){ window.mqInstallPrompt = null;
+        if (c.outcome === 'accepted') { b.textContent = 'Installation en cours…'; b.disabled = true; }
+        else { b.hidden = true; $('manualAndroid').hidden = false; } }); };
+  }
+  oneTap(); window.addEventListener('beforeinstallprompt', function(){ setTimeout(oneTap, 0); });
+  if (android && PKG && navigator.getInstalledRelatedApps) {
+    navigator.getInstalledRelatedApps().then(function(apps){
+      if (!apps.length) return;
+      $('installed').hidden = false; $('android').hidden = true;
+      var twa = apps.some(function(a){ return a.id === PKG; });
+      if (twa) $('openApp').href = 'intent://' + location.host + '/#Intent;scheme=https;package=' + PKG + ';end';
+      else { $('openApp').textContent = 'Ouvre MaxQuiz depuis ton écran d\'accueil'; $('openApp').removeAttribute('href'); }
+    }).catch(function(){});
+  }
+})();
+</script>
+{% endblock %}

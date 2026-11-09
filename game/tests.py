@@ -841,6 +841,20 @@ class AppHandoffTests(TestCase):
         self.assertContains(home, "package=")
         self.assertNotContains(self.client.get("/tableau-de-bord/connexion/"), 'id="appHandoff"')
 
+    def test_webapp_dans_le_manifeste_et_page_installation(self):
+        m = self.client.get("/manifest.webmanifest").json()
+        self.assertIn("webapp", [a["platform"] for a in m["related_applications"]])
+        page = self.client.get("/application/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Sur l'écran d'accueil")
+        self.assertContains(page, "https://maxquiz.net/telecharger/maxquiz.apk")
+
+    @override_settings(PLAY_STORE_URL="https://play.google.com/store/apps/details?id=net.maxquiz.twa")
+    def test_lien_google_play_prioritaire(self):
+        page = self.client.get("/application/")
+        self.assertContains(page, "Installer depuis Google Play")
+        self.assertNotContains(page, "Télécharger l'APK")
+
 
 from .models import GameConfig
 

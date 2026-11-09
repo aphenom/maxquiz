@@ -60,7 +60,8 @@ def manifest(request):
         "prefer_related_applications": False,
         "related_applications": ([{"platform": "play", "id": settings.ANDROID_PACKAGE_NAME,
                                    "url": f"https://play.google.com/store/apps/details?id={settings.ANDROID_PACKAGE_NAME}"}]
-                                 if getattr(settings, "ANDROID_PACKAGE_NAME", "") else []),
+                                 if getattr(settings, "ANDROID_PACKAGE_NAME", "") else [])
+                                + [{"platform": "webapp", "url": request.build_absolute_uri("/manifest.webmanifest")}],
         "launch_handler": {"client_mode": "navigate-existing"},
         "background_color": "#FDF6EC", "theme_color": "#0B9A5C",
         "shortcuts": [

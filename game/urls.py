@@ -19,6 +19,7 @@ urlpatterns = [
     path("supprimer-mon-compte/", eleve.account_delete_info, name="account_delete_info"),
     path("confidentialite/", eleve.privacy, name="privacy"),
     path("aide/", aide_views.aide, name="aide"),
+    path("application/", eleve.app_install, name="app_install"),
     path("signaler/", aide_views.signaler, name="signaler"),
     path("sw.js", pushv.service_worker, name="service_worker"),
     path("hors-ligne/", pushv.offline, name="offline"),

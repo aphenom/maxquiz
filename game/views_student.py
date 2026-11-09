@@ -192,3 +192,13 @@ def account_delete(request):
         messages.success(request, "Ton compte et tes données ont été supprimés.")
         return redirect("home")
     return render(request, "game/eleve/supprimer.html", {"player": player, "tab": "me"})
+
+
+def app_install(request):
+    """Installer l'application : Google Play, installation en une touche depuis Chrome,
+    APK, ou ajout à l'écran d'accueil sur iPhone, selon le téléphone."""
+    player = _verified_player(request)
+    return render(request, "game/eleve/application.html", {
+        "tab": "me" if player and student_membership(player) else None,
+        "android_package": settings.ANDROID_PACKAGE_NAME, "apk_url": settings.APK_URL,
+        "play_url": settings.PLAY_STORE_URL})
