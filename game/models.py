@@ -936,3 +936,56 @@ class AdAttribution(models.Model):
 
     def campaign_label(self):
         return self.utm_campaign or (f"{self.utm_source} (sans campagne)" if self.utm_source else "")
+
+
+class Signalement(models.Model):
+    """Erreur signalée par un élève (question, cours) ou demande d'assistance.
+    Traitée dans l'administration ; l'élève est prévenu quand c'est traité."""
+    KINDS = [("contenu", "Erreur dans le contenu"), ("assistance", "Demande d'assistance")]
+    MOTIFS = [
+        ("reponse", "La bonne réponse est fausse"),
+        ("enonce", "Question ou réponses pas claires"),
+        ("explication", "Explication fausse ou pas claire"),
+        ("cours", "Erreur dans le cours"),
+        ("faute", "Faute d'orthographe"),
+        ("technique", "Problème technique"),
+        ("paiement", "Abonnement ou paiement"),
+        ("compte", "Mon compte, ma classe"),
+        ("autre", "Autre"),
+    ]
+    STATUSES = [("nouveau", "Nouveau"), ("en_cours", "En cours"), ("traite", "Traité"), ("rejete", "Sans suite")]
+
+    kind = models.CharField("Type", max_length=12, choices=KINDS, default="contenu")
+    motif = models.CharField("Motif", max_length=12, choices=MOTIFS, default="autre")
+    message = models.TextField("Message", max_length=1000, blank=True, default="")
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.SET_NULL, related_name="signalements")
+    contact = models.CharField("Téléphone de contact", max_length=20, blank=True, default="")
+    space = models.ForeignKey(Space, null=True, blank=True, on_delete=models.SET_NULL, related_name="signalements")
+    question = models.ForeignKey(Question, null=True, blank=True, on_delete=models.SET_NULL, related_name="signalements")
+    lesson = models.ForeignKey(Lesson, null=True, blank=True, on_delete=models.SET_NULL, related_name="signalements")
+    page = models.CharField("Page", max_length=300, blank=True, default="")
+    status = models.CharField("Statut", max_length=10, choices=STATUSES, default="nouveau")
+    reponse = models.TextField("Réponse à l'élève (facultatif)", max_length=300, blank=True, default="",
+                               help_text="Envoyée dans ses notifications quand le statut passe à « Traité ».")
+    note = models.TextField("Note interne", blank=True, default="")
+    created_at = models.DateTimeField("Reçu le", auto_now_add=True)
+    handled_at = models.DateTimeField("Traité le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Signalement / assistance"
+        verbose_name_plural = "Signalements et assistance"
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["status", "created_at"])]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} · {self.get_motif_display()} · {self.created_at:%d/%m/%Y}"
+
+    @property
+    def target_label(self):
+        if self.question_id:
+            q = self.question
+            where = f"{q.quiz.shared_level_name or ''} {q.quiz.shared_subject_name or ''} · {q.quiz.name}" if q.quiz_id else ""
+            return f"Question : {q.text[:80]} ({where.strip()})" if where.strip() else f"Question : {q.text[:80]}"
+        if self.lesson_id:
+            return f"Cours : {self.lesson.title}"
+        return ""

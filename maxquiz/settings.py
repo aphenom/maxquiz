@@ -221,3 +221,7 @@ OTP_NUMEROS_TEST = {
     for p in os.environ.get("OTP_NUMEROS_TEST", "").split(",") if ":" in p
 }
 CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "")
+# Signalements et demandes d'assistance : copie par e-mail à cette adresse (vide = administration seulement).
+# Sur le VPS, l'envoi passe par le serveur de messagerie local (Postfix d'ISPConfig).
+SIGNALEMENTS_EMAIL = os.environ.get("SIGNALEMENTS_EMAIL", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "MaxQuiz <noreply@maxquiz.net>")

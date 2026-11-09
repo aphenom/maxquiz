@@ -309,3 +309,103 @@ class AdAttributionAdmin(admin.ModelAdmin):
     list_filter = ("utm_source", "consent")
     search_fields = ("utm_campaign", "utm_content", "player__phone")
     readonly_fields = [f.name for f in AdAttribution._meta.fields]
+
+
+# --- Signalements et assistance -------------------------------------------------
+from django.urls import reverse  # noqa: E402
+
+from .models import Signalement  # noqa: E402
+
+
+@admin.register(Signalement)
+class SignalementAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "status", "kind", "motif", "cible", "apercu", "contact")
+    list_filter = ("status", "kind", "motif", ("created_at", admin.DateFieldListFilter))
+    list_editable = ("status",)
+    search_fields = ("message", "question__text", "lesson__title", "contact")
+    date_hierarchy = "created_at"
+    readonly_fields = ("created_at", "handled_at", "kind", "motif", "message", "player", "contact", "page",
+                       "contenu_signale")
+    fields = ("status", "reponse", "note", "kind", "motif", "message", "contenu_signale", "player", "contact",
+              "page", "created_at", "handled_at")
+    actions = ("marquer_en_cours", "marquer_traite", "marquer_sans_suite")
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("question__quiz", "lesson", "player")
+
+    def changelist_view(self, request, extra_context=None):
+        n = Signalement.objects.filter(status="nouveau").count()
+        extra_context = {**(extra_context or {}),
+                         "title": f"Signalements et assistance — {n} nouveau{'x' if n > 1 else ''}"}
+        return super().changelist_view(request, extra_context)
+
+    @admin.display(description="Contenu")
+    def cible(self, obj):
+        if obj.question_id:
+            url = reverse("admin:game_question_change", args=[obj.question_id])
+            return format_html('<a href="{}">Question · {}</a>', url, obj.question.text[:50])
+        if obj.lesson_id:
+            url = reverse("admin:game_lesson_change", args=[obj.lesson_id])
+            return format_html('<a href="{}">Cours · {}</a>', url, obj.lesson.title[:50])
+        return "—"
+
+    @admin.display(description="Message")
+    def apercu(self, obj):
+        return (obj.message[:70] + "…") if len(obj.message) > 70 else (obj.message or "—")
+
+    @admin.display(description="Contenu signalé")
+    def contenu_signale(self, obj):
+        q = obj.question
+        if q:
+            opts = "".join(
+                format_html('<li{}>{}{}</li>', mark_safe(' style="font-weight:700;color:#0B9A5C"') if i == q.correct else "",
+                            o, " ✔" if i == q.correct else "")
+                for i, o in enumerate([q.option_a, q.option_b, q.option_c, q.option_d]))
+            where = f"{q.quiz.shared_level_name} · {q.quiz.shared_subject_name} · {q.quiz.name}" if q.quiz_id else ""
+            return format_html('<p><b>{}</b><br>{}</p><ul>{}</ul><p><i>Explication :</i> {}</p><p><a href="{}">Corriger la question</a></p>',
+                               where, q.text, mark_safe(opts), q.explanation or "—",
+                               reverse("admin:game_question_change", args=[q.id]))
+        if obj.lesson_id:
+            return format_html('<p><b>{}</b> ({} · {})</p><p><a href="{}">Corriger le cours</a></p>',
+                               obj.lesson.title, obj.lesson.shared_level_name, obj.lesson.shared_subject_name,
+                               reverse("admin:game_lesson_change", args=[obj.lesson_id]))
+        return "—"
+
+    def _close(self, obj, status):
+        """Passage à « Traité » : date de traitement et notification à l'élève (une seule fois)."""
+        first_time = status == "traite" and obj.handled_at is None
+        obj.status = status
+        if status in ("traite", "rejete") and obj.handled_at is None:
+            obj.handled_at = timezone.now()
+        obj.save()
+        if first_time and obj.player_id:
+            from .push import notify
+            if obj.kind == "contenu":
+                title = "Merci pour ton signalement !"
+                body = obj.reponse or "L'erreur que tu as signalée a été vérifiée et corrigée."
+            else:
+                title = "Réponse de l'assistance MaxQuiz"
+                body = obj.reponse or "Ta demande a été traitée. Écris-nous si tu as encore besoin d'aide."
+            notify(players=[obj.player], title=title, body=body, url=reverse("aide"), kind="info")
+
+    def save_model(self, request, obj, form, change):
+        status = obj.status
+        if change:
+            previous = Signalement.objects.get(pk=obj.pk)
+            obj.handled_at = previous.handled_at
+        self._close(obj, status)
+
+    @admin.action(description="Marquer « En cours »")
+    def marquer_en_cours(self, request, queryset):
+        queryset.update(status="en_cours")
+
+    @admin.action(description="Marquer « Traité » (prévient l'élève)")
+    def marquer_traite(self, request, queryset):
+        for obj in queryset:
+            self._close(obj, "traite")
+
+    @admin.action(description="Marquer « Sans suite »")
+    def marquer_sans_suite(self, request, queryset):
+        for obj in queryset:
+            self._close(obj, "rejete")

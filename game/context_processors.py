@@ -21,7 +21,7 @@ def navigation(request):
     slug = match.kwargs.get("slug") if match else None
     if slug:
         space = Space.objects.filter(slug=slug, active=True).first()
-    elif request.path.startswith(("/compte/", "/notifications/", "/moi/")):
+    elif request.path.startswith(("/compte/", "/notifications/", "/moi/", "/aide/")):
         pid = request.session.get("player_id")
         if pid:
             ms = list(Membership.objects.filter(player_id=pid, space__members_only=True, space__active=True)

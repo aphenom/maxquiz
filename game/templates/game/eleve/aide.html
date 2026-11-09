@@ -1,0 +1,65 @@
+{% extends "game/base.html" %}
+{% block title %}Aide et contact · MaxQuiz{% endblock %}
+{% block tabs %}{% if nav_space %}{{ block.super }}{% endif %}{% endblock %}
+{% block content %}
+<style>
+.faq details{border-top:1px solid var(--sable);padding:10px 0}
+.faq details:first-of-type{border-top:none}
+.faq summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:8px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'▾';color:var(--brun)}
+.faq details[open] summary::after{content:'▴'}
+.faq p{margin:6px 0 0;font-size:15px;line-height:1.5}
+</style>
+<div class="stagger">
+  <h1 style="font-size:26px;margin:10px 0 4px">Aide et contact</h1>
+  <p class="small" style="margin:0">Une question, un souci, une erreur dans un cours ? On est là.</p>
+  {% include "game/_messages.html" %}
+
+  <div class="card" style="margin-top:14px">
+    {% if contact_whatsapp %}
+    <a class="btn vert" href="https://wa.me/{{ contact_whatsapp }}?text={{ 'Bonjour MaxQuiz, '|urlencode }}" target="_blank" rel="noopener">💬 Nous écrire sur WhatsApp</a>
+    {% endif %}
+    {% if contact_email %}
+    <a class="btn encre" href="mailto:{{ contact_email }}?subject={{ 'Assistance MaxQuiz'|urlencode }}" style="margin-top:8px">✉️ {{ contact_email }}</a>
+    {% endif %}
+    <p class="small" style="margin:10px 0 0;text-align:center">Réponse en général sous 24 h, du lundi au samedi.</p>
+  </div>
+
+  <h2 style="font-size:18px;margin:20px 0 6px">Questions fréquentes</h2>
+  <div class="card faq">
+    <details><summary>Je ne reçois pas le code par SMS</summary>
+      <p>Vérifie ton numéro (10 chiffres), attends une minute, puis demande un nouveau code. Si rien n'arrive, écris-nous avec ton numéro : nous vérifions tout de suite.</p></details>
+    <details><summary>Comment changer de classe ?</summary>
+      <p>Va dans l'onglet Moi, puis « Changer de prénom ou de classe ». Tes cours et tes quiz s'adaptent aussitôt.</p></details>
+    <details><summary>J'ai trouvé une erreur dans une question ou un cours</summary>
+      <p>Merci ! Après chaque question, touche « Signaler une erreur ». Dans un cours, le bouton est en bas de la page. Notre équipe vérifie et corrige, et tu reçois une notification quand c'est fait.</p></details>
+    {% if not store_build %}
+    <details><summary>Comment m'abonner ?</summary>
+      <p>Dans l'onglet Moi, touche « Mon abonnement ». Tu y trouves les formules et la marche à suivre pour payer par Mobile Money. Ton accès est activé dès que le paiement est vérifié.</p></details>
+    {% endif %}
+    <details><summary>Comment rejoindre mon école ?</summary>
+      <p>Si ton école utilise MaxQuiz, demande-lui son code, puis saisis-le dans l'onglet Moi. C'est facultatif : MaxQuiz fonctionne aussi sans école.</p></details>
+    <details><summary>Comment supprimer mon compte ?</summary>
+      <p>Onglet Moi, tout en bas : « Supprimer mon compte ». La suppression est immédiate et définitive.</p></details>
+  </div>
+
+  <h2 style="font-size:18px;margin:20px 0 6px">Écrire à l'assistance</h2>
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% if error %}<p style="margin:0 0 10px;color:var(--rouge);font-weight:700">{{ error }}</p>{% endif %}
+    <label for="motif" style="font-weight:700">Sujet</label>
+    <select id="motif" name="motif" style="width:100%;margin:6px 0 12px;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px;background:#fff">
+      {% for k, v in motifs %}<option value="{{ k }}"{% if form.motif == k %} selected{% endif %}>{{ v }}</option>{% endfor %}
+    </select>
+    <label for="message" style="font-weight:700">Ton message</label>
+    <textarea id="message" name="message" rows="4" maxlength="1000" required placeholder="Explique-nous ce qui se passe…"
+              style="width:100%;box-sizing:border-box;margin:6px 0 12px;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px">{{ form.message }}</textarea>
+    <label for="contact" style="font-weight:700">Ton numéro (pour te répondre)</label>
+    <input id="contact" name="contact" type="tel" inputmode="numeric" value="{{ form.contact }}" placeholder="07 07 07 07 07"
+           style="width:100%;box-sizing:border-box;margin:6px 0 12px;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px">
+    <button class="btn" type="submit">Envoyer</button>
+  </form>
+</div>
+{% endblock %}

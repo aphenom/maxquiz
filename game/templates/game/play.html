@@ -31,6 +31,22 @@
   <p id="verdict" style="margin:0 0 8px;font-weight:800;font-size:18px"></p>
   <p id="explain" class="small" style="margin:0 0 10px" hidden></p>
   <a id="lessonLink" class="small" href="#" target="_blank" rel="noopener" style="display:block;margin:0 0 10px;font-weight:700" hidden></a>
+  <button type="button" id="reportBtn" class="small" hidden
+          style="background:none;border:none;color:var(--brun);text-decoration:underline;padding:0;margin:0 0 10px;min-height:32px;cursor:pointer">⚑ Signaler une erreur dans cette question</button>
+  <div id="reportBox" class="card" style="margin:0 0 10px" hidden>
+    <p style="margin:0 0 8px;font-weight:700">Qu'est-ce qui ne va pas ?</p>
+    <select id="reportMotif" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px;background:#fff">
+      <option value="reponse">La bonne réponse est fausse</option>
+      <option value="enonce">Question ou réponses pas claires</option>
+      <option value="explication">Explication fausse ou pas claire</option>
+      <option value="faute">Faute d'orthographe</option>
+      <option value="autre">Autre</option>
+    </select>
+    <textarea id="reportMsg" rows="2" maxlength="1000" placeholder="Précise si tu veux (facultatif)"
+              style="width:100%;box-sizing:border-box;margin:8px 0;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px"></textarea>
+    <button type="button" class="btn" id="reportSend">Envoyer le signalement</button>
+    <p id="reportDone" class="small" style="margin:8px 0 0" hidden></p>
+  </div>
   <button class="btn encre" id="nextBtn"></button>
 </div>
 
@@ -213,6 +229,7 @@ function show() {
   $('qtext').textContent = q.text;
   $('qcard').classList.remove('pop-in'); void $('qcard').offsetWidth; $('qcard').classList.add('pop-in');
   $('feedback').hidden = true; $('explain').hidden = true; $('lessonLink').hidden = true;
+  $('reportBtn').hidden = true; $('reportBox').hidden = true; $('reportDone').hidden = true; $('reportSend').hidden = false; $('reportMsg').value = '';
   const box = $('options'); box.innerHTML = ''; box.classList.remove('stagger');
   void box.offsetWidth; box.classList.add('stagger');
   const order = [0,1,2,3].sort(() => Math.random()-.5);
@@ -234,6 +251,7 @@ async function answer(choice, btn) {
   let r;
   try {
     r = await api(ANSWER_URL, {session_id:G.session_id, question_id:q.id, choice, time_ms});
+    reportQ = q.id; $('reportBtn').hidden = (q.kind === 'survey');
   } catch(e) {
     $('qcard').classList.remove('loading');
     $('verdict').textContent='Connexion perdue… réessaie.';
@@ -348,6 +366,20 @@ if (!G.joker.max) $('jokerBadge').style.display = 'none';
   if (r.done) { endScreen(r.status); return; }
   next();
 }
+
+let reportQ = null;
+$('reportBtn').onclick = () => { $('reportBox').hidden = !$('reportBox').hidden; };
+$('reportSend').onclick = async () => {
+  const motif = $('reportMotif').value, message = $('reportMsg').value.trim();
+  if (motif === 'autre' && message.length < 3) { $('reportDone').textContent = 'Précise l\'erreur en quelques mots.'; $('reportDone').hidden = false; return; }
+  $('reportSend').disabled = true;
+  try {
+    const r = await api('/signaler/', {question_id: reportQ, motif, message, page: location.pathname});
+    $('reportDone').textContent = r.message || 'Merci !';
+    if (r.ok) { $('reportSend').hidden = true; $('reportBtn').hidden = true; }
+  } catch(e) { $('reportDone').textContent = 'Envoi impossible, réessaie.'; }
+  $('reportDone').hidden = false; $('reportSend').disabled = false;
+};
 
 function next() {
   idx++;

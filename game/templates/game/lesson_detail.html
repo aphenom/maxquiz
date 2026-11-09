@@ -14,6 +14,7 @@
 </style>
 <div class="stagger">
   <p class="small" style="margin:8px 0 0"><a href="{% url 'lessons_list' space.slug %}">← Mes cours</a></p>
+  {% include "game/_messages.html" %}
   <h1 style="font-size:24px;margin:8px 0 2px">{{ lesson.title }}</h1>
   <p class="small" style="margin:0">{% if lesson.space_id %}{{ lesson.sub_category.name }}{% if lesson.theme %} · {{ lesson.theme.name }}{% endif %}{% if lesson.teacher %} · {{ lesson.teacher.full_name }}{% endif %}{% else %}{{ lesson.shared_subject_name }} · {{ lesson.shared_theme_name }} · cours MaxQuiz{% endif %}</p>
   {% if lesson.video_id %}<div style="margin-top:12px">{% include "game/_yt.html" with vid=lesson.video_id title=lesson.title %}</div>{% endif %}
@@ -26,6 +27,24 @@
     <a class="btn encre" href="{% url 'lesson_pdf' space.slug lesson.id %}" target="_blank" rel="noopener" style="margin-top:8px">Ouvrir le PDF</a>
   </div>
   {% endif %}
+  <details class="card" style="margin-top:12px">
+    <summary style="cursor:pointer;font-weight:700;color:var(--brun)">⚑ Signaler une erreur dans ce cours</summary>
+    <form method="post" action="{% url 'signaler' %}" style="margin-top:10px">
+      {% csrf_token %}
+      <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <input type="hidden" name="page" value="{{ request.path }}">
+      <select name="motif" aria-label="Type d'erreur" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px;background:#fff">
+        <option value="cours">Erreur dans le cours</option>
+        <option value="faute">Faute d'orthographe</option>
+        <option value="explication">Passage pas clair</option>
+        <option value="autre">Autre</option>
+      </select>
+      <textarea name="message" rows="3" maxlength="1000" placeholder="Où est l'erreur ? (par exemple : partie « Exemple corrigé », 2ᵉ ligne)"
+                style="width:100%;box-sizing:border-box;margin:8px 0;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px"></textarea>
+      <button class="btn encre" type="submit">Envoyer le signalement</button>
+    </form>
+  </details>
   {% if quizzes %}
   <p style="font-weight:700;margin:18px 0 8px">S'entraîner sur ce chapitre</p>
   {% for q in quizzes %}<a class="btn" href="{% url 'quiz_home' space.slug q.slug %}" style="margin-bottom:8px">{{ q.name }}</a>{% endfor %}

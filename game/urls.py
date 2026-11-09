@@ -5,6 +5,7 @@ from . import views_school as school_views
 from . import views_learning as learn
 from . import views_push as pushv
 from . import views_student as eleve
+from . import views_support as aide_views
 from .views_student import jeu_public
 
 urlpatterns = [
@@ -17,6 +18,8 @@ urlpatterns = [
     path("moi/supprimer/", eleve.account_delete, name="account_delete"),
     path("supprimer-mon-compte/", eleve.account_delete_info, name="account_delete_info"),
     path("confidentialite/", eleve.privacy, name="privacy"),
+    path("aide/", aide_views.aide, name="aide"),
+    path("signaler/", aide_views.signaler, name="signaler"),
     path("sw.js", pushv.service_worker, name="service_worker"),
     path("hors-ligne/", pushv.offline, name="offline"),
     path("manifest.webmanifest", pushv.manifest, name="manifest"),

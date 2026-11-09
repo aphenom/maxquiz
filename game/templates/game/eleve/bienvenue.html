@@ -19,6 +19,6 @@
   {% if catalog_trial_days %}<p class="pill-ok">{{ catalog_trial_days }} jours gratuits, sans paiement</p>{% endif %}
   <a class="btn" href="{% url 'student_phone' %}">Commencer</a>
   <a href="{% url 'student_phone' %}" style="text-align:center;font-weight:700;color:var(--vert);padding:6px">J'ai déjà un compte</a>
-  <p class="small" style="text-align:center;margin:0"><a href="{% url 'privacy' %}">Confidentialité</a></p>
+  <p class="small" style="text-align:center;margin:0"><a href="{% url 'privacy' %}">Confidentialité</a> · <a href="{% url 'aide' %}">Aide et contact</a></p>
 </div>
 {% endblock %}

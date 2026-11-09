@@ -18,6 +18,7 @@
   <button class="btn" type="submit">Valider</button>
   <a href="{% url 'student_phone' %}" style="text-align:center;font-weight:700;color:var(--vert);padding:10px">Recevoir un nouveau code</a>
 </form>
+<p class="small" style="text-align:center;margin:14px 0 0">Pas reçu de code ? <a href="{% url 'aide' %}">Aide et contact</a></p>
 {% endblock %}
 {% block js %}
 <script>
