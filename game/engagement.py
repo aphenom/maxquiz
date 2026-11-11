@@ -28,10 +28,19 @@ PREMIERE_HEURE, DERNIERE_HEURE = time(7, 0), time(21, 0)
 
 
 # --- Activité et série ---------------------------------------------------------------
-def jours_actifs(player, depuis):
-    quiz_days = (GameSession.objects.filter(player=player, day__gte=depuis)
+def _perimetre(space):
+    """Activité prise en compte : tout MaxQuiz, ou seulement ce qui se passe dans une école
+    (ses quiz, ses cours) quand on calcule pour le tableau de bord de cette école."""
+    if space is None or space.kind == "catalog":
+        return Q(), Q()
+    return Q(space=space), Q(lesson__space=space)
+
+
+def jours_actifs(player, depuis, space=None):
+    qs, ql = _perimetre(space)
+    quiz_days = (GameSession.objects.filter(qs, player=player, day__gte=depuis)
                  .annotate(n=Count("answers")).filter(n__gt=0).values_list("day", flat=True))
-    lesson_days = LessonView.objects.filter(player=player, day__gte=depuis).values_list("day", flat=True)
+    lesson_days = LessonView.objects.filter(ql, player=player, day__gte=depuis).values_list("day", flat=True)
     return set(quiz_days) | set(lesson_days)
 
 
@@ -40,11 +49,11 @@ def actif_aujourdhui(player, today=None):
     return today in jours_actifs(player, today)
 
 
-def serie(player, today=None):
+def serie(player, today=None, space=None):
     """Nombre de jours d'activité de la série en cours. Un jour sans activité par semaine
     est toléré (joker), à condition que la veille de ce jour soit active."""
     today = today or timezone.localdate()
-    days = jours_actifs(player, today - timedelta(days=90))
+    days = jours_actifs(player, today - timedelta(days=90), space)
     d = today if today in days else today - timedelta(days=1)
     n, jokers = 0, set()
     while d >= today - timedelta(days=90):
@@ -316,12 +325,13 @@ def rapport(space, jours=14, today=None):
     today = today or timezone.localdate()
     since = today - timedelta(days=jours - 1)
     members = Membership.objects.filter(space=space, player__isnull=False).values_list("player_id", flat=True)
+    qs, ql = _perimetre(space)
     rows = []
     for i in range(jours):
         d = since + timedelta(days=i)
-        q_ids = set(GameSession.objects.filter(player_id__in=members, day=d).annotate(n=Count("answers"))
+        q_ids = set(GameSession.objects.filter(qs, player_id__in=members, day=d).annotate(n=Count("answers"))
                     .filter(n__gt=0).values_list("player_id", flat=True))
-        l_ids = set(LessonView.objects.filter(player_id__in=members, day=d).values_list("player_id", flat=True))
+        l_ids = set(LessonView.objects.filter(ql, player_id__in=members, day=d).values_list("player_id", flat=True))
         actifs = q_ids | l_ids
         missions = Mission.objects.filter(space=space, day=d)
         pushed = missions.filter(pushed_at__isnull=False)
@@ -330,8 +340,8 @@ def rapport(space, jours=14, today=None):
                          faites=sum(1 for m in missions.values_list("player_id", flat=True) if m in actifs)))
     from .models import Player
     players = Player.objects.filter(id__in=members)
-    series = [serie(p, today) for p in players]
-    actifs_7 = len(jours_actifs_groupes(members, today - timedelta(days=6)))
+    series = [serie(p, today, space) for p in players]
+    actifs_7 = len(jours_actifs_groupes(members, today - timedelta(days=6), space))
     return dict(rows=rows, max_actifs=max([r["actifs"] for r in rows] + [1]),
                 inscrits=len(series), actifs_7=actifs_7,
                 serie_moyenne=round(sum(s for s in series if s) / max(1, sum(1 for s in series if s)), 1),
@@ -340,7 +350,9 @@ def rapport(space, jours=14, today=None):
                 envoyes=sum(r["envoyes"] for r in rows), ouverts=sum(r["ouverts"] for r in rows))
 
 
-def jours_actifs_groupes(player_ids, since):
-    a = set(GameSession.objects.filter(player_id__in=player_ids, day__gte=since).annotate(n=Count("answers"))
+def jours_actifs_groupes(player_ids, since, space=None):
+    qs, ql = _perimetre(space)
+    a = set(GameSession.objects.filter(qs, player_id__in=player_ids, day__gte=since).annotate(n=Count("answers"))
             .filter(n__gt=0).values_list("player_id", flat=True))
-    return a | set(LessonView.objects.filter(player_id__in=player_ids, day__gte=since).values_list("player_id", flat=True))
+    return a | set(LessonView.objects.filter(ql, player_id__in=player_ids, day__gte=since)
+                   .values_list("player_id", flat=True))

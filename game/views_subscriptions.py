@@ -246,6 +246,9 @@ def dashboard_ads(request, slug):
     """Tableau « Résultats des pubs » de l'espace MaxQuiz École."""
     from django.conf import settings as dj_settings
     space = _space(slug)
+    if space.kind != "catalog":                 # données de MQ Technologies : jamais pour une école
+        from django.http import Http404
+        raise Http404()
     gate = None if _admin_mq(request) else _dashboard_gate(request, space)
     if gate:
         return gate
@@ -301,6 +304,9 @@ def dashboard_stats(request, slug):
     """Tableau « Statistiques » : visites, téléchargements, inscrits, abonnés, actifs."""
     from . import stats
     space = _space(slug)
+    if space.kind != "catalog":                 # données de MQ Technologies : jamais pour une école
+        from django.http import Http404
+        raise Http404()
     gate = None if _admin_mq(request) else _dashboard_gate(request, space)
     if gate:
         return gate
