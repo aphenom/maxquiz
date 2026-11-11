@@ -1,0 +1,13 @@
+{% extends "admin/index.html" %}
+{% block content %}
+<div class="module" style="margin-bottom:20px">
+  <h2>MaxQuiz École : tableaux de bord</h2>
+  <table style="width:100%"><tbody>
+    <tr><th scope="row"><a href="{% url 'dashboard_stats' catalog_slug %}">📈 Statistiques</a></th><td>Visites, téléchargements de l'APK, installations, inscrits, abonnés, actifs</td></tr>
+    <tr><th scope="row"><a href="{% url 'dashboard_engagement' catalog_slug %}">🔥 Assiduité</a></th><td>Élèves actifs par jour, missions, rappels, séries</td></tr>
+    <tr><th scope="row"><a href="{% url 'dashboard_ads' catalog_slug %}">📣 Résultats des pubs</a></th><td>Inscrits et payants par campagne</td></tr>
+    <tr><th scope="row"><a href="{% url 'admin:game_signalement_changelist' %}">⚑ Signalements et assistance</a></th><td>Erreurs signalées et demandes des élèves</td></tr>
+  </tbody></table>
+</div>
+{{ block.super }}
+{% endblock %}

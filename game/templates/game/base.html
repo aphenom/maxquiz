@@ -337,7 +337,8 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
     if (ios) return show('Ajoute MaxQuiz à ton écran d\'accueil', 'Comme une application, en deux touches.', 'Comment ?', INSTALL_PAGE);
     show('L\'application MaxQuiz', 'Gratuite, légère, en plein écran.', 'Installer', INSTALL_PAGE);
   }
-  window.addEventListener('appinstalled', function(){ box.hidden = true; store.set('mqInstalled', '1'); });
+  window.addEventListener('appinstalled', function(){ box.hidden = true; store.set('mqInstalled', '1');
+    try { navigator.sendBeacon('{% url "stats_installation" %}'); } catch (e) {} });
   window.addEventListener('beforeinstallprompt', function(){ if (box.hidden) setTimeout(offerInstall, 0); });
   if (android && PKG && navigator.getInstalledRelatedApps && !embedded) {
     navigator.getInstalledRelatedApps().then(function(apps){

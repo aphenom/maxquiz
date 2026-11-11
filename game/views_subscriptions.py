@@ -246,7 +246,7 @@ def dashboard_ads(request, slug):
     """Tableau « Résultats des pubs » de l'espace MaxQuiz École."""
     from django.conf import settings as dj_settings
     space = _space(slug)
-    gate = _dashboard_gate(request, space)
+    gate = None if _admin_mq(request) else _dashboard_gate(request, space)
     if gate:
         return gate
     period = request.GET.get("p", "30")
@@ -265,7 +265,52 @@ def dashboard_engagement(request, slug):
     """Tableau « Assiduité » : élèves actifs par jour, missions, rappels, séries."""
     from . import engagement
     space = _space(slug)
-    gate = _dashboard_gate(request, space)
+    gate = None if _admin_mq(request) else _dashboard_gate(request, space)
     if gate:
         return gate
     return render(request, "game/dashboard_engagement.html", {"space": space, "r": engagement.rapport(space)})
+
+
+
+def apk_download(request):
+    """Téléchargement de l'APK, compté (un téléphone = une fois par jour)."""
+    import os
+    from django.conf import settings as dj
+    from django.http import FileResponse, Http404
+    from . import stats
+    path = dj.APK_FILE
+    if not path or not os.path.isfile(path):
+        raise Http404("APK non disponible")
+    stats.noter_telechargement(request, "apk")
+    resp = FileResponse(open(path, "rb"), as_attachment=True, filename="MaxQuiz.apk",
+                        content_type="application/vnd.android.package-archive")
+    resp["Cache-Control"] = "no-store"
+    return resp
+
+
+@csrf_exempt
+@require_POST
+def stats_installation(request):
+    """Le navigateur signale une installation de l'application (évènement appinstalled)."""
+    from . import stats
+    stats.noter_telechargement(request, "pwa")
+    return HttpResponse(status=204)
+
+
+def dashboard_stats(request, slug):
+    """Tableau « Statistiques » : visites, téléchargements, inscrits, abonnés, actifs."""
+    from . import stats
+    space = _space(slug)
+    gate = None if _admin_mq(request) else _dashboard_gate(request, space)
+    if gate:
+        return gate
+    period = request.GET.get("p", "30")
+    jours = {"7": 7, "30": 30, "90": 90}.get(period, 30)
+    return render(request, "game/dashboard_stats.html", {"space": space, "r": stats.rapport(space, jours),
+                                                         "period": str(jours)})
+
+
+
+def _admin_mq(request):
+    """Un compte de l'administration MaxQuiz (is_staff) lit les tableaux de MaxQuiz École sans autre connexion."""
+    return bool(getattr(request, "user", None) and request.user.is_authenticated and request.user.is_staff)

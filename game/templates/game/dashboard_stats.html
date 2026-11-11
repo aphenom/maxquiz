@@ -1,0 +1,81 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} : statistiques{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--sable)}
+th:first-child,td:first-child{text-align:left}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.kpi{text-align:center}.kpi b{display:block;font-size:26px;color:var(--vert)}.kpi span{font-size:13px;color:var(--brun)}
+.bar{height:8px;border-radius:4px;background:var(--vert);min-width:2px}
+.h{margin:18px 0 6px;font-size:17px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.line{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}.line .lbl{flex:0 0 40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.line .bar{flex:none}.line span:last-child{white-space:nowrap;margin-left:auto}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">Statistiques</h1>
+  <p class="small" style="margin:0">Visites, téléchargements, inscrits et abonnés, mesurés par MaxQuiz (sans cookie)</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="stats" %}
+
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+  <a class="chip {% if period == '7' %}orange{% endif %}" href="?p=7">7 jours</a>
+  <a class="chip {% if period == '30' %}orange{% endif %}" href="?p=30">30 jours</a>
+  <a class="chip {% if period == '90' %}orange{% endif %}" href="?p=90">90 jours</a>
+</div>
+
+<h2 class="h">Sur {{ r.jours }} jours</h2>
+<div class="kpis">
+  <div class="card kpi"><b>{{ r.visiteurs }}</b><span>visiteurs</span></div>
+  <div class="card kpi"><b>{{ r.pages }}</b><span>pages vues</span></div>
+  <div class="card kpi"><b>{{ r.inscrits }}</b><span>nouveaux inscrits</span></div>
+  <div class="card kpi"><b>{{ r.conversion }} %</b><span>visiteurs → inscrits</span></div>
+  <div class="card kpi"><b>{{ r.apk }}</b><span>APK téléchargés<br>({{ r.apk_total }} au total)</span></div>
+  <div class="card kpi"><b>{{ r.pwa }}</b><span>installations<br>depuis le navigateur</span></div>
+  <div class="card kpi"><b>{{ r.revenus }} F</b><span>abonnements encaissés</span></div>
+</div>
+
+<h2 class="h">Aujourd'hui</h2>
+<div class="kpis">
+  <div class="card kpi"><b>{{ r.inscrits_total }}</b><span>élèves inscrits</span></div>
+  <div class="card kpi"><b>{{ r.abonnes }}</b><span>abonnés en cours</span></div>
+  <div class="card kpi"><b>{{ r.actifs_7 }}</b><span>actifs sur 7 jours</span></div>
+  <div class="card kpi"><b>{{ r.actifs_30 }}</b><span>actifs sur 30 jours</span></div>
+  <div class="card kpi"><b>{{ r.notifs }}</b><span>avec notifications</span></div>
+</div>
+
+<div class="two" style="margin-top:12px">
+  <div class="card"><p style="margin:0 0 6px;font-weight:800">D'où viennent les visiteurs</p>
+    {% for x in r.sources %}<div class="line"><span class="lbl">{{ x.label }}</span><span class="bar" style="width:{{ x.pct }}%;max-width:45%"></span><span>{{ x.n }}</span></div>
+    {% empty %}<p class="small">Pas encore de visite.</p>{% endfor %}</div>
+  <div class="card"><p style="margin:0 0 6px;font-weight:800">Appareils</p>
+    {% for x in r.appareils %}<div class="line"><span class="lbl">{{ x.label }}</span><span class="bar" style="width:{{ x.pct }}%;max-width:45%"></span><span>{{ x.pct }} %</span></div>
+    {% empty %}<p class="small">Pas encore de visite.</p>{% endfor %}
+    <p class="small" style="margin:8px 0 0">Visites depuis l'application installée : <strong>{{ r.dans_appli }}</strong></p></div>
+  <div class="card"><p style="margin:0 0 6px;font-weight:800">Pages les plus vues</p>
+    {% for x in r.pages_top %}<div class="line"><span class="lbl" style="flex-basis:75%">{{ x.page }}</span><span>{{ x.n }}</span></div>
+    {% empty %}<p class="small">Pas encore de visite.</p>{% endfor %}</div>
+  <div class="card"><p style="margin:0 0 6px;font-weight:800">Inscrits par classe</p>
+    {% for x in r.classes %}<div class="line"><span class="lbl" style="flex-basis:75%">{{ x.category__name|default:"Sans classe" }}</span><span>{{ x.n }}</span></div>
+    {% empty %}<p class="small">Pas encore d'inscrit.</p>{% endfor %}</div>
+</div>
+
+<div class="card" style="margin-top:12px;overflow-x:auto">
+  <p style="margin:0 0 8px;font-weight:800">Jour par jour</p>
+  <table>
+    <thead><tr><th>Jour</th><th>Visiteurs</th><th></th><th>Pages</th><th>Inscrits</th><th>APK</th><th>Installations</th></tr></thead>
+    <tbody>
+    {% for row in r.rows reversed %}
+    <tr><td>{{ row.day|date:"D d/m" }}</td><td>{{ row.visiteurs }}</td>
+      <td style="width:25%"><div class="bar" style="width:{% widthratio row.visiteurs r.max_visiteurs 100 %}%"></div></td>
+      <td>{{ row.pages }}</td><td>{{ row.inscrits }}</td><td>{{ row.apk }}</td><td>{{ row.pwa }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small" style="margin:10px 0 0">Un visiteur est compté une fois par jour (identifiant anonyme renouvelé chaque jour, sans cookie). Les robots et l'administration ne sont pas comptés. Un téléphone qui télécharge plusieurs fois l'APK le même jour ne compte qu'une fois.</p>
+</div>
+{% endblock %}

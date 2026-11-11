@@ -46,3 +46,18 @@ class VisiteEleveMiddleware:
         except Exception:                                   # la mesure ne doit jamais casser une page
             pass
         return response
+
+
+class StatistiquesMiddleware:
+    """Compte les pages vues de MaxQuiz École (voir game/stats.py)."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        try:
+            from .stats import noter
+            noter(request, response)
+        except Exception:                                   # la mesure ne doit jamais casser une page
+            pass
+        return response

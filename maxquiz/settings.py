@@ -76,6 +76,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'game.middleware.ProductMiddleware',
     'game.middleware.VisiteEleveMiddleware',
+    'game.middleware.StatistiquesMiddleware',
 ]
 
 ROOT_URLCONF = 'maxquiz.urls'
@@ -222,6 +223,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Lien de téléchargement de l'APK (ou de la fiche Play Store) proposé aux visiteurs
 # Android qui n'ont pas encore l'application. Vide = pas de proposition d'installation.
 APK_URL = os.environ.get("APK_URL", "")
+# Fichier APK servi (et compté) par MaxQuiz à l'adresse /telecharger/maxquiz.apk.
+# Exemple : /var/www/maxquiz.net/private/maxquiz.apk (avec APK_URL=https://maxquiz.net/telecharger/maxquiz.apk).
+APK_FILE = os.environ.get("APK_FILE", "")
 # Lien Google Play de l'application, une fois publiée : le bouton « Installer » y mène alors.
 PLAY_STORE_URL = os.environ.get("PLAY_STORE_URL", "")
 

@@ -13,6 +13,7 @@ from .models import (GameConfig, Player, Question, AdCampaign,
 admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
 admin.site.index_title = "Back-office MaxQuiz"
+admin.site.index_template = "admin/mq_index.html"
 
 
 @admin.register(GameConfig)
@@ -429,3 +430,24 @@ class RappelsAdmin(admin.ModelAdmin):
     list_display = ("player", "actifs", "heure", "pause_jusquau", "ignores", "dernier_envoi", "derniere_visite")
     list_filter = ("actifs",)
     search_fields = ("player__phone", "player__pseudo")
+
+
+
+from .models import Telechargement, Visite  # noqa: E402
+
+
+@admin.register(Telechargement)
+class TelechargementAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "kind", "source", "player")
+    list_filter = ("kind", "day", "source")
+    date_hierarchy = "day"
+
+
+@admin.register(Visite)
+class VisiteAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "page", "source", "device", "in_app", "player")
+    list_filter = ("day", "device", "in_app", "source")
+    date_hierarchy = "day"
+
+    def has_add_permission(self, request):
+        return False

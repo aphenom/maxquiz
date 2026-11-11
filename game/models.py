@@ -1053,3 +1053,38 @@ class Mission(models.Model):
 
     def __str__(self):
         return f"{self.player} · {self.day} · {self.title}"
+
+
+class Visite(models.Model):
+    """Page vue (statistiques de fréquentation, sans cookie ni service extérieur).
+    Le visiteur est un identifiant anonyme du jour (empreinte de l'adresse IP et du
+    navigateur, salée et renouvelée chaque jour) : on compte sans pouvoir suivre."""
+    DEVICES = [("android", "Android"), ("ios", "iPhone / iPad"), ("ordinateur", "Ordinateur"), ("autre", "Autre")]
+    day = models.DateField(default=timezone.localdate, db_index=True)
+    visiteur = models.CharField(max_length=16)
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    page = models.CharField(max_length=120)
+    source = models.CharField("Provenance", max_length=60, blank=True, default="")
+    device = models.CharField("Appareil", max_length=10, choices=DEVICES, default="autre")
+    in_app = models.BooleanField("Depuis l'application", default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Visite"
+        verbose_name_plural = "Visites"
+        indexes = [models.Index(fields=["day", "visiteur"])]
+
+
+class Telechargement(models.Model):
+    """Téléchargement de l'APK ou installation de l'application depuis le navigateur."""
+    KINDS = [("apk", "Téléchargement de l'APK"), ("pwa", "Installation depuis le navigateur")]
+    kind = models.CharField(max_length=4, choices=KINDS, default="apk")
+    day = models.DateField(default=timezone.localdate, db_index=True)
+    visiteur = models.CharField(max_length=16, blank=True, default="")
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    source = models.CharField("Provenance", max_length=60, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Téléchargement / installation"
+        verbose_name_plural = "Téléchargements et installations"
