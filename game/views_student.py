@@ -152,6 +152,22 @@ def student_me(request):
                 mine.save(update_fields=["parent_phone"])
                 messages.success(request, "Numéro du parent enregistré : il recevra ton bilan sur WhatsApp."
                                  if parent else "Numéro du parent retiré.")
+        elif action == "rappels":
+            from datetime import time as dtime, timedelta
+            from django.utils import timezone
+            from .engagement import reglages
+            prefs = reglages(player)
+            if request.POST.get("pause") == "7":
+                prefs.pause_jusquau = timezone.localdate() + timedelta(days=7)
+                messages.success(request, "Rappels en pause pendant 7 jours.")
+            else:
+                prefs.actifs = request.POST.get("actifs") == "on"
+                h = request.POST.get("heure", "")
+                prefs.heure = dtime(int(h[:2]), int(h[3:5])) if len(h) == 5 and h[2] == ":" and h[:2].isdigit() \
+                    and 7 <= int(h[:2]) <= 20 else None
+                prefs.pause_jusquau = None
+                messages.success(request, "Rappels enregistrés." if prefs.actifs else "Rappels quotidiens coupés.")
+            prefs.save()
         elif action == "school":
             school, error = join_school(player, request.POST.get("join_code", ""))
             if error:
@@ -159,7 +175,12 @@ def student_me(request):
             else:
                 messages.success(request, f"Tu as rejoint {school.name}.")
         return redirect("student_me")
+    from .engagement import reglages, serie
+    prefs = reglages(player)
+    heures = [f"{h:02d}:{m:02d}" for h in range(7, 21) for m in (0, 30)]
     return render(request, "game/eleve/moi.html", {
+        "prefs": prefs, "heures": heures, "streak": serie(player),
+        "heure_choisie": prefs.heure.strftime("%H:%M") if prefs.heure else "",
         "player": player, "mine": mine, "space": space,
         "access": access_status(space, player),
         "schools": school_memberships(player), "tab": "me",

@@ -75,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'game.middleware.ProductMiddleware',
+    'game.middleware.VisiteEleveMiddleware',
 ]
 
 ROOT_URLCONF = 'maxquiz.urls'

@@ -29,6 +29,22 @@
       <span style="flex:1"><strong>Aide et contact</strong><br><span class="small">WhatsApp, questions fréquentes, signaler un problème</span></span>›</a>
   </div>
 
+  <form method="post" class="card" style="margin-top:12px" id="mesRappels">
+    {% csrf_token %}<input type="hidden" name="action" value="rappels">
+    <p style="margin:0;font-weight:800">Mes rappels{% if streak %} <span class="small" style="font-weight:700">· 🔥 série de {{ streak }} jour{{ streak|pluralize }}</span>{% endif %}</p>
+    <p class="small" style="margin:4px 0 10px">Un rappel par jour au maximum avec ta mission du jour, seulement si tu n'as pas encore révisé. En automatique, il arrive un peu avant l'heure où tu révises d'habitude.</p>
+    {% if prefs.pause_jusquau %}<p class="small" style="margin:0 0 10px;color:var(--rouge);font-weight:700">En pause jusqu'au {{ prefs.pause_jusquau|date:"d/m" }}.</p>{% endif %}
+    <label style="display:flex;gap:10px;align-items:center;font-weight:700"><input type="checkbox" name="actifs" style="width:auto;margin:0"{% if prefs.actifs %} checked{% endif %}> Rappel de ma mission du jour</label>
+    <label for="heure" class="small" style="display:block;font-weight:700;margin:12px 0 4px">Heure du rappel</label>
+    <select id="heure" name="heure" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--sable);font-size:16px;background:#fff">
+      <option value="">Automatique (recommandé)</option>
+      {% for h in heures %}<option value="{{ h }}"{% if h == heure_choisie %} selected{% endif %}>{{ h|cut:":00"|default:h }}{% if ":30" not in h %} h{% endif %}</option>{% endfor %}
+    </select>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn vert" type="submit" style="flex:1">Enregistrer</button>
+      {% if not prefs.pause_jusquau %}<button class="btn" type="submit" name="pause" value="7" style="flex:1;background:var(--sable);color:var(--encre)">Pause 7 jours</button>{% endif %}
+    </div>
+  </form>
   <form method="post" class="card" style="margin-top:12px">
     {% csrf_token %}<input type="hidden" name="action" value="parent">
     <p style="margin:0;font-weight:800">Mes parents</p>

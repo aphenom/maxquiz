@@ -31,6 +31,7 @@ que pour une école ; un client entreprise ne voit que ce qui le concerne.{% end
     {% if space.subscription_required %}
     <a href="{% url 'dashboard_subscriptions' space.slug %}" class="chip {% if active == 'subscriptions' %}orange{% endif %}">Abonnements</a>
     <a href="{% url 'dashboard_shares' space.slug %}" class="chip {% if active == 'shares' %}orange{% endif %}">Reversements</a>
+    {% if space.members_only %}<a href="{% url 'dashboard_engagement' space.slug %}" class="chip {% if active == 'engagement' %}orange{% endif %}">Assiduité</a>{% endif %}
     {% if space.kind == "catalog" %}<a href="{% url 'dashboard_ads' space.slug %}" class="chip {% if active == 'ads' %}orange{% endif %}">Résultats des pubs</a>{% endif %}
     {% endif %}
     <p class="nav-group">Réglages</p>

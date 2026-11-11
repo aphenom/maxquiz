@@ -258,3 +258,14 @@ def dashboard_ads(request, slug):
         "totals": {k: sum(r[k] for r in rows) for k in ("signups", "paying", "revenue")},
         "pixel_on": bool(dj_settings.META_PIXEL_ID), "capi_on": bool(dj_settings.META_CAPI_TOKEN),
     })
+
+
+
+def dashboard_engagement(request, slug):
+    """Tableau « Assiduité » : élèves actifs par jour, missions, rappels, séries."""
+    from . import engagement
+    space = _space(slug)
+    gate = _dashboard_gate(request, space)
+    if gate:
+        return gate
+    return render(request, "game/dashboard_engagement.html", {"space": space, "r": engagement.rapport(space)})

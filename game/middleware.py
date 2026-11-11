@@ -24,3 +24,25 @@ class ProductMiddleware:
             from .meta import capture
             capture(request)            # provenance publicitaire (utm_*, fbclid), premier contact
         return self.get_response(request)
+
+
+class VisiteEleveMiddleware:
+    """Note la visite d'un élève (au plus toutes les 10 minutes) : remet à zéro le compteur
+    de rappels ignorés et marque la mission du jour comme ouverte après un rappel."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        try:
+            pid = request.session.get("verified_player_id") if hasattr(request, "session") else None
+            if pid and response.status_code < 400 and not request.path.startswith(("/admin/", "/api/", "/static/")):
+                import time as _t
+                if _t.time() - request.session.get("vu_le", 0) > 600:
+                    request.session["vu_le"] = _t.time()
+                    from .engagement import noter_visite
+                    from .models import Player
+                    noter_visite(Player(id=pid))
+        except Exception:                                   # la mesure ne doit jamais casser une page
+            pass
+        return response

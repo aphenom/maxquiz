@@ -21,14 +21,32 @@
   {% endif %}
   {% include "game/_messages.html" %}
   {% include "game/_access_banner.html" %}
-  {% if player %}{% include "game/_push_card.html" %}{% endif %}
+  {% if player and push_ready or player and not space.members_only %}{% include "game/_push_card.html" %}{% endif %}
   {% for s in my_schools %}
   <a class="card" href="{% url 'space_home' s.space.slug %}" style="margin-top:12px;display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit">
     <span aria-hidden="true" style="font-size:24px">🏫</span>
     <span style="flex:1"><strong>{{ s.space.name }}</strong><br><span class="small">Exercices de tes profs et séances de ton école</span></span>›</a>
   {% endfor %}
 
-  {% if next_quiz or new_lesson %}
+  {% if mission %}
+  <div class="card mission" style="margin-top:12px;background:var(--encre);color:var(--ivoire)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <p style="margin:0;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--or)">Mission du jour</p>
+      {% if streak %}<span class="streak" title="Jours de révision d'affilée">🔥 {{ streak }} jour{{ streak|pluralize }}</span>{% endif %}
+    </div>
+    {% if done_today %}
+    <p style="margin:6px 0 2px;font-size:19px;font-weight:800;line-height:1.25">✅ Objectif du jour atteint, bravo !</p>
+    <p style="margin:0 0 10px;font-size:14px;opacity:.85">{% if streak >= 2 %}Ta série continue : {{ streak }} jours d'affilée. Reviens demain pour la prolonger.{% else %}Reviens demain pour lancer ta série de jours.{% endif %}</p>
+    <a href="{{ mission.url }}" style="color:var(--ivoire);font-size:14px;font-weight:700">Encore un peu ? {{ mission.title }} →</a>
+    {% else %}
+    <p style="margin:6px 0 2px;font-size:19px;font-weight:800;line-height:1.25">{{ mission.title }}</p>
+    <p style="margin:0 0 10px;font-size:14px;opacity:.85">{{ mission.text }}</p>
+    <a class="btn" href="{{ mission.url }}">{{ mission.cta }}</a>
+    {% if streak %}<p style="margin:8px 0 0;font-size:13px;opacity:.8;text-align:center">Fais-la aujourd'hui et passe à {{ streak|add:1 }} jours 🔥</p>{% endif %}
+    {% endif %}
+  </div>
+  <style>.mission .streak{font-size:13px;font-weight:800;background:rgba(255,255,255,.12);padding:4px 10px;border-radius:99px;white-space:nowrap}</style>
+  {% elif next_quiz or new_lesson %}
   <div class="card" style="margin-top:12px;background:var(--encre);color:var(--ivoire)">
     <p style="margin:0;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--or)">À faire maintenant</p>
     {% if next_quiz %}

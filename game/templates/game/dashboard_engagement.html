@@ -1,0 +1,43 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} : assiduité{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--sable)}
+th:first-child,td:first-child{text-align:left}
+.bar{height:8px;border-radius:4px;background:var(--vert);min-width:2px}
+.kpi{text-align:center}.kpi p:first-child{margin:0;font-size:26px;font-weight:800;color:var(--vert)}.kpi p{margin:0}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">Assiduité</h1>
+  <p class="small" style="margin:0">Les élèves reviennent-ils chaque jour ? Missions du jour, rappels et séries</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="engagement" %}
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px">
+  <div class="card kpi"><p>{{ r.actifs_7 }}</p><p class="small">actifs sur 7 jours<br>sur {{ r.inscrits }} inscrits</p></div>
+  <div class="card kpi"><p>{{ r.en_serie }}</p><p class="small">élèves en série<br>(2 jours ou plus)</p></div>
+  <div class="card kpi"><p>{{ r.serie_moyenne }}</p><p class="small">série moyenne<br>(jours)</p></div>
+  <div class="card kpi"><p>{{ r.notifs }}</p><p class="small">élèves avec<br>notifications</p></div>
+  <div class="card kpi"><p>{{ r.envoyes }}</p><p class="small">rappels envoyés<br>(14 jours)</p></div>
+  <div class="card kpi"><p>{% if r.envoyes %}{% widthratio r.ouverts r.envoyes 100 %} %{% else %}–{% endif %}</p><p class="small">rappels suivis<br>d'une visite</p></div>
+</div>
+
+<div class="card" style="margin-top:12px;overflow-x:auto">
+  <p style="margin:0 0 8px;font-weight:800">14 derniers jours</p>
+  <table>
+    <thead><tr><th>Jour</th><th>Élèves actifs</th><th></th><th>Rappels</th><th>Suivis d'une visite</th><th>Missions faites</th></tr></thead>
+    <tbody>
+    {% for row in r.rows reversed %}
+    <tr><td>{{ row.day|date:"D d/m" }}</td><td>{{ row.actifs }}</td>
+      <td style="width:30%"><div class="bar" style="width:{% widthratio row.actifs r.max_actifs 100 %}%"></div></td>
+      <td>{{ row.envoyes }}</td><td>{{ row.ouverts }}</td><td>{{ row.faites }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small" style="margin:10px 0 0">Un élève est « actif » s'il a répondu à au moins une question ou ouvert un cours dans la journée. Un rappel est envoyé au plus une fois par jour, seulement à ceux qui n'ont pas encore révisé.</p>
+</div>
+{% endblock %}

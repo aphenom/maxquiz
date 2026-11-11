@@ -51,6 +51,9 @@ def lesson_detail(request, slug, lesson_id):
                                            shared_level_name__iexact=lesson.shared_level_name,
                                            shared_subject_name__iexact=lesson.shared_subject_name,
                                            name__iexact=lesson.shared_theme_name)[:3])
+    if player:
+        from .models import LessonView
+        LessonView.objects.get_or_create(player=player, lesson=lesson, day=timezone.localdate())
     return render(request, "game/lesson_detail.html", {
         "space": space, "player": player, "lesson": lesson, "quizzes": quizzes,
         "page": request.GET.get("page", ""), "tab": "lessons",

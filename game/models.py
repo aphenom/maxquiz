@@ -995,3 +995,61 @@ class Signalement(models.Model):
         if self.lesson_id:
             return f"Cours : {self.lesson.title}"
         return ""
+
+
+class LessonView(models.Model):
+    """Consultation d'un cours par un élève (une ligne par cours et par jour)."""
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="lesson_views")
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="views")
+    day = models.DateField(default=timezone.localdate)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Consultation de cours"
+        verbose_name_plural = "Consultations de cours"
+        constraints = [models.UniqueConstraint(fields=["player", "lesson", "day"], name="one_lesson_view_per_day")]
+        indexes = [models.Index(fields=["player", "day"])]
+
+
+class Rappels(models.Model):
+    """Réglages des rappels quotidiens d'un élève et suivi des envois."""
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="rappels")
+    actifs = models.BooleanField("Rappel quotidien de la mission", default=True)
+    heure = models.TimeField("Heure choisie (vide = automatique)", null=True, blank=True)
+    pause_jusquau = models.DateField("En pause jusqu'au", null=True, blank=True)
+    ignores = models.PositiveSmallIntegerField("Rappels restés sans visite", default=0)
+    dernier_envoi = models.DateTimeField(null=True, blank=True)
+    derniere_visite = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Réglage des rappels"
+        verbose_name_plural = "Réglages des rappels"
+
+    def __str__(self):
+        return f"Rappels de {self.player}"
+
+
+class Mission(models.Model):
+    """Mission du jour proposée à un élève (une par jour), et ce qu'il en a fait."""
+    KINDS = [("reprendre", "Quiz à terminer"), ("revision", "Révision espacée"), ("point_faible", "Point faible"),
+             ("suite", "Chapitre suivant"), ("cours", "Nouveau cours"), ("entrainement", "Entraînement")]
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="missions")
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="missions")
+    day = models.DateField(default=timezone.localdate)
+    kind = models.CharField("Type", max_length=14, choices=KINDS)
+    title = models.CharField("Titre", max_length=140)
+    text = models.CharField("Détail", max_length=200, blank=True, default="")
+    url = models.CharField("Lien", max_length=300)
+    cta = models.CharField("Bouton", max_length=40, default="C'est parti")
+    created_at = models.DateTimeField(auto_now_add=True)
+    pushed_at = models.DateTimeField("Rappel envoyé le", null=True, blank=True)
+    opened_at = models.DateTimeField("Appli ouverte après le rappel", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Mission du jour"
+        verbose_name_plural = "Missions du jour"
+        constraints = [models.UniqueConstraint(fields=["player", "day"], name="one_mission_per_day")]
+        indexes = [models.Index(fields=["day"])]
+
+    def __str__(self):
+        return f"{self.player} · {self.day} · {self.title}"

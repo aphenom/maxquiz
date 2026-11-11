@@ -866,7 +866,16 @@ def space_home(request, slug):
             lessons = [l for g in lessons_by_subject(space, current_membership)
                        for ch in g["chapters"] for l in ch["lessons"]]
             new_lesson = max(lessons, key=lambda l: l.created_at, default=None)
+    # Mission du jour et série (élèves des espaces réservés aux membres)
+    mission, streak, done_today, push_ready = None, 0, False, False
+    if player and space.members_only and current_membership:
+        from . import engagement
+        mission = engagement.mission_du_jour(player, space, current_membership)
+        streak = engagement.serie(player)
+        done_today = engagement.actif_aujourdhui(player)
+        push_ready = GameSession.objects.filter(player=player, finished_at__isnull=False).exists()
     return render(request, "game/space_home.html", {
+        "mission": mission, "streak": streak, "done_today": done_today, "push_ready": push_ready,
         "next_quiz": next_quiz, "new_lesson": new_lesson,
         "level_label": (" · ".join(x for x in (current_membership.category.name if current_membership and current_membership.category_id else "",
                                               current_membership.sub_category.name if current_membership and current_membership.sub_category_id else "") if x)

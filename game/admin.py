@@ -410,3 +410,22 @@ class SignalementAdmin(admin.ModelAdmin):
     def marquer_sans_suite(self, request, queryset):
         for obj in queryset:
             self._close(obj, "rejete")
+
+
+
+from .models import Mission, Rappels  # noqa: E402
+
+
+@admin.register(Mission)
+class MissionAdmin(admin.ModelAdmin):
+    list_display = ("day", "player", "kind", "title", "pushed_at", "opened_at")
+    list_filter = ("kind", "day", "space")
+    search_fields = ("player__phone", "player__pseudo", "title")
+    date_hierarchy = "day"
+
+
+@admin.register(Rappels)
+class RappelsAdmin(admin.ModelAdmin):
+    list_display = ("player", "actifs", "heure", "pause_jusquau", "ignores", "dernier_envoi", "derniere_visite")
+    list_filter = ("actifs",)
+    search_fields = ("player__phone", "player__pseudo")
