@@ -114,9 +114,9 @@ class ResourceAdmin(admin.ModelAdmin):
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ("membership", "plan", "amount", "provider", "payment_method", "payment_ref", "status",
-                    "start_date", "end_date", "created_at")
-    list_filter = ("status", "provider", "payment_method", "plan", "membership__space")
+    list_display = ("membership", "plan", "amount", "list_price", "promo", "provider", "payment_method", "payment_ref",
+                    "status", "start_date", "end_date", "created_at")
+    list_filter = ("status", "provider", "payment_method", "plan", "membership__space", "promo")
     search_fields = ("membership__full_name", "membership__external_ref", "payment_ref", "payer_phone")
 
 
@@ -452,3 +452,36 @@ class VisiteAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+
+from .models import CodePromo  # noqa: E402
+
+
+@admin.register(CodePromo)
+class CodePromoAdmin(admin.ModelAdmin):
+    list_display = ("code", "percent", "formules", "utilisations", "max_uses", "max_per_player", "first_only",
+                    "starts_on", "ends_on", "active", "note")
+    list_editable = ("active",)
+    list_filter = ("active", "percent", "first_only")
+    search_fields = ("code", "note")
+    fieldsets = (
+        (None, {"fields": ("code", "percent", "note", "active")}),
+        ("Formules concernées", {"fields": ("monthly", "quarterly", "yearly")}),
+        ("Utilisations", {"fields": ("max_uses", "max_per_player", "first_only"),
+                          "description": "Code unique : « Utilisations au total » = 1. Code réutilisable par "
+                                         "plusieurs comptes : 0 (illimité) ou un plafond, et 1 utilisation par compte."}),
+        ("Période", {"fields": ("starts_on", "ends_on")}),
+        ("Espace", {"fields": ("space",), "classes": ("collapse",)}),
+    )
+
+    @admin.display(description="Formules")
+    def formules(self, obj):
+        names = {"monthly": "mensuel", "quarterly": "trimestriel", "yearly": "annuel"}
+        return ", ".join(names[c] for c in obj.plans()) or "—"
+
+    @admin.display(description="Utilisé")
+    def utilisations(self, obj):
+        from .promos import _uses
+        validated = obj.subscriptions.filter(status="active").count()
+        return f"{_uses(obj.subscriptions.all()).count()} (dont {validated} payé{'s' if validated > 1 else ''})"

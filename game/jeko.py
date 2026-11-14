@@ -66,7 +66,7 @@ def _base_url(request=None):
     return request.build_absolute_uri("/").rstrip("/") if request else ""
 
 
-def start_payment(request, membership, plan, method):
+def start_payment(request, membership, plan, method, promo=None):
     """Crée l'abonnement en attente et la demande de paiement Jèko.
     Renvoie (abonnement, url de paiement)."""
     from .models import Subscription
@@ -75,6 +75,7 @@ def start_payment(request, membership, plan, method):
     ref = f"MQ-{membership.id}-{secrets.token_hex(5).upper()}"
     with transaction.atomic():
         sub = Subscription.objects.create(membership=membership, plan=plan["code"], amount=plan["price"],
+                                          list_price=plan.get("list_price", plan["price"]), promo=promo,
                                           payment_ref=ref, provider="jeko", payment_method=method,
                                           status="initiated", payer_phone=membership.phone or "")
     back = _base_url(request) + reverse("jeko_return")

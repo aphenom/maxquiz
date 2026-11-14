@@ -662,6 +662,9 @@ class Subscription(models.Model):
     provider_id = models.CharField("Identifiant chez le prestataire", max_length=80, blank=True, default="",
                                    db_index=True)
     payment_method = models.CharField("Opérateur", max_length=12, blank=True, default="")
+    promo = models.ForeignKey("CodePromo", null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name="subscriptions", verbose_name="Code promo")
+    list_price = models.PositiveIntegerField("Prix avant remise (F CFA)", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1088,3 +1091,44 @@ class Telechargement(models.Model):
     class Meta:
         verbose_name = "Téléchargement / installation"
         verbose_name_plural = "Téléchargements et installations"
+
+
+
+class CodePromo(models.Model):
+    """Code de réduction sur un abonnement.
+    - Unique : utilisations au total = 1 (un code par personne, à distribuer).
+    - Réutilisable : utilisations au total = 0 (illimité) ou N ; chaque compte ne peut
+      l'utiliser qu'une fois (réglable)."""
+    code = models.CharField("Code", max_length=30, unique=True,
+                            help_text="Lettres et chiffres, sans espace (ex. BEPC2027). Majuscules automatiques.")
+    percent = models.PositiveSmallIntegerField("Réduction (%)", help_text="De 1 à 100. 100 = abonnement offert.")
+    space = models.ForeignKey(Space, null=True, blank=True, on_delete=models.CASCADE, related_name="promos",
+                              verbose_name="Espace (vide = MaxQuiz École)")
+    monthly = models.BooleanField("Valable sur le mensuel", default=True)
+    quarterly = models.BooleanField("Valable sur le trimestriel", default=True)
+    yearly = models.BooleanField("Valable sur l'annuel", default=True)
+    max_uses = models.PositiveIntegerField("Utilisations au total (0 = illimité)", default=0)
+    max_per_player = models.PositiveSmallIntegerField("Utilisations par compte", default=1)
+    first_only = models.BooleanField("Réservé à un premier abonnement", default=False)
+    starts_on = models.DateField("Valable à partir du", null=True, blank=True)
+    ends_on = models.DateField("Valable jusqu'au (inclus)", null=True, blank=True)
+    active = models.BooleanField("Actif", default=True)
+    note = models.CharField("Note interne (campagne, partenaire…)", max_length=120, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Code promo"
+        verbose_name_plural = "Codes promo"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.code} (-{self.percent} %)"
+
+    def save(self, *args, **kwargs):
+        import re
+        self.code = re.sub(r"[^A-Za-z0-9]", "", self.code or "").upper()[:30]
+        self.percent = max(1, min(100, self.percent or 1))
+        super().save(*args, **kwargs)
+
+    def plans(self):
+        return [c for c, ok in (("monthly", self.monthly), ("quarterly", self.quarterly), ("yearly", self.yearly)) if ok]

@@ -38,18 +38,64 @@ def space_subscribe(request, slug):
         # Version Play Store : ni formules, ni paiement, ni renvoi vers un autre moyen de paiement.
         return render(request, "game/eleve/acces.html", {"space": space, "player": player,
                                                           "access": access, "tab": "me"})
-    plans = plan_prices(space)
-
-    from . import jeko
+    from . import jeko, promos
     online = jeko.available_for(space)
-    if request.method == "POST" and membership and request.POST.get("action") == "jeko":
-        chosen = next((p for p in plans if p["code"] == request.POST.get("plan", "")), None)
+    promo_key = f"promo_{space.id}"
+
+    # Code promo : saisi, retiré, puis vérifié à chaque affichage et à chaque paiement
+    if request.method == "POST" and request.POST.get("action") == "promo":
+        raw = request.POST.get("code", "")
+        if request.POST.get("retirer") or not promos.clean(raw):
+            request.session.pop(promo_key, None)
+        else:
+            promo, err = promos.check(raw, space, membership)
+            if err:
+                request.session.pop(promo_key, None)
+                messages.error(request, err)
+            else:
+                request.session[promo_key] = promo.code
+                messages.success(request, f"Code {promo.code} appliqué : -{promo.percent} %.")
+        return redirect("space_subscribe", slug=slug)
+    promo, promo_error = promos.check(request.session.get(promo_key, ""), space, membership)
+    if promo_error:
+        request.session.pop(promo_key, None)
+        messages.error(request, promo_error)
+    plans = promos.apply_to_plans(plan_prices(space), promo)
+
+    def chosen_plan(code):
+        """Formule choisie, avec le code promo revérifié pour cette formule précise."""
+        p = next((x for x in plans if x["code"] == code), None)
+        if p and p["promo"]:
+            _ok, err = promos.check(promo.code, space, membership, code)
+            if err:
+                return None, err
+        return p, None
+
+    def offered(chosen):
+        """Code à 100 % : l'abonnement est activé tout de suite, sans paiement."""
+        from .subscriptions import validate
+        sub = Subscription.objects.create(
+            membership=membership, plan=chosen["code"], amount=0, list_price=chosen["list_price"], promo=promo,
+            payment_ref=f"PROMO-{promo.code}-{timezone.now():%y%m%d%H%M%S}"[:60], note="Offert par code promo")
+        validate(sub)
+        request.session.pop(promo_key, None)
+        messages.success(request, f"Abonnement offert activé jusqu'au {sub.end_date:%d/%m/%Y}. Bonnes révisions !")
+        return redirect("space_home", slug=slug)
+
+    if request.method == "POST" and membership and request.POST.get("action") in ("jeko", "free"):
+        chosen, err = chosen_plan(request.POST.get("plan", ""))
+        if err:
+            messages.error(request, err)
+            return redirect("space_subscribe", slug=slug)
+        if chosen and chosen["price"] == 0 and chosen["promo"]:
+            return offered(chosen)
         method = request.POST.get("method", "")
         if not (online and chosen and method in dict(jeko.METHODS)):
             messages.error(request, "Choisis ta formule et ton moyen de paiement.")
             return redirect("space_subscribe", slug=slug)
         try:
-            _sub, url = jeko.start_payment(request, membership, chosen, method)
+            _sub, url = jeko.start_payment(request, membership, chosen, method,
+                                           promo=promo if chosen["promo"] else None)
         except jeko.JekoError:
             messages.error(request, "Le paiement en ligne est momentanément indisponible. "
                                     "Réessaie dans quelques minutes.")
@@ -59,8 +105,12 @@ def space_subscribe(request, slug):
     if request.method == "POST" and membership:
         plan = request.POST.get("plan", "")
         ref = request.POST.get("payment_ref", "").strip()[:60]
-        chosen = next((p for p in plans if p["code"] == plan), None)
-        if not chosen or len(ref) < 4:
+        chosen, err = chosen_plan(plan)
+        if not err and chosen and chosen["price"] == 0 and chosen["promo"]:
+            return offered(chosen)
+        if err:
+            messages.error(request, err)
+        elif not chosen or len(ref) < 4:
             messages.error(request, "Choisis une formule et saisis la référence de la transaction "
                                     "(au moins 4 caractères).")
         else:
@@ -68,6 +118,7 @@ def space_subscribe(request, slug):
                 with transaction.atomic():  # point de sauvegarde : un doublon ne casse pas la requête
                     Subscription.objects.create(
                         membership=membership, plan=plan, amount=chosen["price"], payment_ref=ref,
+                        list_price=chosen["list_price"], promo=promo if chosen["promo"] else None,
                         payer_phone=normalize_phone(request.POST.get("payer_phone", "")) or "")
                 notify(teachers=direction_of(space), kind="payment_pending",
                        title="Paiement d'abonnement à vérifier",
@@ -86,7 +137,7 @@ def space_subscribe(request, slug):
     return render(request, "game/space_subscribe.html", {
         "space": space, "player": player, "access": access, "membership": membership,
         "plans": plans, "history": history, "tab": "home",
-        "online": online, "methods": jeko.METHODS,
+        "online": online, "methods": jeko.METHODS, "promo": promo,
     })
 
 

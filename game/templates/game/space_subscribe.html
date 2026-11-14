@@ -34,6 +34,22 @@
     <p style="margin:0;font-weight:700">{{ membership.full_name }}{% if membership.external_ref %} · matricule {{ membership.external_ref }}{% endif %}</p>
   </div>
 
+  <form method="post" class="card promo" style="margin-top:12px">
+    {% csrf_token %}<input type="hidden" name="action" value="promo">
+    {% if promo %}
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="flex:1">🏷️ Code <strong>{{ promo.code }}</strong> : <strong style="color:var(--vert)">-{{ promo.percent }} %</strong>
+        {% if not promo.monthly or not promo.yearly or not promo.quarterly %}<br><span class="small">Valable sur : {% for c in promo.plans %}{% if c == "monthly" %}mensuel{% elif c == "quarterly" %}trimestriel{% else %}annuel{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}</span>
+      <button type="submit" name="retirer" value="1" class="small" style="background:none;border:0;color:var(--rouge);font-weight:700;cursor:pointer;min-height:44px">Retirer</button>
+    </div>
+    {% else %}
+    <label for="promoCode" class="small" style="font-weight:700;display:block;margin-bottom:6px">Tu as un code promo ?</label>
+    <div style="display:flex;gap:8px">
+      <input id="promoCode" name="code" maxlength="30" autocomplete="off" autocapitalize="characters" placeholder="Ex. BEPC2027" style="flex:1;margin:0;text-transform:uppercase">
+      <button class="btn encre" type="submit" style="width:auto;padding:10px 14px">Appliquer</button>
+    </div>
+    {% endif %}
+  </form>
   {% if online %}
   <form method="post" style="margin-top:12px" id="payOnline">
     {% csrf_token %}
@@ -43,7 +59,7 @@
     <label class="card plan">
       <input type="radio" name="plan" value="{{ p.code }}" data-price="{{ p.price }}" {% if forloop.first %}checked{% endif %}>
       <span style="flex:1"><strong>{{ p.label }}</strong><br><span class="small">{{ p.duration }}</span></span>
-      <b>{{ p.price }} F</b>
+      <span style="text-align:right">{% if p.promo %}<s class="small" style="display:block">{{ p.list_price }} F</s>{% endif %}<b>{{ p.price }} F</b></span>
     </label>
     {% endfor %}
     <p style="font-weight:700;margin:14px 0 8px">2. Choisis ton moyen de paiement</p>
@@ -63,9 +79,9 @@
     <p style="font-weight:700;margin:0 0 8px">1. Choisis ta formule</p>
     {% for p in plans %}
     <label class="card plan">
-      <input type="radio" name="plan" value="{{ p.code }}" {% if forloop.first %}checked{% endif %}>
+      <input type="radio" name="plan" value="{{ p.code }}" data-price="{{ p.price }}" {% if forloop.first %}checked{% endif %}>
       <span style="flex:1"><strong>{{ p.label }}</strong><br><span class="small">{{ p.duration }}</span></span>
-      <b>{{ p.price }} F</b>
+      <span style="text-align:right">{% if p.promo %}<s class="small" style="display:block">{{ p.list_price }} F</s>{% endif %}<b>{{ p.price }} F</b></span>
     </label>
     {% endfor %}
 
@@ -96,9 +112,9 @@
     <p style="font-weight:700;margin:0 0 8px">1. Choisis ta formule</p>
     {% for p in plans %}
     <label class="card plan">
-      <input type="radio" name="plan" value="{{ p.code }}" {% if forloop.first %}checked{% endif %}>
+      <input type="radio" name="plan" value="{{ p.code }}" data-price="{{ p.price }}" {% if forloop.first %}checked{% endif %}>
       <span style="flex:1"><strong>{{ p.label }}</strong><br><span class="small">{{ p.duration }}</span></span>
-      <b>{{ p.price }} F</b>
+      <span style="text-align:right">{% if p.promo %}<s class="small" style="display:block">{{ p.list_price }} F</s>{% endif %}<b>{{ p.price }} F</b></span>
     </label>
     {% endfor %}
 
@@ -127,7 +143,7 @@
   <p style="font-weight:700;margin:18px 0 8px">Historique</p>
   {% for s in history %}
   <div class="card small" style="margin-bottom:6px;display:flex;justify-content:space-between;gap:8px">
-    <span>{{ s.get_plan_display }} · {{ s.amount }} F · réf. {{ s.payment_ref }}</span>
+    <span>{{ s.get_plan_display }} · {{ s.amount }} F{% if s.promo %} (code {{ s.promo.code }}){% endif %} · réf. {{ s.payment_ref }}</span>
     <span style="font-weight:700;{% if s.status == 'active' %}color:var(--vert){% elif s.status == 'rejected' %}color:var(--rouge){% endif %}">
       {% if s.status == "active" %}du {{ s.start_date|date:"d/m" }} au {{ s.end_date|date:"d/m/Y" }}{% else %}{{ s.get_status_display }}{% endif %}</span>
   </div>
@@ -138,14 +154,23 @@
 {% endblock %}
 {% block js %}
 <script>
+/* Formulaire « déclarer un paiement » : pas de référence à saisir pour un abonnement offert (code à 100 %). */
+document.querySelectorAll('form').forEach(function(form){
+  var ref = form.querySelector('input[name=payment_ref]'); if (!ref) return;
+  function sync(){ var p = form.querySelector('input[name=plan]:checked'); ref.required = !(p && Number(p.dataset.price) === 0); }
+  form.addEventListener('change', sync); sync();
+});
+</script>
+<script>
 /* Le bouton affiche le montant de la formule choisie ; un seul envoi. */
 (function(){
   var f = document.getElementById('payOnline'); if (!f) return;
   var btn = document.getElementById('payBtn');
   function label(){ var p = f.querySelector('input[name=plan]:checked');
-    btn.textContent = p ? 'Payer ' + Number(p.dataset.price).toLocaleString('fr-FR') + ' F' : 'Payer'; }
+    var free = p && Number(p.dataset.price) === 0;
+    btn.textContent = !p ? 'Payer' : free ? 'Activer mon abonnement offert' : 'Payer ' + Number(p.dataset.price).toLocaleString('fr-FR') + ' F'; }
   f.addEventListener('change', label); label();
-  f.addEventListener('submit', function(){ btn.disabled = true; btn.textContent = 'Redirection vers le paiement…'; });
+  f.addEventListener('submit', function(){ btn.disabled = true; btn.textContent = 'Un instant…'; });
 })();
 </script>
 {% endblock %}
