@@ -501,3 +501,15 @@ class CodePromoAdmin(admin.ModelAdmin):
         from .promos import _uses
         validated = obj.subscriptions.filter(status="active").count()
         return f"{_uses(obj.subscriptions.all()).count()} (dont {validated} payé{'s' if validated > 1 else ''})"
+
+
+
+from .models import SmsEnvoi  # noqa: E402
+
+
+@admin.register(SmsEnvoi)
+class SmsEnvoiAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "phone", "operateur", "kind", "sender_name", "status", "status_at", "error")
+    list_filter = ("status", "operateur", "kind", "provider")
+    search_fields = ("phone", "resource_id")
+    date_hierarchy = "created_at"

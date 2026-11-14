@@ -63,7 +63,13 @@ def student_phone(request):
         elif _otp_rate_limited(phone):
             error = f"Trop de codes demandés. Réessaie dans {OTP_WINDOW_MINUTES} minutes."
         else:
-            code = _send_otp(phone)
+            from .sms import SmsError
+            try:
+                code = _send_otp(phone)
+            except SmsError:
+                code = None
+                error = ("Le SMS n'a pas pu partir. Réessaie dans un instant, ou écris-nous si ça continue.")
+        if not error:
             request.session["otp_phone"] = phone
             url = reverse("student_code")
             if settings.DEBUG or settings.OTP_AFFICHER_CODE:

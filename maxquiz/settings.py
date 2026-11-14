@@ -201,6 +201,18 @@ CONTACT_WHATSAPP = os.environ.get("CONTACT_WHATSAPP", "")
 # (tests avec l'école pilote uniquement, jamais pour le grand public).
 OTP_AFFICHER_CODE = env_bool("OTP_AFFICHER_CODE")
 
+# Envoi des SMS (codes de connexion) : « orange » pour l'API SMS d'Orange Côte d'Ivoire, sinon « console »
+# (le code est seulement écrit dans les journaux). Voir game/sms.py.
+SMS_PROVIDER = os.environ.get("SMS_PROVIDER", "console")
+ORANGE_CLIENT_ID = os.environ.get("ORANGE_CLIENT_ID", "")
+ORANGE_CLIENT_SECRET = os.environ.get("ORANGE_CLIENT_SECRET", "")
+ORANGE_SMS_SENDER_NUMBER = os.environ.get("ORANGE_SMS_SENDER_NUMBER", "2250000")
+ORANGE_SMS_SENDER_NAME = os.environ.get("ORANGE_SMS_SENDER_NAME", "MaxQuiz")
+SMS_NOM_OPERATEURS = os.environ.get("SMS_NOM_OPERATEURS", "orange")
+ORANGE_DLR_USER = os.environ.get("ORANGE_DLR_USER", "")
+ORANGE_DLR_PASSWORD = os.environ.get("ORANGE_DLR_PASSWORD", "")
+ORANGE_DLR_IPS = os.environ.get("ORANGE_DLR_IPS", "")
+
 SITE_URL = os.environ.get("SITE_URL", "")
 
 # Paiement en ligne Jèko (MaxQuiz École) : clés du Dashboard Business, Paramètres > API & Webhooks.

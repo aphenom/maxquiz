@@ -64,6 +64,16 @@ th:first-child,td:first-child{text-align:left}
     {% empty %}<p class="small">Pas encore d'inscrit.</p>{% endfor %}</div>
 </div>
 
+{% if r.sms %}
+<div class="card" style="margin-top:12px;overflow-x:auto">
+  <p style="margin:0 0 8px;font-weight:800">SMS de connexion par opérateur</p>
+  <table>
+    <thead><tr><th>Opérateur</th><th>Envoyés</th><th>Reçus</th><th>Taux de réception</th><th>Échecs</th><th>Sans accusé</th></tr></thead>
+    <tbody>{% for x in r.sms %}<tr><td>{{ x.label }}</td><td>{{ x.envoyes }}</td><td>{{ x.recus }}</td><td><strong>{{ x.taux }} %</strong></td><td>{{ x.echecs }}</td><td>{{ x.sans_nouvelles }}</td></tr>{% endfor %}</tbody>
+  </table>
+  <p class="small" style="margin:10px 0 0">« Reçus » : accusé « remis au téléphone » envoyé par Orange. Un taux bas chez MTN ou Moov signale un problème de nom d'expéditeur chez cet opérateur.</p>
+</div>
+{% endif %}
 <div class="card" style="margin-top:12px;overflow-x:auto">
   <p style="margin:0 0 8px;font-weight:800">Jour par jour</p>
   <table>

@@ -16,7 +16,7 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 BOTS = re.compile(r"bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|curl|wget|python|headless", re.I)
-IGNORE = ("/admin/", "/api/", "/static/", "/media/", "/sw.js", "/manifest.webmanifest", "/hors-ligne/",
+IGNORE = ("/admin/", "/api/", "/sms/", "/static/", "/media/", "/sw.js", "/manifest.webmanifest", "/hors-ligne/",
           "/.well-known/", "/favicon", "/robots.txt", "/paiement/jeko/webhook/", "/stats/", "/telecharger/")
 
 
@@ -130,7 +130,19 @@ def rapport(space, jours=30, today=None):
         return [dict(label=x[field] or "direct", n=x["n"], pct=round(100 * x["n"] / max(1, visiteurs)))
                 for x in v.values(field).annotate(n=Count("visiteur", distinct=True)).order_by("-n")[:n]]
 
+    from .models import SmsEnvoi
+    sms_rows = []
+    for op, label in SmsEnvoi.OPERATEURS:
+        q = SmsEnvoi.objects.filter(created_at__date__gte=since, operateur=op).exclude(provider="console")
+        n = q.count()
+        if not n:
+            continue
+        recus = q.filter(status="DeliveredToTerminal").count()
+        echecs = q.filter(status__in=("failed", "DeliveryImpossible")).count()
+        sms_rows.append(dict(label=label, envoyes=n, recus=recus, echecs=echecs,
+                             taux=round(100 * recus / n), sans_nouvelles=n - recus - echecs))
     return dict(
+        sms=sms_rows,
         jours=jours, rows=rows,
         max_visiteurs=max([r["visiteurs"] for r in rows] + [1]),
         visiteurs=visiteurs, pages=v.count(),

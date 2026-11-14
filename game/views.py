@@ -2317,16 +2317,17 @@ def _otp_rate_limited(phone):
 
 
 def _send_otp(phone):
-    """Génère et « envoie » un code OTP. Stub dev : loggué console (point de
-    branchement pour un vrai fournisseur SMS plus tard). Numéro de test
-    (OTP_NUMEROS_TEST) : code fixe, jamais de SMS."""
+    """Génère et envoie un code OTP par SMS (game/sms.py ; sans prestataire réglé, le
+    code est seulement écrit dans les journaux). Numéro de test (OTP_NUMEROS_TEST) :
+    code fixe, jamais de SMS."""
     fixed = settings.OTP_NUMEROS_TEST.get(phone)
     if fixed:
         OTPCode.objects.create(phone=phone, code=fixed)
         return fixed
     code = f"{random.randint(0, 999999):06d}"
     OTPCode.objects.create(phone=phone, code=code)
-    print(f"[OTP] {phone} -> {code}")
+    from .sms import envoyer_code
+    envoyer_code(phone, code)                    # lève SmsError si le SMS ne part pas
     return code
 
 
@@ -2364,7 +2365,13 @@ def account_login(request):
         elif _otp_rate_limited(phone):
             error = f"Trop de codes demandés — réessaie dans {OTP_WINDOW_MINUTES} minutes."
         else:
-            dev_code = _send_otp(phone)
+            from .sms import SmsError
+            try:
+                dev_code = _send_otp(phone)
+            except SmsError:
+                return render(request, "game/account_login.html", {
+                    "space": space, "space_slug": space_slug, "next": next_url,
+                    "error": "Le SMS n'a pas pu partir. Réessaie dans un instant, ou écris-nous si ça continue."})
             request.session["otp_phone"] = phone
             request.session["otp_space"] = space_slug
             request.session["otp_next"] = next_url

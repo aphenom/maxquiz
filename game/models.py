@@ -1140,3 +1140,29 @@ class CodePromo(models.Model):
 
     def plans(self):
         return [c for c, ok in (("monthly", self.monthly), ("quarterly", self.quarterly), ("yearly", self.yearly)) if ok]
+
+
+class SmsEnvoi(models.Model):
+    """SMS envoyé (code de connexion…) et son accusé de réception."""
+    OPERATEURS = [("orange", "Orange"), ("mtn", "MTN"), ("moov", "Moov"), ("autre", "Autre")]
+    phone = models.CharField("Numéro", max_length=20)
+    operateur = models.CharField("Opérateur", max_length=8, choices=OPERATEURS, default="autre")
+    kind = models.CharField("Type", max_length=12, default="otp")
+    provider = models.CharField("Prestataire", max_length=12, default="orange")
+    sender_name = models.CharField("Nom d'expéditeur utilisé", max_length=11, blank=True, default="")
+    resource_id = models.CharField("Identifiant chez le prestataire", max_length=120, blank=True, default="",
+                                   db_index=True)
+    status = models.CharField("Statut", max_length=24, default="sent",
+                              help_text="sent, failed, ou l'accusé d'Orange : DeliveredToTerminal, "
+                                        "DeliveredToNetwork, DeliveryUncertain, DeliveryImpossible, MessageWaiting")
+    error = models.CharField("Erreur", max_length=200, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    status_at = models.DateTimeField("Accusé reçu le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "SMS envoyé"
+        verbose_name_plural = "SMS envoyés"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.phone} · {self.status}"
