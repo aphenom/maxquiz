@@ -25,8 +25,16 @@ from reportlab.platypus import (KeepTogether, Paragraph, SimpleDocTemplate, Spac
 
 rl_config.invariant = 1                                  # PDF identiques d'une génération à l'autre
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "3eme")
-SOURCES = ["maths3_a.py", "maths3_b.py", "pc3.py", "svt3.py", "anglais3.py", "hg3.py"]
+# Usage : python contenu/generer.py [3eme|terminale] [dossier de sortie]
+NIVEAU_CIBLE = sys.argv[1] if len(sys.argv) > 1 and not os.sep in sys.argv[1] else "3eme"
+OUT = sys.argv[2] if len(sys.argv) > 2 else (sys.argv[1] if len(sys.argv) > 1 and os.sep in sys.argv[1]
+                                             else os.path.join(HERE, NIVEAU_CIBLE))
+SETS = {
+    "3eme": ["maths3_a.py", "maths3_b.py", "pc3.py", "svt3.py", "anglais3.py", "hg3.py"],
+    # Un chapitre peut servir à plusieurs classes : NIVEAUX dans le module, ou « niveaux » dans le chapitre.
+    "terminale": ["maths_tle_cd.py", "maths_tle_a.py", "pc_tle.py", "svt_tle.py", "hg_tle.py"],
+}
+SOURCES = SETS[NIVEAU_CIBLE]
 FREE = {"Calcul littéral", "Lentilles minces", "Les micro-organismes et les maladies infectieuses",
         "Simple past et present perfect", "La Seconde Guerre mondiale"}          # chapitres ouverts sans abonnement
 
@@ -198,22 +206,30 @@ def main():
     os.makedirs(os.path.join(OUT, "fiches"), exist_ok=True)
     errors, qrows, crows, stats = [], [], [], []
     letters = {k: 0 for k in "ABCD"}
+    ordre = {}                                      # numéro du chapitre dans sa matière
     for src in SOURCES:
         mod = load(src)
-        for order, chap in enumerate(mod.CHAPITRES, 1):
+        default_levels = list(getattr(mod, "NIVEAUX", None) or [mod.NIVEAU])
+        for chap in mod.CHAPITRES:
             check(chap, errors)
             if errors:
                 continue
-            for q in chap["questions"]:
-                d, text, opts, letter, expl = shuffled(q)
-                letters[letter] += 1
-                qrows.append([mod.NIVEAU, mod.MATIERE, chap["nom"], d, text, *opts, letter, expl])
-            base = order if src != "maths3_b.py" else order + 7
-            fname = f"{slug(mod.NIVEAU)}-{slug(mod.MATIERE)}-{base:02d}-{slug(chap['nom'])}.pdf"
-            pdf(chap, mod.NIVEAU, mod.MATIERE, os.path.join(OUT, "fiches", fname))
-            crows.append([mod.NIVEAU, mod.MATIERE, chap["nom"], chap["nom"], app_summary(chap["fiche"]),
-                          "", fname, base, "oui" if chap["nom"] in FREE else "non"])
-            stats.append((mod.MATIERE, chap["nom"], len(chap["questions"])))
+            levels = list(chap.get("niveaux") or default_levels)
+            key = (mod.MATIERE, tuple(default_levels))       # Maths Tle A et Maths Tle C/D numérotées à part
+            ordre[key] = ordre.get(key, 0) + 1
+            base = ordre[key]
+            label = levels[0] if len(levels) == 1 else ", ".join(levels[:-1]) + " et " + levels[-1]
+            fname = f"{slug('-'.join(levels))}-{slug(mod.MATIERE)}-{base:02d}-{slug(chap['nom'])}.pdf"
+            pdf(chap, label, mod.MATIERE, os.path.join(OUT, "fiches", fname))
+            free = chap.get("gratuit") or chap["nom"] in FREE or (NIVEAU_CIBLE != "3eme" and base == 1)
+            shuffled_qs = [shuffled(q) for q in chap["questions"]]
+            for niveau in levels:
+                for d, text, opts, letter, expl in shuffled_qs:
+                    letters[letter] += 1
+                    qrows.append([niveau, mod.MATIERE, chap["nom"], d, text, *opts, letter, expl])
+                crows.append([niveau, mod.MATIERE, chap["nom"], chap["nom"], app_summary(chap["fiche"]),
+                              "", fname, base, "oui" if free else "non"])
+            stats.append((mod.MATIERE, f"{chap['nom']} [{', '.join(levels)}]", len(chap["questions"])))
     if errors:
         print("\n".join(errors))
         sys.exit(1)

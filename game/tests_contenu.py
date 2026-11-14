@@ -54,20 +54,36 @@ class ContenuTests(TestCase):
         call_command("import_cours", path, verbosity=0)
         self.assertEqual(list(Lesson.objects.values_list("title", flat=True)), ["Thalès"])
 
-    def test_contenu_3eme_complet(self):
+    def _contenu_complet(self, dossier):
         """Le contenu livré s'importe en entier, chaque quiz a son cours et sa fiche PDF."""
-        call_command("import_questions", os.path.join(CONTENU, "quiz.xlsx"), "--shared", verbosity=0)
-        call_command("import_cours", os.path.join(CONTENU, "cours.xlsx"),
-                     "--fiches", os.path.join(CONTENU, "fiches"), verbosity=0)
-        ws = openpyxl.load_workbook(os.path.join(CONTENU, "quiz.xlsx"), read_only=True).worksheets[0]
+        base = os.path.join(ROOT, "contenu", dossier)
+        call_command("import_questions", os.path.join(base, "quiz.xlsx"), "--shared", verbosity=0)
+        call_command("import_cours", os.path.join(base, "cours.xlsx"),
+                     "--fiches", os.path.join(base, "fiches"), verbosity=0)
+        ws = openpyxl.load_workbook(os.path.join(base, "quiz.xlsx"), read_only=True).worksheets[0]
         rows = list(ws.iter_rows(min_row=2, values_only=True))
-        chapitres = {(r[1], r[2]) for r in rows}
-        self.assertEqual(Quiz.objects.filter(space__isnull=True, shared_level_name="3ème").count(), len(chapitres))
-        self.assertEqual(Question.objects.filter(quiz__shared_level_name="3ème").count(), len(rows))
-        for quiz in Quiz.objects.filter(space__isnull=True, shared_level_name="3ème"):
-            lesson = Lesson.objects.get(space__isnull=True, shared_level_name="3ème",
-                                        shared_subject_name=quiz.shared_subject_name, shared_theme_name=quiz.name)
-            self.assertTrue(lesson.has_pdf, quiz.name)
+        for niveau in {r[0] for r in rows}:
+            mine = [r for r in rows if r[0] == niveau]
+            chapitres = {(r[1], r[2]) for r in mine}
+            quizzes = Quiz.objects.filter(space__isnull=True, shared_level_name=niveau)
+            self.assertEqual(quizzes.count(), len(chapitres), niveau)
+            self.assertEqual(Question.objects.filter(quiz__in=quizzes).count(), len(mine), niveau)
+            for quiz in quizzes:
+                lesson = Lesson.objects.get(space__isnull=True, shared_level_name=niveau,
+                                            shared_subject_name=quiz.shared_subject_name, shared_theme_name=quiz.name)
+                self.assertTrue(lesson.has_pdf, f"{niveau} {quiz.name}")
+        return {r[0] for r in rows}
+
+    def test_contenu_3eme_complet(self):
+        self.assertEqual(self._contenu_complet("3eme"), {"3ème"})
+
+    def test_contenu_terminale_complet(self):
+        self.assertEqual(self._contenu_complet("terminale"), {"Tle A", "Tle C", "Tle D"})
+        # Un premier chapitre gratuit par matière et par classe
+        for niveau in ("Tle A", "Tle C", "Tle D"):
+            libres = Lesson.objects.filter(space__isnull=True, shared_level_name=niveau, free_preview=True)
+            self.assertEqual(libres.values("shared_subject_name").distinct().count(), libres.count(), niveau)
+            self.assertGreaterEqual(libres.count(), 2, niveau)
 
     def test_filtre_fiche_echappe(self):
         html = fiche("■ Titre\n• a < b\n1. étape\n<script>x</script>")
