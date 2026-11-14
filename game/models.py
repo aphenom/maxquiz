@@ -70,6 +70,9 @@ class Player(models.Model):
     full_name = models.CharField("Nom complet", max_length=80, blank=True, default="")
     city = models.CharField("Ville", max_length=50, blank=True, default="")
     balance = models.PositiveIntegerField("Solde (F CFA)", default=0)
+    promo_parrain = models.ForeignKey("CodePromo", null=True, blank=True, on_delete=models.SET_NULL,
+                                      related_name="filleuls", verbose_name="Arrivé avec le code")
+    promo_parrain_at = models.DateTimeField("Rattaché au code le", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1114,6 +1117,11 @@ class CodePromo(models.Model):
     ends_on = models.DateField("Valable jusqu'au (inclus)", null=True, blank=True)
     active = models.BooleanField("Actif", default=True)
     note = models.CharField("Note interne (campagne, partenaire…)", max_length=120, blank=True, default="")
+    partenaire = models.CharField("Influenceur ou partenaire", max_length=80, blank=True, default="",
+                                  help_text="Renseigné = code de parrainage : lien maxquiz.net/p/CODE et suivi des commissions.")
+    contact = models.CharField("Contact du partenaire (téléphone, e-mail)", max_length=120, blank=True, default="")
+    commission = models.DecimalField("Commission (% des abonnements payés)", max_digits=5, decimal_places=2,
+                                     default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

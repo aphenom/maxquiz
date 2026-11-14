@@ -82,3 +82,19 @@ def app_handoff(request):
             "android_package": getattr(settings, "ANDROID_PACKAGE_NAME", ""),
             "apk_url": settings.APK_URL,
             "play_url": getattr(settings, "PLAY_STORE_URL", "")}
+
+
+def parrainage(request):
+    """Code d'influenceur de l'élève, à rappeler tant qu'il n'est pas abonné (bandeau d'accès)."""
+    pid = request.session.get("verified_player_id") if hasattr(request, "session") else None
+    if not pid or getattr(request, "store_build", False):
+        return {}
+    from .models import Player, Subscription
+    from .promos import code_parrain_valide
+    player = Player.objects.filter(id=pid).select_related("promo_parrain").first()
+    promo = player.promo_parrain if player else None
+    if not promo or not code_parrain_valide(promo.code):
+        return {}
+    if Subscription.objects.filter(membership__player_id=pid, status="active").exists():
+        return {}
+    return {"parrain_promo": promo}

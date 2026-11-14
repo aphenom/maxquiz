@@ -54,8 +54,16 @@ def space_subscribe(request, slug):
                 messages.error(request, err)
             else:
                 request.session[promo_key] = promo.code
+                if promo.partenaire:                 # code d'influenceur tapé à la main : il compte aussi pour lui
+                    request.session[promos.SESSION_REF] = promo.code
+                    promos.rattacher(request, player)
                 messages.success(request, f"Code {promo.code} appliqué : -{promo.percent} %.")
         return redirect("space_subscribe", slug=slug)
+    if not request.session.get(promo_key) and space.kind == "catalog" and player.promo_parrain_id:
+        # Code de l'influenceur par lequel l'élève est arrivé : appliqué d'office s'il est encore valable
+        parrain, err = promos.check(player.promo_parrain.code, space, membership)
+        if parrain and not err:
+            request.session[promo_key] = parrain.code
     promo, promo_error = promos.check(request.session.get(promo_key, ""), space, membership)
     if promo_error:
         request.session.pop(promo_key, None)
@@ -371,3 +379,67 @@ def dashboard_stats(request, slug):
 def _admin_mq(request):
     """Un compte de l'administration MaxQuiz (is_staff) lit les tableaux de MaxQuiz École sans autre connexion."""
     return bool(getattr(request, "user", None) and request.user.is_authenticated and request.user.is_staff)
+
+
+
+def promo_link(request, code):
+    """Lien d'un influenceur : maxquiz.net/p/CODE. Le code est retenu pour l'inscription et appliqué
+    au premier abonnement ; la visite est attribuée au code (statistiques, pubs)."""
+    from urllib.parse import urlencode
+    from . import promos
+    promo = promos.code_parrain_valide(code)
+    if not promo:
+        return redirect("home")
+    request.session[promos.SESSION_REF] = promo.code
+    player = _player(request)
+    if player:
+        promos.rattacher(request, player)
+    return redirect("/?" + urlencode({"utm_source": promos.source_lien(promo), "utm_medium": "influenceur",
+                                      "utm_campaign": promo.code}))
+
+
+def dashboard_partners(request, slug):
+    """Tableau « Partenaires » : résultats et commissions des codes de parrainage, mois par mois."""
+    import csv as _csv
+    from datetime import date
+    from . import promos
+    space = _space(slug)
+    if space.kind != "catalog":
+        from django.http import Http404
+        raise Http404()
+    gate = None if _admin_mq(request) else _dashboard_gate(request, space)
+    if gate:
+        return gate
+    today = timezone.localdate()
+    mois = request.GET.get("mois", today.strftime("%Y-%m"))
+    debut = fin = None
+    if mois != "tout":
+        try:
+            y, m = (int(x) for x in mois.split("-"))
+            debut = date(y, m, 1)
+            fin = date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)
+        except (ValueError, TypeError):
+            mois, debut, fin = "tout", None, None
+    rows, totals = promos.rapport_partenaires(debut, fin)
+    if request.GET.get("csv"):
+        resp = HttpResponse(content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="partenaires-{mois}.csv"'
+        resp.write("\ufeff")
+        w = _csv.writer(resp, delimiter=";")
+        w.writerow(["Partenaire", "Code", "Contact", "Visiteurs", "Inscrits", "Abonnés payants", "Encaissé (F)",
+                    "Commission (%)", "Commission due (F)"])
+        for r in rows:
+            p = r["promo"]
+            w.writerow([p.partenaire, p.code, p.contact, r["visiteurs"], r["inscrits"], r["payants"], r["encaisse"],
+                        str(p.commission).replace(".", ","), r["commission"]])
+        return resp
+    months = []
+    d = today.replace(day=1)
+    for _ in range(12):
+        months.append(d.strftime("%Y-%m"))
+        d = (d - timedelta(days=1)).replace(day=1)
+    return render(request, "game/dashboard_partners.html", {
+        "space": space, "rows": rows, "totals": totals, "mois": mois, "months": months,
+        "base_url": (getattr(__import__("django.conf").conf.settings, "SITE_URL", "") or
+                     request.build_absolute_uri("/")).rstrip("/"),
+    })

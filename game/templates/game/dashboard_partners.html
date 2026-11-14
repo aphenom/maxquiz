@@ -1,0 +1,63 @@
+{% extends "game/base.html" %}
+{% block title %}{{ space.name }} : partenaires{% endblock %}
+{% block tabs %}{% endblock %}
+{% block bodyclass %}dash{% endblock %}
+{% block content %}
+<style>:root{--orange:{{ space.color_primary }};--vert:{{ space.color_accent }}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--sable);vertical-align:top}
+th:first-child,td:first-child{text-align:left}
+tfoot td{font-weight:800}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:10px}
+.kpi{text-align:center}.kpi b{display:block;font-size:24px;color:var(--vert)}.kpi span{font-size:13px;color:var(--brun)}
+code{font-size:12px;background:var(--sable);padding:2px 6px;border-radius:6px;word-break:break-all}
+</style>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:30px">{{ space.emoji }}</span>
+  <div><h1 style="font-size:24px;margin:0">Partenaires</h1>
+  <p class="small" style="margin:0">Influenceurs et codes de parrainage : ce qu'ils apportent et ce qui leur est dû</p></div>
+</div>
+{% include "game/_dashboard_nav.html" with active="partners" %}
+
+<form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+  <select name="mois" onchange="this.form.submit()" style="width:auto;padding:8px 10px;border-radius:10px;border:1px solid var(--sable);background:#fff">
+    {% for m in months %}<option value="{{ m }}"{% if m == mois %} selected{% endif %}>{{ m }}</option>{% endfor %}
+    <option value="tout"{% if mois == "tout" %} selected{% endif %}>Depuis le début</option>
+  </select>
+  <a class="chip" href="?mois={{ mois }}&csv=1">⬇️ Exporter (Excel)</a>
+  <a class="chip" href="{% url 'admin:game_codepromo_add' %}">➕ Nouveau partenaire</a>
+</form>
+
+<div class="kpis">
+  <div class="card kpi"><b>{{ totals.visiteurs }}</b><span>visiteurs venus des liens</span></div>
+  <div class="card kpi"><b>{{ totals.inscrits }}</b><span>inscrits</span></div>
+  <div class="card kpi"><b>{{ totals.payants }}</b><span>abonnés payants</span></div>
+  <div class="card kpi"><b>{{ totals.encaisse }} F</b><span>encaissés</span></div>
+  <div class="card kpi"><b>{{ totals.commission }} F</b><span>commissions dues</span></div>
+</div>
+
+<div class="card" style="margin-top:12px;overflow-x:auto">
+  {% if rows %}
+  <table>
+    <thead><tr><th>Partenaire</th><th>Visiteurs</th><th>Inscrits</th><th>Payants</th><th>Encaissé</th><th>Commission</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><strong>{{ r.promo.partenaire }}</strong>{% if not r.promo.active %} <span class="small" style="color:var(--rouge)">(inactif)</span>{% endif %}<br>
+        <span class="small">Code {{ r.promo.code }} · -{{ r.promo.percent }} %{% if r.promo.contact %} · {{ r.promo.contact }}{% endif %}</span><br>
+        <code>{{ base_url }}/p/{{ r.promo.code }}/</code></td>
+      <td>{{ r.visiteurs }}</td><td>{{ r.inscrits }}</td>
+      <td>{{ r.payants }}{% if r.inscrits %}<br><span class="small">{{ r.conversion }} %</span>{% endif %}</td>
+      <td>{{ r.encaisse }} F</td>
+      <td>{{ r.commission }} F<br><span class="small">{{ r.promo.commission|floatformat:"-2" }} %</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><td>Total</td><td>{{ totals.visiteurs }}</td><td>{{ totals.inscrits }}</td><td>{{ totals.payants }}</td><td>{{ totals.encaisse }} F</td><td>{{ totals.commission }} F</td></tr></tfoot>
+  </table>
+  {% else %}
+  <p style="margin:0">Aucun partenaire pour l'instant. Crée un code promo et renseigne le champ « Influenceur ou partenaire » : son lien et ses résultats apparaîtront ici.</p>
+  {% endif %}
+  <p class="small" style="margin:10px 0 0">Visiteurs : venus par le lien du partenaire. Inscrits : élèves rattachés à son code (lien ou code saisi). Payants et encaissé : abonnements payés avec son code, validés dans la période. Commission : encaissé × taux du partenaire.</p>
+</div>
+{% endblock %}

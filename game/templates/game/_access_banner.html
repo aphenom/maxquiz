@@ -9,6 +9,7 @@
     {% endif %}
     <p class="small" style="margin:4px 0 0">Tout est ouvert pendant l'essai.
       {% if not store_build %}<a href="{{ sub_url }}">Voir les formules d'abonnement</a>{% endif %}</p>
+    {% if parrain_promo and access.via_catalog or parrain_promo and space.kind == "catalog" %}<p class="small" style="margin:6px 0 0;font-weight:700;color:var(--vert)">🎁 Code {{ parrain_promo.code }} : -{{ parrain_promo.percent }} % sur ton 1er abonnement, appliqué automatiquement.</p>{% endif %}
   {% elif access.reason == "subscribed" %}
     <p style="margin:0;font-weight:700">✅ Abonné jusqu'au {{ access.subscription.end_date|date:"d/m/Y" }}</p>
     {% if not store_build %}<p class="small" style="margin:4px 0 0"><a href="{{ sub_url }}">Mon abonnement</a></p>{% endif %}
@@ -25,6 +26,7 @@
     {% if access.reason != "not_member" and not store_build %}
     <p class="small" style="margin:6px 0 0"><a href="{% url 'space_subscribe' space.slug %}">S'abonner ou suivre mon paiement</a></p>
     {% endif %}
+    {% if parrain_promo and space.kind == "catalog" and access.reason != "not_member" %}<p class="small" style="margin:6px 0 0;font-weight:700;color:var(--vert)">🎁 Ton code {{ parrain_promo.code }} : -{{ parrain_promo.percent }} % sur ton 1er abonnement.</p>{% endif %}
   {% endif %}
 </div>
 {% endif %}

@@ -87,6 +87,8 @@ def student_code(request):
             from .models import Membership
             _match_by_phone(Membership.objects.all(), phone, player)
             meta.attach(request, player)
+            from .promos import rattacher
+            rattacher(request, player)
             if student_membership(player):
                 return redirect(_student_home_url())
             return redirect("student_profile")

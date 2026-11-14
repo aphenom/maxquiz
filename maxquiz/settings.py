@@ -97,6 +97,7 @@ TEMPLATES = [
                 'game.context_processors.product',
                 'game.context_processors.ads',
                 'game.context_processors.app_handoff',
+                'game.context_processors.parrainage',
             ],
         },
     },

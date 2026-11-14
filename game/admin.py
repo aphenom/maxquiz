@@ -460,13 +460,29 @@ from .models import CodePromo  # noqa: E402
 
 @admin.register(CodePromo)
 class CodePromoAdmin(admin.ModelAdmin):
-    list_display = ("code", "percent", "formules", "utilisations", "max_uses", "max_per_player", "first_only",
-                    "starts_on", "ends_on", "active", "note")
+    list_display = ("code", "partenaire", "percent", "commission", "formules", "utilisations", "filleuls_count",
+                    "max_uses", "first_only", "starts_on", "ends_on", "active")
     list_editable = ("active",)
     list_filter = ("active", "percent", "first_only")
-    search_fields = ("code", "note")
+    search_fields = ("code", "note", "partenaire")
+    readonly_fields = ("lien",)
+
+    @admin.display(description="Lien à partager")
+    def lien(self, obj):
+        from django.conf import settings as dj
+        if not obj.pk:
+            return "Disponible après l'enregistrement."
+        url = f"{(dj.SITE_URL or 'https://maxquiz.net').rstrip('/')}/p/{obj.code}/"
+        return format_html('<code>{}</code>', url)
+
+    @admin.display(description="Inscrits via le lien")
+    def filleuls_count(self, obj):
+        return obj.filleuls.count()
     fieldsets = (
         (None, {"fields": ("code", "percent", "note", "active")}),
+        ("Influenceur ou partenaire", {"fields": ("partenaire", "contact", "commission", "lien"),
+                                       "description": "Pour un influenceur : son nom, son contact et sa commission. "
+                                                      "Partage-lui le lien ci-dessous (après enregistrement)."}),
         ("Formules concernées", {"fields": ("monthly", "quarterly", "yearly")}),
         ("Utilisations", {"fields": ("max_uses", "max_per_player", "first_only"),
                           "description": "Code unique : « Utilisations au total » = 1. Code réutilisable par "
