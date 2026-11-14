@@ -36,9 +36,10 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Space)
 class SpaceAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "slug", "join_code", "dashboard_username", "dashboard_code", "active",
-                    "members_only", "subscription_required", "trial_enabled", "trial_days", "free_until")
-    list_editable = ("trial_enabled", "trial_days")
+    list_display = ("name", "kind", "price_monthly", "price_quarterly", "price_yearly", "trial_enabled",
+                    "trial_days", "slug", "join_code", "dashboard_username", "dashboard_code", "active",
+                    "members_only", "subscription_required", "free_until")
+    list_editable = ("price_monthly", "price_quarterly", "price_yearly", "trial_enabled", "trial_days")
     list_filter = ("kind", "active")
     prepopulated_fields = {"slug": ("name",)}
 

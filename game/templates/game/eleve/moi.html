@@ -17,7 +17,7 @@
         {% elif access.reason == "trial" %}Essai gratuit{% if access.trial_days_left %} · encore {{ access.trial_days_left }} jour{{ access.trial_days_left|pluralize }}{% endif %}
         {% elif access.reason == "pending" %}Paiement en cours de vérification
         {% elif store_build %}Pas actif pour le moment
-        {% else %}2 000 F par mois ou 15 000 F l'année{% endif %}</span></span>›</a>
+        {% else %}{% if space.price_monthly %}{{ space.price_monthly }} F par mois{% endif %}{% if space.price_monthly and space.price_yearly %} ou {% endif %}{% if space.price_yearly %}{{ space.price_yearly }} F l'année{% endif %}{% endif %}</span></span>›</a>
     <a class="row-link" href="{% url 'notifications' %}"><span class="row-ico" aria-hidden="true">🔔</span>
       <span style="flex:1"><strong>Notifications</strong></span>›</a>
     <a class="row-link" href="{% url 'student_profile' %}"><span class="row-ico" aria-hidden="true">🎓</span>

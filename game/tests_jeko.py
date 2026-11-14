@@ -159,3 +159,21 @@ class JekoTests(TestCase):
         page = self.client.get(self.url)
         self.assertNotContains(page, 'name="method"')
         self.assertContains(page, 'name="payment_ref"')
+
+
+@override_settings(**JEKO)
+class TarifsTests(TestCase):
+    def test_nouveau_tarif_partout(self):
+        space = catalog_space()
+        space.price_monthly, space.price_yearly, space.trial_enabled = 2500, 20000, False
+        space.save()
+        player = Player.objects.create(phone="0704040404", pseudo="")
+        save_profile(player, "Awa", Category.objects.get(space=space, name="3ème"))
+        s = self.client.session
+        s["player_id"] = s["verified_player_id"] = player.id
+        s.save()
+        self.assertContains(self.client.get("/moi/"), "2500 F par mois ou 20000 F l'année")
+        self.assertContains(self.client.get(f"/e/{space.slug}/abonnement/"), 'data-price="2500"')
+        with mock.patch("game.jeko._call", return_value={"id": "pr", "redirectUrl": "https://pay.jeko.africa/x"}) as call:
+            self.client.post(f"/e/{space.slug}/abonnement/", {"action": "jeko", "plan": "yearly", "method": "wave"})
+        self.assertEqual(call.call_args[0][2]["amountCents"], 2000000)
