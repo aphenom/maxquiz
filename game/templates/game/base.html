@@ -188,7 +188,7 @@ body.dash .bell{right:max(12px,calc(50% - 550px + 12px))}
 {% block css %}{% endblock %}
 </style>
 </head>
-<body class="{% block bodyclass %}{% endblock %}">
+<body class="{% block bodyclass %}{% endblock %}"{% if unread_notifs is not None %} data-mq-auth="1"{% endif %}>
 <div class="band"></div>
 {% if unread_notifs is not None %}
 <a class="bell{% if unread_notifs %} has-new{% endif %}" href="{% url 'notifications' %}" aria-label="Notifications{% if unread_notifs %} : {{ unread_notifs }} non lue{{ unread_notifs|pluralize }}{% endif %}">

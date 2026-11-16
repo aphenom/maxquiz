@@ -828,6 +828,22 @@ class PwaTests(TestCase):
         self.assertContains(self.client.get("/hors-ligne/"), "Pas de connexion")
         self.assertContains(self.client.get("/"), "serviceWorker.register('/sw.js'")
 
+    def test_version_du_service_worker_suit_le_code(self):
+        """Le service worker change de nom de cache quand les fichiers statiques changent."""
+        from game.sw_version import static_version
+        sw = self.client.get("/sw.js").content.decode()
+        self.assertIn(f"maxquiz-1-{static_version()}", sw)
+
+    def test_marqueur_connexion_pour_les_notifications(self):
+        """Le script des notifications ne s'active que pour une personne connectée."""
+        from game.models import Player
+        self.assertNotContains(self.client.get("/"), 'data-mq-auth="1"')
+        player = Player.objects.create(pseudo="Awa", phone="0707111222")
+        session = self.client.session
+        session["player_id"] = player.id
+        session.save()
+        self.assertContains(self.client.get("/notifications/"), 'data-mq-auth="1"')
+
 
 @override_settings(ANDROID_PACKAGE_NAME="net.maxquiz.twa", APK_URL="https://maxquiz.net/telecharger/maxquiz.apk")
 class AppHandoffTests(TestCase):

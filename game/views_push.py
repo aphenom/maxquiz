@@ -20,6 +20,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_POST
 
 from . import push
+from .sw_version import sw_version
 from .models import Notification, PushDevice, Teacher
 from .views import _player
 
@@ -41,7 +42,7 @@ def offline(request):
 
 @cache_control(max_age=0, no_cache=True)
 def service_worker(request):
-    resp = render(request, "game/sw.js", {"version": getattr(settings, "APP_VERSION", "1")},
+    resp = render(request, "game/sw.js", {"version": sw_version()},
                   content_type="application/javascript")
     resp["Service-Worker-Allowed"] = "/"
     return resp
