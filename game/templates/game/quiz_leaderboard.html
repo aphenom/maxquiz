@@ -15,6 +15,7 @@
   </div>
   {% endif %}
 
+  <p class="small" style="text-align:center;margin:12px 0 0">Ton meilleur score compte. À égalité, passe devant celui qui l'a obtenu en moins d'essais.</p>
   <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
     {% for s in rows %}
     <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px;
@@ -29,7 +30,7 @@
           <span class="small" style="color:var(--vert);font-weight:700">· ✔ éligible 🎁</span>
           {% endif %}</p>
         {% if s.status != "finished" %}<p class="small" style="margin:0">Éliminé à la question {{ s.reached }}</p>{% endif %}
-        {% if s.pct is not None %}<p class="small" style="margin:0">{{ s.pct }}% de réussite</p>{% endif %}
+        {% if s.pct is not None %}<p class="small" style="margin:0">{{ s.pct }}% de réussite{% if s.attempts > 1 %} · meilleur de {{ s.attempts }} essais{% else %} · 1 essai{% endif %}</p>{% endif %}
       </div>
       <span style="font-weight:800;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">
         {% if s.status == "finished" %}FINALISTE{% else %}Q{{ s.reached }}{% endif %}</span>

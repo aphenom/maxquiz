@@ -201,7 +201,7 @@ function countUp(el,to,ms=800){if(reduced){el.textContent=to;return}
 
 function startTimer() {
   const q = G.questions[idx];
-  timerS = parseInt(G.timers[String(q.difficulty)] || 15);
+  timerS = parseInt(q.timer || G.timers[String(q.difficulty)] || 15);
   timeLeft = timerS; qStart = performance.now(); drawRing();
   tick = setInterval(() => { timeLeft--; drawRing();
     if (timeLeft <= 0) { clearInterval(tick); answer(-1, null); } }, 1000);
@@ -225,7 +225,7 @@ function show() {
     $('diffBadge').textContent = DIFF_NAMES[q.difficulty];
     $('diffBadge').style.background = DIFF_COLORS[q.difficulty];
   }
-  $('cat').textContent = q.cat + ' · ' + (G.timers[String(q.difficulty)]||15) + ' s';
+  $('cat').textContent = q.cat + ' · ' + (q.timer || G.timers[String(q.difficulty)] || 15) + ' s';
   $('qtext').textContent = q.text;
   $('qcard').classList.remove('pop-in'); void $('qcard').offsetWidth; $('qcard').classList.add('pop-in');
   $('feedback').hidden = true; $('explain').hidden = true; $('lessonLink').hidden = true;

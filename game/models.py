@@ -17,6 +17,10 @@ class SoftDeleteManager(models.Manager):
         return super().get_queryset().filter(deleted_at__isnull=True)
 
 
+SCHOOL_TIMERS = {"1": 30, "2": 45, "3": 75, "4": 120}
+SCHOOL_TIMER_FACTORS = {"Mathématiques": 1.5, "Physique-Chimie": 1.5}
+
+
 class GameConfig(models.Model):
     """Configuration du jeu, modifiable dans l'admin (singleton)."""
     daily_question_count = models.PositiveSmallIntegerField("Questions du défi", default=50)
@@ -24,6 +28,12 @@ class GameConfig(models.Model):
     difficulty_mix = models.JSONField("Répartition difficulté (%)", default=dict)
     # Chrono en secondes par niveau de difficulté
     timer_by_difficulty = models.JSONField("Chrono par difficulté (s)", default=dict)
+    school_timer_by_difficulty = models.JSONField(
+        "Chrono par difficulté, côté École (s)", default=dict,
+        help_text="Quiz des écoles et de MaxQuiz École : plus la question est difficile, plus l'élève a de temps.")
+    school_timer_factors = models.JSONField(
+        "Temps en plus par matière (coefficient)", default=dict,
+        help_text='Ex. {"Mathématiques": 1.5, "Physique-Chimie": 1.5} : 1,5 fois plus de temps pour les calculs.')
     ad_every = models.PositiveSmallIntegerField("Pub toutes les N questions", default=3)
     # Interrupteur général : récompenses et jokers ne sont plus le cœur du jeu,
     # désactivés par défaut sur une nouvelle installation.
@@ -51,6 +61,10 @@ class GameConfig(models.Model):
             self.difficulty_mix = {"1": 40, "2": 30, "3": 20, "4": 10}
         if not self.timer_by_difficulty:
             self.timer_by_difficulty = {"1": 15, "2": 12, "3": 9, "4": 6}
+        if not self.school_timer_by_difficulty:
+            self.school_timer_by_difficulty = dict(SCHOOL_TIMERS)
+        if not self.school_timer_factors:
+            self.school_timer_factors = dict(SCHOOL_TIMER_FACTORS)
         if not self.joker_price_by_difficulty:
             self.joker_price_by_difficulty = {"1": 100, "2": 200, "3": 500, "4": 1000}
         super().save(*args, **kwargs)
@@ -116,6 +130,9 @@ class Question(models.Model):
     option_c = models.CharField(max_length=200)
     option_d = models.CharField(max_length=200)
     correct = models.PositiveSmallIntegerField("Bonne réponse (0-3)")
+    time_limit = models.PositiveSmallIntegerField(
+        "Temps de réponse (s)", null=True, blank=True,
+        help_text="Laisser vide : temps automatique selon la difficulté et la matière.")
     explanation = models.TextField("Explication", blank=True, default="")
     active = models.BooleanField("Active", default=True)
     deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)

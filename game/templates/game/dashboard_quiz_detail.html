@@ -179,6 +179,7 @@
       <span class="small" style="color:var(--vert);font-weight:700">· ✔ éligible 🎁</span>
       {% endif %}</span><br>
     {% if s.status != "finished" %}<span class="small">Éliminé à la question {{ s.reached }}</span>{% endif %}
+    {% if s.attempts > 1 %}<span class="small">Meilleur score au {{ s.tries }}{% if s.tries == 1 %}er{% else %}e{% endif %} essai sur {{ s.attempts }}</span>{% endif %}
     {% if s.pct is not None %}<span class="small">{{ s.pct }}% de bonnes réponses</span>{% endif %}
   </span>
   <span style="font-weight:800;color:{% if s.status == 'finished' %}var(--vert){% else %}var(--orange){% endif %}">

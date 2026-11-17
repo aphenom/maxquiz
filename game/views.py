@@ -41,6 +41,35 @@ def _pick_by_difficulty(pool, n):
     return picked
 
 
+SCHOOL_KINDS = ("catalog", "school")
+
+
+def _is_school(space):
+    """Côté École (MaxQuiz École et écoles partenaires) : on réfléchit plus qu'on ne court."""
+    return bool(space) and space.kind in SCHOOL_KINDS
+
+
+def question_timer(cfg, question, space=None, quiz=None):
+    """Temps de réponse d'une question, en secondes.
+    1. Temps propre à la question (administration), s'il est rempli.
+    2. Côté École : temps qui AUGMENTE avec la difficulté, multiplié par le coefficient de
+       la matière (calculs en Maths et Physique-Chimie).
+    3. Ailleurs (défi public, espaces Pro) : chrono du jeu, qui diminue avec la difficulté."""
+    from .models import SCHOOL_TIMER_FACTORS, SCHOOL_TIMERS
+    if question.time_limit:
+        return int(question.time_limit)
+    if _is_school(space):
+        base = int((cfg.school_timer_by_difficulty or SCHOOL_TIMERS).get(str(question.difficulty), 45))
+        subject = (quiz.subject_name() if quiz else "") or \
+            (question.sub_category.name if question.sub_category_id else "")
+        try:
+            factor = float((cfg.school_timer_factors or SCHOOL_TIMER_FACTORS).get(subject, 1) or 1)
+        except (TypeError, ValueError):
+            factor = 1.0
+        return max(5, int(round(base * factor)))
+    return int(cfg.timer_by_difficulty.get(str(question.difficulty), 15))
+
+
 def _difficulty_for_index(cfg, i, total):
     """Courbe de difficulté : les % du mix découpent la partie en tranches."""
     mix = cfg.difficulty_mix
@@ -367,6 +396,32 @@ def _ranked(sessions):
     return sorted(sessions, key=key)
 
 
+def _best_ranked(sessions):
+    """Classement d'un quiz rejouable : UNE ligne par élève, sa meilleure partie.
+    À score égal, passe devant celui qui l'a obtenu en moins d'essais, puis le plus rapide.
+    Chaque ligne porte s.attempts (parties jouées) et s.tries (essai où le meilleur score
+    a été obtenu)."""
+    groups = {}
+    for s in sorted(sessions, key=lambda x: (x.started_at, x.id)):
+        groups.setdefault(s.player_id or f"s{s.id}", []).append(s)
+
+    def perf(s):
+        if _session_elimination(s):
+            return (s.status != "finished", -s.reached)
+        if not hasattr(s, "_pct"):
+            s._pct = _session_pct(s)
+        return (s.status != "finished", -(s._pct or 0))
+
+    best = []
+    for lst in groups.values():
+        for n, s in enumerate(lst, 1):
+            s.tries = n
+        top = min(lst, key=lambda s: (perf(s), s.tries, s.total_time_ms))
+        top.attempts = len(lst)
+        best.append(top)
+    return sorted(best, key=lambda s: (perf(s), s.tries, s.total_time_ms))
+
+
 def leaderboard(request):
     today = timezone.localdate()
     rows = (GameSession.objects
@@ -387,7 +442,7 @@ def leaderboard(request):
         quiz_ids = (GameSession.objects.filter(player=player, quiz__isnull=False, flagged=False)
                    .exclude(status="playing").values_list("quiz_id", flat=True).distinct())
         for qz in Quiz.objects.filter(id__in=quiz_ids).select_related("space"):
-            all_sessions = _ranked(GameSession.objects.filter(
+            all_sessions = _best_ranked(GameSession.objects.filter(
                 quiz=qz, flagged=False).exclude(status="playing"))
             mine = next((s for s in all_sessions if s.player_id == player.id), None)
             if not mine:
@@ -415,8 +470,8 @@ def quiz_leaderboard(request, slug, quiz_slug):
     if not quiz:
         raise Http404("Quiz introuvable pour cet espace.")
     player = _player(request)
-    rows = _ranked(GameSession.objects.filter(quiz=quiz, space=space, flagged=False)
-                   .exclude(status="playing").select_related("player"))[:50]
+    rows = _best_ranked(GameSession.objects.filter(quiz=quiz, space=space, flagged=False)
+                        .exclude(status="playing").select_related("player"))[:50]
     for s in rows:
         s.pct = _session_pct(s)
     reward_text, reward_type = _effective_reward(space, quiz)
@@ -1128,7 +1183,8 @@ def quiz_start(request, slug, quiz_slug):
         "questions": [
             {"id": q.id, "cat": q.sub_category.name if q.sub_category else q.get_category_display(),
              "difficulty": q.difficulty, "kind": q.kind, "text": q.text,
-             "options": q.options(), "explanation": ""}
+             "options": q.options(), "explanation": "",
+             "timer": question_timer(cfg, q, space, quiz)}
             for q in deck
         ],
         "ads": [],
@@ -1161,7 +1217,7 @@ def space_answer(request):
     idx = session.question_ids.index(question.id)
     if idx != session.reached:
         return JsonResponse({"error": "question hors séquence"}, status=400)
-    timer_s = int(cfg.timer_by_difficulty.get(str(question.difficulty), 15))
+    timer_s = question_timer(cfg, question, session.space, session.quiz)
     choice = int(data.get("choice", -1))
     time_ms = min(int(data.get("time_ms", timer_s * 1000)), timer_s * 1000)
 
@@ -1578,7 +1634,7 @@ def dashboard_quiz_detail(request, slug, quiz_slug):
     total = sessions.count()
     finished = sessions.filter(status="finished").count()
     quiz_stats, survey_stats = _quiz_dashboard_stats(space, sessions)
-    top = _ranked(sessions.select_related("player"))[:10]
+    top = _best_ranked(sessions.select_related("player"))[:10]
     for s in top:
         s.pct = _session_pct(s)
     categories = space.categories.prefetch_related("subcategories__themes")
@@ -2199,9 +2255,9 @@ def dashboard_member_detail(request, slug, member_id):
             rank, total = None, None
             if s.quiz_id:
                 played_quiz_ids.add(s.quiz_id)
-                ranked = _ranked(GameSession.objects.filter(
-                    quiz_id=s.quiz_id, flagged=False).exclude(status="playing"))
-                if s in ranked:
+                ranked = _best_ranked(GameSession.objects.filter(
+                    quiz_id=s.quiz_id, space=space, flagged=False).exclude(status="playing"))
+                if s in ranked:                    # rang affiché sur la meilleure partie de l'élève
                     rank, total = ranked.index(s) + 1, len(ranked)
             reward_text, reward_type = _effective_reward(space, s.quiz) if s.quiz_id else (None, None)
             sessions_stats.append({
@@ -2566,8 +2622,8 @@ def account_home(request):
         # (space=None) joué via cet espace doit quand même apparaître ici.
         for qz in Quiz.objects.filter(sessions__player=player, sessions__space=sp).distinct():
             played_quiz_ids.add(qz.id)
-            all_sessions = _ranked(GameSession.objects.filter(
-                quiz=qz, flagged=False).exclude(status="playing"))
+            all_sessions = _best_ranked(GameSession.objects.filter(
+                quiz=qz, space=sp, flagged=False).exclude(status="playing"))
             mine = [s for s in all_sessions if s.player_id == player.id]
             if not mine:
                 continue
