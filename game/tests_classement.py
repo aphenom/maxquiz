@@ -95,3 +95,31 @@ class MeilleurScoreTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.content.decode().count("Awa"), 1)
         self.assertContains(r, "meilleur de 2 essais")
+
+
+class RappelsPushTests(TestCase):
+    """Lancée par cron, la commande des rappels doit envoyer les push avant de s'arrêter."""
+
+    def test_les_push_partent_avant_la_fin_de_la_commande(self):
+        from unittest import mock
+
+        from django.core.management import call_command
+        from django.test import override_settings
+
+        from game.models import Notification, PushDevice
+        from game.push import generate_vapid_keys, notify
+        priv, pub = generate_vapid_keys()
+        player = Player.objects.create(pseudo="Awa", phone="0707000009")
+        PushDevice.objects.create(player=player, kind="webpush", endpoint="https://push.example/x",
+                                  p256dh="k", auth="a")
+
+        def missions():
+            notify(players=[player], kind="mission", title="Ta mission du jour", body="5 min")
+            return 1
+
+        with override_settings(VAPID_PUBLIC_KEY=pub, VAPID_PRIVATE_KEY=priv, PUSH_SYNC=False), \
+                mock.patch("game.engagement.envoyer_rappels_missions", missions), \
+                mock.patch("game.push.send_webpush", return_value=201) as send:
+            call_command("envoyer_rappels", stdout=mock.MagicMock())
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(Notification.objects.get(player=player).pushed, 1)

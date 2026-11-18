@@ -8,7 +8,12 @@ class Command(BaseCommand):
     help = "Envoie les rappels de séances (30 min avant) et de fin d'abonnement (3 jours avant)."
 
     def handle(self, *args, **opts):
+        from django.conf import settings
+
         from game.engagement import envoyer_rappels_missions
+        # Lancée par cron, la commande s'arrête aussitôt son travail fini : les envois push
+        # doivent donc partir AVANT la fin (et non en arrière-plan, où ils seraient perdus).
+        settings.PUSH_SYNC = True
         res = run_reminders()
         missions = envoyer_rappels_missions()
         self.stdout.write(self.style.SUCCESS(f"{res['sessions']} séance(s), {res['subscriptions']} abonnement(s), "

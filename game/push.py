@@ -117,7 +117,7 @@ def send_webpush(device, message):
     body = encrypt_payload(json.dumps(message).encode(), device.p256dh, device.auth)
     status, _ = _post(device.endpoint, body, {
         "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream",
-        "TTL": "86400", "Urgency": "normal", "Authorization": vapid_header(device.endpoint)})
+        "TTL": "86400", "Urgency": "high", "Authorization": vapid_header(device.endpoint)})
     return status
 
 
@@ -190,9 +190,12 @@ def _deliver(device_ids, message, notification_ids):
             continue
         if status in (404, 410):           # abonnement expiré ou désinstallé
             PushDevice.objects.filter(id=device.id).update(active=False)
+            log.info("Appareil push %s désactivé (HTTP %s)", device.id, status)
         elif 200 <= status < 300:
             reached += 1
             PushDevice.objects.filter(id=device.id).update(last_success_at=timezone.now())
+        else:
+            log.warning("Push refusé pour l'appareil %s : HTTP %s", device.id, status)
     if reached:
         Notification.objects.filter(id__in=notification_ids).update(pushed=reached)
 
