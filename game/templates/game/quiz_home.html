@@ -85,6 +85,7 @@
     </button>
   </form>
   {% endif %}
+  {% if chapitre %}{% include "game/_chapitre_nav.html" with mode="quiz" %}{% endif %}
   {% elif space.members_only %}
   <a class="btn" href="{% url 'student_login' space.slug %}" style="margin-top:14px">Me connecter avec mon matricule</a>
   {% else %}

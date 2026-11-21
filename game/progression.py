@@ -253,3 +253,44 @@ def semaine(player, space, membership, today=None, programme=None):
     return dict(total=len(noms), faites=len(cette), manquantes=[n for n in noms if n not in cette],
                 complete=bool(noms) and set(noms) <= cette, semaines_completes=completes + (
                     1 if noms and set(noms) <= cette else 0))
+
+
+# --- Liens entre les pages ---------------------------------------------------------------------
+def contexte_chapitre(player, space, membership, quiz=None, lesson=None):
+    """Où se situe un chapitre (repéré par son quiz ou son cours) dans le programme de l'élève :
+    matière, cours et quiz du chapitre, chapitres précédent et suivant, meilleur score.
+    None si le chapitre n'est pas dans le programme de sa classe."""
+    if not membership:
+        return None
+    for sub, rows in chapitres(space, membership):
+        for i, ch in enumerate(rows):
+            if (quiz and ch["quiz"].id == quiz.id) or (lesson and ch["lesson"] and ch["lesson"].id == lesson.id):
+                best = None
+                if player:
+                    quiz_done, _ = activite(player, space)
+                    best = (quiz_done.get(ch["quiz"].id) or (None,))[0]
+                return dict(sub=sub, matiere=sub.name, chapitre=ch, numero=i + 1, total=len(rows),
+                            precedent=rows[i - 1] if i else None,
+                            suivant=rows[i + 1] if i + 1 < len(rows) else None,
+                            best=best, mois=MOIS.get(ch["mois"]) if ch["mois"] else "")
+    return None
+
+
+def statuts_des_cours(player, space, membership, today=None):
+    """{lesson_id: {quiz, best, vu, retard, ce_mois}} pour la liste « Réviser »."""
+    today = today or timezone.localdate()
+    if not membership:
+        return {}
+    quiz_done, lesson_done = activite(player, space) if player else ({}, {})
+    out = {}
+    for _sub, rows in chapitres(space, membership):
+        for ch in rows:
+            if not ch["lesson"]:
+                continue
+            q = quiz_done.get(ch["quiz"].id)
+            fait = bool(q or ch["lesson"].id in lesson_done)
+            out[ch["lesson"].id] = dict(quiz=ch["quiz"], best=q[0] if q else None,
+                                        vu=ch["lesson"].id in lesson_done, fait=fait,
+                                        retard=not fait and attendu(ch["mois"], today),
+                                        ce_mois=ch["mois"] == today.month)
+    return out

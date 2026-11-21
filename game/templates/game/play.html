@@ -106,6 +106,7 @@
   </div>
   <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
     <a class="btn" id="nextLink" href="#" hidden style="text-align:left;line-height:1.3"></a>
+    <a class="btn encre" id="lessonEndLink" href="#" hidden>📖 Revoir le cours de ce chapitre</a>
     <a class="btn vert" id="boardLink" href="/classement/">Voir le classement 🏅</a>
     <a class="btn encre" id="homeLink" href="/">Retour à l'accueil</a>
   </div>
@@ -165,7 +166,7 @@ const PLAYFUL = G.playful !== false;
 const DIFF_NAMES = {1:'Facile',2:'Moyen',3:'Difficile',4:'EXPERT'};
 const DIFF_COLORS = {1:'var(--vert)',2:'var(--orange)',3:'#C7541F',4:'var(--rouge)'};
 
-let idx = 0, streak = 0, best = 0, adUsed = 0, jokersLeft = G.joker.max;
+let idx = 0, streak = 0, best = 0, adUsed = 0, jokersLeft = G.joker.max, good = 0, graded = 0;
 let timeLeft = 0, tick = null, qStart = 0, timerS = 15, balance = G.balance;
 
 const $ = id => document.getElementById(id);
@@ -261,6 +262,7 @@ async function answer(choice, btn) {
   let r;
   try {
     r = await api(ANSWER_URL, {session_id:G.session_id, question_id:q.id, choice, time_ms});
+    if (q.kind !== 'survey' && r && !r.error) graded++;
     reportQ = q.id; $('reportBtn').hidden = (q.kind === 'survey');
   } catch(e) {
     $('qcard').classList.remove('loading');
@@ -288,6 +290,7 @@ async function answer(choice, btn) {
 
   if (r.correct) {
     streak++; best = Math.max(best, streak);
+    if (!r.survey) good++;
     if (PLAYFUL) {
       confetti(streak >= 5 ? 40 : 14);
       if (streak >= 5 && streak % 5 === 0) comboPop('SÉRIE x'+streak+' 🔥');
@@ -414,6 +417,13 @@ function showAd() {
 }
 
 function endScreen(status, reachedOverride) {
+  /* Score faible : le cours du chapitre est proposé en premier */
+  if (G.lesson_url && graded && good / graded < 0.6) {
+    $('lessonEndLink').hidden = false; $('lessonEndLink').href = G.lesson_url;
+    $('lessonEndLink').parentNode.insertBefore($('lessonEndLink'), $('lessonEndLink').parentNode.firstChild);
+  } else if (G.lesson_url) {
+    $('lessonEndLink').hidden = false; $('lessonEndLink').href = G.lesson_url;
+  }
   const reached = reachedOverride !== undefined ? reachedOverride : idx + (status==='finished'?1:0);
   if (status === 'finished' && G.brand) {
     $('endEmoji').textContent = '🎉';
@@ -425,10 +435,10 @@ function endScreen(status, reachedOverride) {
       $('endBig').textContent = G.brand.reward_type === 'monetaire' ? '💰' : G.brand.reward_type === 'autre' ? '🏅' : '🎁';
       $('endStats').textContent = G.brand.name + ' contactera les gagnants. Reviens demain !';
     } else {
-      $('endLabel').textContent = '';
+      $('endLabel').textContent = graded ? 'Ton score' : '';
       $('endCard').style.borderTop = '6px solid var(--orange)';
       $('endBig').style.color = 'var(--orange)';
-      $('endBig').textContent = '';
+      $('endBig').textContent = graded ? good + '/' + graded : '';
       $('endStats').textContent = G.next ? 'Continue sur ta lancée, la suite t’attend juste en dessous.' : 'Reviens demain pour un nouveau quiz !';
     }
     $('endScreen').hidden = false;

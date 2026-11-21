@@ -1067,6 +1067,12 @@ def space_start(request, slug):
     return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
 
 
+def _cours_du_quiz(space, quiz):
+    from .engagement import lecon_du_quiz
+    lesson = lecon_du_quiz(quiz, space)
+    return reverse("lesson_detail", args=[space.slug, lesson.id]) if lesson else ""
+
+
 def _suite_du_programme(player, space, sauf_quiz=None, sauf_lecon=None):
     """Activité suivante du programme du jour (autre matière), pour enchaîner sans retour à
     l'accueil. None hors espace élève ou si tout est fait."""
@@ -1107,7 +1113,13 @@ def quiz_home(request, slug, quiz_slug):
         player=player, quiz=quiz, flagged=False).exclude(status="playing").exists())
     expired = bool(player) and not _quiz_still_playable(player, space, quiz)
     reward_text, reward_type = _effective_reward(space, quiz)
+    chapitre = None
+    if space.members_only and player:
+        from .progression import contexte_chapitre
+        from .subscriptions import current_membership as _cm
+        chapitre = contexte_chapitre(player, space, _cm(space, player), quiz=quiz)
     return render(request, "game/quiz_home.html", {
+        "chapitre": chapitre,
         "space": space, "quiz": quiz, "player": player, "already": already,
         "played_before": played_before, "expired": expired,
         "reward_text": reward_text, "reward_type": reward_type,
@@ -1206,6 +1218,7 @@ def quiz_start(request, slug, quiz_slug):
         "home_url": reverse("space_home", args=[space.slug]),
         "board_url": reverse("quiz_leaderboard", args=[space.slug, quiz.slug]),
         "next": _suite_du_programme(player, space, sauf_quiz=quiz.id),
+        "lesson_url": _cours_du_quiz(space, quiz),
         "brand": {"name": space.name, "emoji": space.emoji,
                   "primary": space.color_primary, "accent": space.color_accent,
                   "reward": reward_text, "reward_type": reward_type},

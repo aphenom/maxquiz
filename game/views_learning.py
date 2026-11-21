@@ -25,9 +25,17 @@ def lessons_list(request, slug):
     membership = current_membership(space, player)
     if space.members_only and not membership:
         return redirect("student_login", slug=slug)
+    from .progression import statuts_des_cours
+    subjects = learning.lessons_by_subject(space, membership)
+    statuts = statuts_des_cours(player, space, membership)
+    for g in subjects:
+        for c in g["chapters"]:
+            for l in c["lessons"]:
+                l.statut = statuts.get(l.id)
     return render(request, "game/lessons_list.html", {
+        "ouvrir": request.GET.get("m", ""),
         "space": space, "player": player, "tab": "lessons",
-        "subjects": learning.lessons_by_subject(space, membership),
+        "subjects": subjects,
         "access": access_status(space, player) if player else None,
     })
 
@@ -54,11 +62,14 @@ def lesson_detail(request, slug, lesson_id):
     if player:
         from .models import LessonView
         LessonView.objects.get_or_create(player=player, lesson=lesson, day=timezone.localdate())
+    from .progression import contexte_chapitre
     from .views import _suite_du_programme
+    chapitre = contexte_chapitre(player, space, current_membership(space, player), lesson=lesson) \
+        if space.members_only and player else None
     suite = _suite_du_programme(player, space, sauf_lecon=lesson.id,
                                 sauf_quiz=quizzes[0].id if quizzes else None)
     return render(request, "game/lesson_detail.html", {
-        "suite": suite, "mois_programme": lesson.get_mois_display() if lesson.mois else "",
+        "suite": suite, "chapitre": chapitre, "mois_programme": lesson.get_mois_display() if lesson.mois else "",
         "space": space, "player": player, "lesson": lesson, "quizzes": quizzes,
         "page": request.GET.get("page", ""), "tab": "lessons",
     })

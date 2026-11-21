@@ -9,7 +9,11 @@
 .chap{margin:14px 0 0;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--brun)}
 .badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--sable);color:var(--brun);white-space:nowrap}
 .subj summary .count{font-weight:400;font-size:13px;color:var(--brun);margin-left:auto;margin-right:6px}
-.subj{margin-top:10px}</style>
+.subj{margin-top:10px}
+.les-row{display:flex;gap:6px;align-items:stretch}.les-row .les{flex:1;min-width:0}
+.les-quiz{margin-top:8px;display:flex;align-items:center;padding:0 12px;border-radius:12px;background:var(--ivoire);font-size:13px;font-weight:800;color:var(--orange);text-decoration:none;white-space:nowrap}
+.badge.ok{background:#DDF3E8;color:#0B6B42}.badge.moyen{background:#FDE7D6;color:#A3480A}
+.badge.retard{background:#FDE7D6;color:#A3480A}.badge.mois{background:#FFF1CC;color:#7A5A00}</style>
 {% include "game/_space_banner.html" with subtitle="Mes cours" %}
 <div class="stagger">
   <p class="small" style="margin:8px 0 0"><a href="{% url 'space_home' space.slug %}">← Quiz</a> · <a href="{% url 'sessions_list' space.slug %}">Séances en direct</a></p>
@@ -22,13 +26,14 @@
   {% endif %}
   <div id="revise">
   {% for g in subjects %}
-  <details class="dash-accordion subj" data-group data-key="{{ g.sub.id }}"{% if subjects|length == 1 %} open{% endif %}>
+  <details class="dash-accordion subj" data-group data-key="{{ g.sub.id }}"{% if subjects|length == 1 or ouvrir == g.sub.id|stringformat:"s" %} open{% endif %}>
     <summary><span>{{ g.sub.name }}</span><span class="count">{{ g.chapters|length }} chapitre{{ g.chapters|length|pluralize }}</span></summary>
     <div class="accordion-body">
       {% for c in g.chapters %}
       <div data-chap>
         {% if c.lessons|length > 1 or c.lessons.0.title != c.name %}<p class="chap">{{ c.name }}</p>{% endif %}
         {% for l in c.lessons %}
+        <div class="les-row">
         <a class="les" href="{% url 'lesson_detail' space.slug l.id %}"
            data-title="{{ l.title|add:' '|add:c.name|cherchable }}"
            data-search="{{ l.title|add:' '|add:c.name|add:' '|add:g.sub.name|add:' '|add:l.summary|cherchable }}">
@@ -39,8 +44,14 @@
           <span style="flex:1;min-width:0"><strong>{{ l.title }}</strong><br>
             <span class="small">{% if l.video_id %}Vidéo{% endif %}{% if l.video_id and l.has_pdf %} + {% endif %}{% if l.has_pdf %}Fiche PDF{% endif %}{% if not l.video_id and not l.has_pdf %}Fiche{% endif %}{% if l.mois %} · {{ l.get_mois_display }}{% endif %}</span>
             <span class="mq-hit" hidden>· trouvé dans la fiche</span></span>
-          {% if l.free_preview %}<span class="badge">Gratuit</span>{% endif %}
+          {% if l.statut.best is not None %}<span class="badge {% if l.statut.best >= 60 %}ok{% else %}moyen{% endif %}">{{ l.statut.best }} %</span>
+          {% elif l.statut.vu %}<span class="badge ok">✓ Lu</span>
+          {% elif l.statut.retard %}<span class="badge retard">À rattraper</span>
+          {% elif l.statut.ce_mois %}<span class="badge mois">Ce mois-ci</span>
+          {% elif l.free_preview %}<span class="badge">Gratuit</span>{% endif %}
         </a>
+        {% if l.statut.quiz %}<a class="les-quiz" href="{% url 'quiz_home' space.slug l.statut.quiz.slug %}" aria-label="Quiz : {{ l.title }}">Quiz ›</a>{% endif %}
+        </div>
         {% endfor %}
       </div>
       {% endfor %}
@@ -61,6 +72,9 @@
   var open = [];
   try { open = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) {}
   var searching = !!(document.getElementById('mqSearch') || {}).value;
+  /* Arrivée depuis l'accueil ou un chapitre (?m=matière) : on montre directement cette matière */
+  var asked = document.querySelector('#revise details.subj[open][data-key="{{ ouvrir|escapejs }}"]');
+  if (asked) setTimeout(function(){ asked.scrollIntoView({block: 'start', behavior: 'smooth'}); }, 50);
   if (!searching) subs.forEach(function(d){ if (open.indexOf(d.dataset.key) >= 0) d.open = true; });
   subs.forEach(function(d){ d.addEventListener('toggle', function(){
     if ((document.getElementById('mqSearch') || {}).value) return;

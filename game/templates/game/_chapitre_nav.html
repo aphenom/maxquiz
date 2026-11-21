@@ -1,0 +1,29 @@
+{# Où se situe ce chapitre : matière, cours/quiz du chapitre, chapitres voisins. Variables : chapitre, space, mode ("quiz" ou "cours") #}
+{% with ch=chapitre.chapitre %}
+<div class="card chap-nav" style="margin-top:14px">
+  <p class="small" style="margin:0"><strong>{{ chapitre.matiere }}</strong> · chapitre {{ chapitre.numero }} sur {{ chapitre.total }}{% if chapitre.mois %} · au programme en {{ chapitre.mois }}{% endif %}</p>
+  {% if mode == "quiz" and ch.lesson %}
+  <a class="btn encre" href="{% url 'lesson_detail' space.slug ch.lesson.id %}" style="margin-top:10px">📖 Lire le cours du chapitre</a>
+  {% endif %}
+  {% if chapitre.best is not None %}
+  <p class="small" style="margin:10px 0 0">Ton meilleur score sur ce chapitre : <strong>{{ chapitre.best }} %</strong>
+    · <a href="{% url 'quiz_leaderboard' space.slug ch.quiz.slug %}">classement</a></p>
+  {% endif %}
+  {% if chapitre.precedent or chapitre.suivant %}
+  <div class="chap-voisins">
+    {% if chapitre.precedent %}{% with p=chapitre.precedent %}
+    <a href="{% if mode == 'cours' and p.lesson %}{% url 'lesson_detail' space.slug p.lesson.id %}{% else %}{% url 'quiz_home' space.slug p.quiz.slug %}{% endif %}">
+      <span class="small">‹ Précédent</span><br><strong>{{ p.nom }}</strong></a>
+    {% endwith %}{% else %}<span></span>{% endif %}
+    {% if chapitre.suivant %}{% with n=chapitre.suivant %}
+    <a href="{% if mode == 'cours' and n.lesson %}{% url 'lesson_detail' space.slug n.lesson.id %}{% else %}{% url 'quiz_home' space.slug n.quiz.slug %}{% endif %}" style="text-align:right">
+      <span class="small">Suivant ›</span><br><strong>{{ n.nom }}</strong></a>
+    {% endwith %}{% endif %}
+  </div>
+  {% endif %}
+  <a class="small" href="{% url 'lessons_list' space.slug %}?m={{ chapitre.sub.id }}" style="display:block;margin-top:10px">Tous les chapitres de {{ chapitre.matiere }} ›</a>
+</div>
+<style>.chap-voisins{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.chap-voisins a{display:block;padding:10px;border-radius:12px;background:var(--ivoire);text-decoration:none;color:inherit;font-size:14px;line-height:1.25}
+.chap-voisins a strong{display:block;margin-top:2px}</style>
+{% endwith %}
