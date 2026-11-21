@@ -111,7 +111,7 @@ class EngagementTests(TestCase):
 
     def test_accueil_et_reglages(self):
         self.login()
-        self.assertContains(self.client.get(f"/e/{self.space.slug}/"), "Mission du jour")
+        self.assertContains(self.client.get(f"/e/{self.space.slug}/"), "Ton programme du jour")
         self.client.post("/moi/", {"action": "rappels", "actifs": "on", "heure": "17:30"})
         self.assertEqual(Rappels.objects.get(player=self.player).heure, time(17, 30))
         self.client.post("/moi/", {"action": "rappels", "pause": "7"})

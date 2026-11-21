@@ -105,6 +105,7 @@
     <p class="small" id="endStats" style="margin:0"></p>
   </div>
   <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+    <a class="btn" id="nextLink" href="#" hidden style="text-align:left;line-height:1.3"></a>
     <a class="btn vert" id="boardLink" href="/classement/">Voir le classement 🏅</a>
     <a class="btn encre" id="homeLink" href="/">Retour à l'accueil</a>
   </div>
@@ -174,6 +175,15 @@ $('jokersLeft').textContent = jokersLeft;
 if (!G.joker.max) $('jokerBadge').style.display = 'none';
 if (G.board_url) $('boardLink').href = G.board_url;
 if (G.home_url) $('homeLink').href = G.home_url;
+if (G.next) {
+  /* Pas de cul-de-sac : la suite du programme du jour, dans une autre matière */
+  $('nextLink').hidden = false; $('nextLink').href = G.next.url;
+  $('nextLink').innerHTML = '';
+  const small = document.createElement('span'); small.style.cssText = 'display:block;font-size:12px;font-weight:700;opacity:.85';
+  small.textContent = 'Suite de ton programme du jour';
+  const big = document.createElement('span'); big.textContent = G.next.title + ' ›';
+  $('nextLink').append(small, big);
+}
 
 function api(url, body) {
   return fetch(url, { method: 'POST',
@@ -419,7 +429,7 @@ function endScreen(status, reachedOverride) {
       $('endCard').style.borderTop = '6px solid var(--orange)';
       $('endBig').style.color = 'var(--orange)';
       $('endBig').textContent = '';
-      $('endStats').textContent = 'Reviens demain pour un nouveau quiz !';
+      $('endStats').textContent = G.next ? 'Continue sur ta lancée, la suite t’attend juste en dessous.' : 'Reviens demain pour un nouveau quiz !';
     }
     $('endScreen').hidden = false;
     if (PLAYFUL) confetti(100);

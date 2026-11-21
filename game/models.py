@@ -792,6 +792,11 @@ class Lesson(models.Model):
     pdf_data = models.BinaryField("Fiche PDF", null=True, blank=True)
     free_preview = models.BooleanField("Accessible sans abonnement", default=False)
     order = models.PositiveSmallIntegerField("Ordre", default=0)
+    mois = models.PositiveSmallIntegerField(
+        "Mois du programme", null=True, blank=True, choices=[(m, n) for m, n in (
+            (9, "septembre"), (10, "octobre"), (11, "novembre"), (12, "décembre"), (1, "janvier"), (2, "février"),
+            (3, "mars"), (4, "avril"), (5, "mai"), (6, "juin"))],
+        help_text="Mois où ce chapitre est normalement étudié : sert à dire à l'élève s'il est à jour.")
     active = models.BooleanField("Publié", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -1055,7 +1060,8 @@ class Rappels(models.Model):
 class Mission(models.Model):
     """Mission du jour proposée à un élève (une par jour), et ce qu'il en a fait."""
     KINDS = [("reprendre", "Quiz à terminer"), ("revision", "Révision espacée"), ("point_faible", "Point faible"),
-             ("suite", "Chapitre suivant"), ("cours", "Nouveau cours"), ("entrainement", "Entraînement")]
+             ("suite", "Chapitre suivant"), ("cours", "Nouveau cours"), ("entrainement", "Entraînement"),
+             ("programme", "Chapitre du programme"), ("delaissee", "Matière délaissée")]
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="missions")
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="missions")
     day = models.DateField(default=timezone.localdate)
@@ -1067,6 +1073,8 @@ class Mission(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     pushed_at = models.DateTimeField("Rappel envoyé le", null=True, blank=True)
     opened_at = models.DateTimeField("Appli ouverte après le rappel", null=True, blank=True)
+    items = models.JSONField("Programme du jour", default=list, blank=True,
+                             help_text="Les activités proposées ce jour-là, dans des matières différentes.")
 
     class Meta:
         verbose_name = "Mission du jour"

@@ -203,45 +203,76 @@ def sheet(path, headers, rows, widths):
     wb.save(path)
 
 
+def _progression():
+    spec = importlib.util.spec_from_file_location("progression", os.path.join(HERE, "progression.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.PROGRESSION
+
+
+def _par_matiere(errors):
+    """{(matière, niveaux): [(chapitre, niveaux du chapitre)]}, chapitres rangés selon
+    contenu/progression.py (ordre de l'année et mois de chaque chapitre)."""
+    groups = {}
+    for src in SOURCES:
+        mod = load(src)
+        default_levels = list(getattr(mod, "NIVEAUX", None) or [mod.NIVEAU])
+        key = (mod.MATIERE, tuple(default_levels))       # Maths Tle A et Maths Tle C/D numérotées à part
+        for chap in mod.CHAPITRES:
+            check(chap, errors)
+            groups.setdefault(key, []).append((chap, list(chap.get("niveaux") or default_levels)))
+    prog = _progression()
+    for (matiere, levels), chaps in groups.items():
+        plan = prog.get(("+".join(levels), matiere))
+        if not plan:
+            errors.append(f"{matiere} {'+'.join(levels)} : absent de contenu/progression.py")
+            continue
+        mois = dict(plan)
+        names = [c["nom"] for c, _ in chaps]
+        missing = [n for n in names if n not in mois]
+        extra = [n for n in mois if n not in names]
+        if missing or extra:
+            errors.append(f"{matiere} {'+'.join(levels)} : progression à revoir "
+                          f"(absents : {missing}, en trop : {extra})")
+            continue
+        rang = {n: i for i, (n, _) in enumerate(plan)}
+        chaps.sort(key=lambda c: rang[c[0]["nom"]])
+        for c, _ in chaps:
+            c["mois"] = mois[c["nom"]]
+    return groups
+
+
 def main():
     os.makedirs(os.path.join(OUT, "fiches"), exist_ok=True)
     errors, qrows, crows, stats = [], [], [], []
     letters = {k: 0 for k in "ABCD"}
-    ordre = {}                                      # numéro du chapitre dans sa matière
-    for src in SOURCES:
-        mod = load(src)
-        default_levels = list(getattr(mod, "NIVEAUX", None) or [mod.NIVEAU])
-        for chap in mod.CHAPITRES:
-            check(chap, errors)
-            if errors:
-                continue
-            levels = list(chap.get("niveaux") or default_levels)
-            key = (mod.MATIERE, tuple(default_levels))       # Maths Tle A et Maths Tle C/D numérotées à part
-            ordre[key] = ordre.get(key, 0) + 1
-            base = ordre[key]
+    groups = _par_matiere(errors)
+    if errors:
+        print("\n".join(errors))
+        sys.exit(1)
+    for (matiere, _default), chaps in groups.items():
+        for base, (chap, levels) in enumerate(chaps, 1):
             label = levels[0] if len(levels) == 1 else ", ".join(levels[:-1]) + " et " + levels[-1]
-            fname = f"{slug('-'.join(levels))}-{slug(mod.MATIERE)}-{base:02d}-{slug(chap['nom'])}.pdf"
-            pdf(chap, label, mod.MATIERE, os.path.join(OUT, "fiches", fname))
-            free = chap.get("gratuit") or chap["nom"] in FREE or (NIVEAU_CIBLE != "3eme" and base == 1)
+            fname = f"{slug('-'.join(levels))}-{slug(matiere)}-{base:02d}-{slug(chap['nom'])}.pdf"
+            pdf(chap, label, matiere, os.path.join(OUT, "fiches", fname))
+            free = chap.get("gratuit") or chap["nom"] in FREE or base == 1
             shuffled_qs = [shuffled(q) for q in chap["questions"]]
             for niveau in levels:
                 for d, text, opts, letter, expl in shuffled_qs:
                     letters[letter] += 1
-                    qrows.append([niveau, mod.MATIERE, chap["nom"], d, text, *opts, letter, expl])
-                crows.append([niveau, mod.MATIERE, chap["nom"], chap["nom"], app_summary(chap["fiche"]),
-                              "", fname, base, "oui" if free else "non"])
-            stats.append((mod.MATIERE, f"{chap['nom']} [{', '.join(levels)}]", len(chap["questions"])))
-    if errors:
-        print("\n".join(errors))
-        sys.exit(1)
+                    qrows.append([niveau, matiere, chap["nom"], d, text, *opts, letter, expl])
+                crows.append([niveau, matiere, chap["nom"], chap["nom"], app_summary(chap["fiche"]),
+                              "", fname, base, "oui" if free else "non", chap["mois"]])
+            stats.append((matiere, f"{base:02d}. {chap['nom']} [{', '.join(levels)}] · mois {chap['mois']}",
+                          len(chap["questions"])))
     sheet(os.path.join(OUT, "quiz.xlsx"),
           ["niveau", "matiere", "thematique", "difficulte", "question", "a", "b", "c", "d", "bonne", "explication"],
           qrows, [8, 16, 30, 6, 60, 28, 28, 28, 28, 6, 70])
     sheet(os.path.join(OUT, "cours.xlsx"),
-          ["niveau", "matiere", "chapitre", "titre", "resume", "youtube", "fiche_pdf", "ordre", "gratuit"],
-          crows, [8, 16, 30, 30, 90, 30, 45, 6, 8])
+          ["niveau", "matiere", "chapitre", "titre", "resume", "youtube", "fiche_pdf", "ordre", "gratuit", "mois"],
+          crows, [8, 16, 30, 30, 90, 30, 45, 6, 8, 6])
     for s in stats:
-        print(f"{s[0]:16} {s[1]:45} {s[2]} questions")
+        print(f"{s[0]:16} {s[1]:60} {s[2]} questions")
     print(f"Total : {len(qrows)} questions, {len(crows)} chapitres. Bonnes réponses : {letters}")
 
 

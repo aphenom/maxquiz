@@ -219,6 +219,14 @@ def monthly_report(space, year, month):
         weak = subjects[0]["question__sub_category__name"] if subjects else ""
         strong = subjects[-1]["question__sub_category__name"] if len(subjects) > 1 else ""
         first_name = (m.full_name.split() or [""])[-1]
+        oubliees, retard = [], []
+        if m.player_id and m.category_id:
+            from .progression import etat_matieres
+            for e in etat_matieres(m.player, space, m):
+                if not e["derniere"] or e["derniere"] < start:
+                    oubliees.append(e["nom"])
+                if e["nb_retard"] >= 2:
+                    retard.append(f"{e['nom']} ({e['nb_retard']} chapitres)")
         if quizzes:
             msg = (f"Bonjour, voici le bilan MaxQuiz de {first_name} ({space.name}) pour {label} : "
                    f"{quizzes} quiz fait{'s' if quizzes > 1 else ''}, {pct} % de bonnes réponses.")
@@ -226,6 +234,10 @@ def monthly_report(space, year, month):
                 msg += f" Point fort : {strong}."
             if weak:
                 msg += f" À revoir : {weak}."
+            if oubliees:
+                msg += f" Matière{'s' if len(oubliees) > 1 else ''} pas travaillée{'s' if len(oubliees) > 1 else ''} ce mois : {', '.join(oubliees)}."
+            if retard:
+                msg += f" En retard sur le programme : {', '.join(retard)}."
             msg += " Merci de l'encourager à continuer !"
         else:
             msg = (f"Bonjour, {first_name} n'a fait aucun quiz MaxQuiz en {label} avec {space.name}. "
@@ -235,6 +247,7 @@ def monthly_report(space, year, month):
         if to:
             wa = "https://wa.me/225" + to + "?text=" + urllib.parse.quote(msg)
         rows.append({"member": m, "quizzes": quizzes, "pct": pct, "strong": strong, "weak": weak,
+                     "oubliees": oubliees, "retard": retard,
                      "message": msg, "parent_phone": to, "whatsapp": wa})
     return rows
 

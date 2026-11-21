@@ -122,6 +122,12 @@ def _quand(day, today):
     return "hier" if delta == 1 else (JOURS[day.weekday()] if delta < 7 else f"il y a {delta} jours")
 
 
+def _cible(allowed, quiz, lesson=None):
+    """Matière et objet visés par une activité (pour savoir si elle est faite)."""
+    return dict(matiere=allowed[quiz.id][0].name, quiz_id=quiz.id, lesson_id=lesson.id if lesson else None,
+                chapitre=quiz.name)
+
+
 def choisir_mission(player, space, membership, today=None):
     """La mission la plus utile aujourd'hui, ou None s'il n'y a rien à proposer."""
     today = today or timezone.localdate()
@@ -146,7 +152,7 @@ def choisir_mission(player, space, membership, today=None):
                 and last[q.id][0].id == s.id):
             return dict(kind="reprendre", title=f"Termine ton quiz « {q.name} »",
                         text=f"Tu t'étais arrêté à la question {n + 1} sur {q.question_count}. Reprends-le en 5 minutes.",
-                        url=url_quiz(q), cta="Reprendre le quiz")
+                        url=url_quiz(q), cta="Reprendre le quiz", **_cible(allowed, q))
 
     # 2. Révision espacée : chapitre raté il y a 1, 3 ou 7 jours, pas encore rattrapé
     for s, n, ok in reversed(sessions):
@@ -161,9 +167,10 @@ def choisir_mission(player, space, membership, today=None):
             if lesson:
                 return dict(kind="revision", title=f"Revois « {q.name} »",
                             text=text + "Relis la fiche (3 minutes), puis refais le quiz.",
-                            url=reverse("lesson_detail", args=[space.slug, lesson.id]), cta="Revoir le cours")
+                            url=reverse("lesson_detail", args=[space.slug, lesson.id]), cta="Revoir le cours",
+                            **_cible(allowed, q, lesson))
             return dict(kind="revision", title=f"Refais le quiz « {q.name} »", text=text + "C'est le bon moment pour retenter.",
-                        url=url_quiz(q), cta="Refaire le quiz")
+                        url=url_quiz(q), cta="Refaire le quiz", **_cible(allowed, q))
 
     # 3. Point faible : la matière la plus basse (au moins 2 quiz faits, moyenne < 60 %)
     by_sub = {}
@@ -177,7 +184,7 @@ def choisir_mission(player, space, membership, today=None):
             or min((x for x in qs if x.id in best), key=lambda x: best[x.id])
         return dict(kind="point_faible", title=f"{sub.name} : « {q.name} »",
                     text=f"C'est ta matière la plus fragile en ce moment. On s'y met 5 minutes ?",
-                    url=url_quiz(q), cta="Lancer le quiz")
+                    url=url_quiz(q), cta="Lancer le quiz", **_cible(allowed, q))
 
     # 4. Chapitre suivant (une matière différente chaque jour)
     order = matieres[today.toordinal() % len(matieres):] + matieres[:today.toordinal() % len(matieres)]
@@ -186,7 +193,7 @@ def choisir_mission(player, space, membership, today=None):
         if q:
             return dict(kind="suite", title=f"{sub.name} : « {q.name} »",
                         text=f"Nouveau chapitre pour toi · {q.question_count} questions, environ 5 minutes.",
-                        url=url_quiz(q), cta="Lancer le quiz")
+                        url=url_quiz(q), cta="Lancer le quiz", **_cible(allowed, q))
 
     # 5. Nouveau cours publié ces 3 derniers jours et pas encore ouvert
     from .learning import lessons_by_subject
@@ -196,14 +203,17 @@ def choisir_mission(player, space, membership, today=None):
     if fresh:
         l = max(fresh, key=lambda x: x.created_at)
         return dict(kind="cours", title=f"Nouveau cours : « {l.title} »", text="Il vient d'arriver dans ta classe.",
-                    url=reverse("lesson_detail", args=[space.slug, l.id]), cta="Voir le cours")
+                    url=reverse("lesson_detail", args=[space.slug, l.id]), cta="Voir le cours",
+                    matiere=l.shared_subject_name or (l.sub_category.name if l.sub_category_id else ""),
+                    quiz_id=None, lesson_id=l.id)
 
     # 6. Tout est fait : on retravaille le chapitre le moins réussi
     if best:
         qid = min(best, key=best.get)
         q = allowed[qid][1]
         return dict(kind="entrainement", title=f"Bats ton score sur « {q.name} »",
-                    text=f"Ton meilleur score : {best[qid]} %. Tu peux faire mieux !", url=url_quiz(q), cta="Relever le défi")
+                    text=f"Ton meilleur score : {best[qid]} %. Tu peux faire mieux !", url=url_quiz(q), cta="Relever le défi",
+                    **_cible(allowed, q))
     return None
 
 
@@ -222,13 +232,25 @@ def mission_du_jour(player, space=None, membership=None, today=None):
         space, membership = espace_eleve(player)
     if not space:
         return None
+    from .progression import programme_du_jour
     existing = Mission.objects.filter(player=player, day=today).first()
-    if existing:
+    if existing and existing.items:
+        return existing
+    if existing:                                   # mission d'avant le programme du jour
+        premiere = dict(kind=existing.kind, title=existing.title, text=existing.text, url=existing.url,
+                        cta=existing.cta, matiere="", quiz_id=None, lesson_id=None)
+        existing.items = programme_du_jour(player, existing.space, membership, today, premiere)
+        existing.save(update_fields=["items"])
         return existing
     m = choisir_mission(player, space, membership, today)
-    if not m:
+    items = programme_du_jour(player, space, membership, today, m)
+    first = m or (items[0] if items else None)
+    if not first:
         return None
-    obj, _ = Mission.objects.get_or_create(player=player, day=today, defaults=dict(space=space, **m))
+    fields = {k: first[k] for k in ("kind", "title", "text", "url", "cta")}
+    if fields["kind"] not in dict(Mission.KINDS):
+        fields["kind"] = "suite"
+    obj, _ = Mission.objects.get_or_create(player=player, day=today, defaults=dict(space=space, items=items, **fields))
     return obj
 
 
@@ -273,6 +295,44 @@ def noter_visite(player):
                            opened_at__isnull=True).update(opened_at=now)
 
 
+def message_du_rappel(player, mission, today):
+    """Le rappel change de sujet d'un jour à l'autre : en priorité la matière délaissée depuis
+    longtemps, jamais deux jours de suite la même matière si on peut l'éviter.
+    Renvoie (titre, texte, lien, activités du jour avec la matière rappelée notée)."""
+    from .progression import faits_aujourdhui
+    items = list(mission.items or [])
+    hier = Mission.objects.filter(player=player, day=today - timedelta(days=1)).first()
+    deja = next((it.get("matiere") for it in (hier.items if hier else []) if it.get("rappel")), None)
+    restants = [it for it in faits_aujourdhui(player, items, today) if not it["fait"]]
+    candidats = [it for it in restants if it.get("matiere") != deja] or restants
+    n = serie(player, today)
+    def oubli(it):                                   # jamais commencée : plus que tout
+        js = it.get("jours_sans")
+        return 10 ** 6 if js == -1 else (js or 0)
+    oubliees = [it for it in candidats if it.get("jours_sans") is not None and oubli(it) >= 5]
+    choix = max(oubliees, key=oubli) if oubliees else None
+    if choix:
+        js = choix.get("jours_sans")
+        title = (f"Tu n'as pas encore commencé {choix['matiere']}" if js == -1
+                 else f"Ça fait {js} jours sans {choix['matiere']}")
+        body = (f"« {choix['chapitre']} » : 5 minutes et c'est reparti." if choix.get("chapitre")
+                else f"{choix['title']} : 5 minutes et c'est reparti.")
+    elif candidats:
+        choix = candidats[0]
+        if n >= 2:
+            title, body = f"🔥 Ta série de {n} jours s'arrête ce soir", f"Garde-la : {choix['title']}"
+        else:
+            title, body = choix["title"], choix.get("text", "")
+    else:
+        if n >= 2:
+            title, body = f"🔥 Ta série de {n} jours s'arrête ce soir", f"Garde-la : {mission.title}"
+        else:
+            title, body = mission.title, mission.text
+        return title, body, mission.url, items
+    marque = [dict(it, rappel=(it.get("title") == choix.get("title"))) for it in items]
+    return title, body, choix["url"], marque
+
+
 def envoyer_rappels_missions(now=None):
     """À lancer toutes les 10 minutes. Renvoie le nombre de rappels envoyés."""
     from .push import notify
@@ -308,13 +368,9 @@ def envoyer_rappels_missions(now=None):
         mission = mission_du_jour(player, space, membership, today)
         if not mission:
             continue
-        n = serie(player, today)
-        if n >= 2:
-            title, body = f"🔥 Ta série de {n} jours s'arrête ce soir", f"Garde-la : {mission.title}"
-        else:
-            title, body = mission.title, mission.text
-        notify(players=[player], kind="mission", title=title, body=body, url=mission.url)
-        Mission.objects.filter(pk=mission.pk).update(pushed_at=now)
+        title, body, url, items = message_du_rappel(player, mission, today)
+        notify(players=[player], kind="mission", title=title, body=body, url=url)
+        Mission.objects.filter(pk=mission.pk).update(pushed_at=now, items=items)
         Rappels.objects.filter(pk=prefs.pk).update(dernier_envoi=now, ignores=prefs.ignores + 1)
         sent += 1
     return sent

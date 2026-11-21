@@ -16,7 +16,7 @@
 {% for r in rows %}
 <div class="card" style="padding:12px 14px;margin:8px 0">
   <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-    <span><strong>{{ r.member.full_name }}</strong><br><span class="small">{{ r.quizzes }} quiz{% if r.pct is not None %} · {{ r.pct }} %{% endif %}{% if r.weak %} · à revoir : {{ r.weak }}{% endif %}</span></span>
+    <span><strong>{{ r.member.full_name }}</strong><br><span class="small">{{ r.quizzes }} quiz{% if r.pct is not None %} · {{ r.pct }} %{% endif %}{% if r.weak %} · à revoir : {{ r.weak }}{% endif %}{% if r.oubliees %} · pas travaillé : {{ r.oubliees|join:", " }}{% endif %}</span></span>
     {% if r.whatsapp %}<a class="btn vert mini" href="{{ r.whatsapp }}" target="_blank" rel="noopener">📲 Envoyer</a>{% else %}<span class="tag mute">pas de n° parent</span>{% endif %}
   </div>
   <p class="small" style="margin:6px 0 0;color:var(--brun)">{{ r.message }}</p>

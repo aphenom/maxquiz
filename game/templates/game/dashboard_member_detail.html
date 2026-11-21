@@ -49,6 +49,20 @@
       <div class="kpi"><b>{{ assigned_quizzes|length }}</b><span class="small">quiz à faire</span></div>
     </div>
 
+    {% if matieres %}
+    <details class="dash-accordion" style="margin-top:14px" open>
+      <summary style="font-size:14px">📚 Avancement dans le programme</summary>
+      <div class="accordion-body">
+        {% for m in matieres %}
+        <p class="small" style="margin:6px 0 0;display:flex;justify-content:space-between;gap:8px">
+          <span><strong>{{ m.nom }}</strong> · {{ m.travailles }}/{{ m.total }} chapitres travaillés, {{ m.reussis }} réussi{{ m.reussis|pluralize }}</span>
+          <span style="white-space:nowrap;font-weight:700;color:{% if m.nb_retard %}#A3480A{% else %}#0B6B42{% endif %}">
+            {% if m.nb_retard %}{{ m.nb_retard }} en retard{% elif m.attendus %}à jour{% else %}—{% endif %}{% if m.jours_sans is None %} · jamais ouvert{% elif m.jours_sans >= 7 %} · rien depuis {{ m.jours_sans }} j{% endif %}</span></p>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
     {% if sub_breakdown|length > 1 or theme_breakdown %}
     <details class="dash-accordion" style="margin-top:14px">
       <summary style="font-size:14px">📊 Points forts / à travailler</summary>

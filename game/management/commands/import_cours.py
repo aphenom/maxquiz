@@ -1,11 +1,12 @@
 """Import des cours communs MaxQuiz (fiche de cours + PDF + vidéo) depuis un .xlsx
 ou un .csv, avec le même lecteur que import_questions.
 
-Colonnes : niveau;matiere;chapitre;titre;resume;youtube;fiche_pdf;ordre;gratuit
+Colonnes : niveau;matiere;chapitre;titre;resume;youtube;fiche_pdf;ordre;gratuit;mois
   - chapitre : même nom que le quiz du chapitre (import_questions, colonne
     « thematique ») : c'est ce qui relie une erreur au cours à revoir.
   - fiche_pdf : nom du fichier PDF, cherché dans le dossier --fiches.
   - gratuit : oui / non (cours ouvert sans abonnement, pour faire découvrir).
+  - mois : mois où le chapitre est normalement étudié (10 = octobre), facultatif.
 Un cours déjà présent (même niveau, matière et chapitre et même titre) est mis à
 jour : on peut corriger le fichier et le réimporter sans créer de doublon.
 Usage :
@@ -52,10 +53,13 @@ class Command(BaseCommand):
                     errors.append(f"ligne {n} : {pdf_name} dépasse 5 Mo")
                     continue
             order = r.get("ordre", "")
+            mois = r.get("mois", "")
+            mois = int(float(mois)) if mois.replace(".", "", 1).isdigit() else None
             plan.append(dict(
                 key=(niveau, matiere, chap, title),
                 fields=dict(summary=r.get("resume", ""), youtube_url=r.get("youtube", ""),
-                            order=int(order) if order.isdigit() else 0,
+                            order=int(float(order)) if order.replace(".", "", 1).isdigit() else 0,
+                            mois=mois if mois in range(1, 13) else None,
                             free_preview=r.get("gratuit", "").lower() in YES, active=True),
                 pdf=(pdf_name, pdf_data)))
 

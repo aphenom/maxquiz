@@ -54,7 +54,11 @@ def lesson_detail(request, slug, lesson_id):
     if player:
         from .models import LessonView
         LessonView.objects.get_or_create(player=player, lesson=lesson, day=timezone.localdate())
+    from .views import _suite_du_programme
+    suite = _suite_du_programme(player, space, sauf_lecon=lesson.id,
+                                sauf_quiz=quizzes[0].id if quizzes else None)
     return render(request, "game/lesson_detail.html", {
+        "suite": suite, "mois_programme": lesson.get_mois_display() if lesson.mois else "",
         "space": space, "player": player, "lesson": lesson, "quizzes": quizzes,
         "page": request.GET.get("page", ""), "tab": "lessons",
     })

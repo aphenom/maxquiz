@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import (GameConfig, Player, Question, AdCampaign,
-                     GameSession, Answer, JokerUse, Withdrawal)
+                     GameSession, Answer, JokerUse, Withdrawal, Lesson)
 from .subscriptions import access_status
 
 TRAINING_COUNT = 6
@@ -853,6 +853,9 @@ def space_home(request, slug):
     # catalogue, sans configuration de la part de l'établissement.
     all_categories = list(space.categories.prefetch_related("subcategories"))
     categories, orphan_quizzes = [], []
+    rangs = {(label_key(lvl), label_key(sb), label_key(th)): o for lvl, sb, th, o in
+             Lesson.objects.filter(space__isnull=True, active=True)
+             .values_list("shared_level_name", "shared_subject_name", "shared_theme_name", "order")}
     for cat in all_categories:
         subs = []
         for sub in cat.subcategories.all():
@@ -873,6 +876,9 @@ def space_home(request, slug):
                 seen.add(q.theme_id)
                 themed.append({"theme": q.theme, "quizzes": [x for x in qs if x.theme_id == q.theme_id]})
             general = [q for q in qs if not q.theme_id]
+            # Dans l'ordre du programme de l'année (ordre des cours communs), sinon par nom
+            general.sort(key=lambda q: (rangs.get((label_key(cat.name), label_key(sub.name), label_key(q.name)), 999),
+                                        q.name))
             subs.append({"sub": sub, "themed": themed, "general": general, "count": len(qs)})
         direct = []
         if no_profile or cat.id in my_category_ids:
@@ -923,13 +929,23 @@ def space_home(request, slug):
             new_lesson = max(lessons, key=lambda l: l.created_at, default=None)
     # Mission du jour et série (élèves des espaces réservés aux membres)
     mission, streak, done_today, push_ready = None, 0, False, False
+    programme, matieres, semaine, journee_complete = [], [], None, False
     if player and space.members_only and current_membership:
-        from . import engagement
+        from . import engagement, progression
         mission = engagement.mission_du_jour(player, space, current_membership)
         streak = engagement.serie(player)
         done_today = engagement.actif_aujourdhui(player)
         push_ready = GameSession.objects.filter(player=player, finished_at__isnull=False).exists()
+        chap = progression.chapitres(space, current_membership)
+        matieres = progression.etat_matieres(player, space, current_membership, today, chap)
+        semaine = progression.semaine(player, space, current_membership, today, chap)
+        if mission:
+            programme = progression.faits_aujourdhui(player, mission.items or [], today)
+            journee_complete = bool(programme) and all(it["fait"] for it in programme)
     return render(request, "game/space_home.html", {
+        "programme": programme, "journee_complete": journee_complete,
+        "programme_faits": sum(1 for it in programme if it["fait"]),
+        "matieres": matieres, "semaine": semaine,
         "mission": mission, "streak": streak, "done_today": done_today, "push_ready": push_ready,
         "next_quiz": next_quiz, "new_lesson": new_lesson,
         "level_label": (" · ".join(x for x in (current_membership.category.name if current_membership and current_membership.category_id else "",
@@ -1049,6 +1065,18 @@ def space_start(request, slug):
         "ads": [], "video_ads": [],
     }
     return render(request, "game/play.html", {"payload": payload, "cfg": cfg})
+
+
+def _suite_du_programme(player, space, sauf_quiz=None, sauf_lecon=None):
+    """Activité suivante du programme du jour (autre matière), pour enchaîner sans retour à
+    l'accueil. None hors espace élève ou si tout est fait."""
+    if not (player and space.members_only):
+        return None
+    from .models import Mission
+    from .progression import suivante
+    it = suivante(player, Mission.objects.filter(player=player, day=timezone.localdate()).first(),
+                  sauf_quiz=sauf_quiz, sauf_lecon=sauf_lecon)
+    return {"title": it["title"], "url": it["url"]} if it else None
 
 
 def _quiz_locked(player, quiz, today):
@@ -1177,6 +1205,7 @@ def quiz_start(request, slug, quiz_slug):
         "playful": space.playful_fx,
         "home_url": reverse("space_home", args=[space.slug]),
         "board_url": reverse("quiz_leaderboard", args=[space.slug, quiz.slug]),
+        "next": _suite_du_programme(player, space, sauf_quiz=quiz.id),
         "brand": {"name": space.name, "emoji": space.emoji,
                   "primary": space.color_primary, "accent": space.color_accent,
                   "reward": reward_text, "reward_type": reward_type},
@@ -2324,8 +2353,14 @@ def dashboard_member_detail(request, slug, member_id):
                 })
         assigned_quizzes.sort(key=lambda a: a["days_left"] if a["days_left"] is not None else 9999)
 
+    # Couverture du programme, matière par matière (même calcul que l'accueil de l'élève)
+    matieres = []
+    if member.player_id and member.category_id:
+        from . import progression
+        matieres = progression.etat_matieres(member.player, space, member)
     categories = space.categories.prefetch_related("subcategories")
     return render(request, "game/dashboard_member_detail.html", {
+        "matieres": matieres,
         "space": space, "member": member, "sessions_stats": sessions_stats,
         "categories": categories, "history": history, "overall_pct": overall_pct,
         "sub_breakdown": sub_breakdown, "theme_breakdown": theme_breakdown,

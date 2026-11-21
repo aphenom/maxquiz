@@ -28,7 +28,39 @@
     <span style="flex:1"><strong>{{ s.space.name }}</strong><br><span class="small">Exercices de tes profs et séances de ton école</span></span>›</a>
   {% endfor %}
 
-  {% if mission %}
+  {% if programme %}
+  <div class="card mission" style="margin-top:12px;background:var(--encre);color:var(--ivoire)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <p style="margin:0;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--or)">Ton programme du jour · {{ programme_faits }}/{{ programme|length }}</p>
+      {% if streak %}<span class="streak" title="Jours de révision d'affilée">🔥 {{ streak }} jour{{ streak|pluralize }}</span>{% endif %}
+    </div>
+    {% if journee_complete %}
+    <p style="margin:6px 0 2px;font-size:19px;font-weight:800;line-height:1.25">🎉 Journée complète, bravo !</p>
+    <p style="margin:0 0 6px;font-size:14px;opacity:.85">Tu as travaillé {{ programme|length }} matières aujourd'hui. Reviens demain pour la suite du programme.</p>
+    {% elif programme_faits %}
+    <p style="margin:6px 0 0;font-size:14px;opacity:.85">{% if streak >= 2 %}Ta série est sauvée ({{ streak }} jours) 🔥. {% else %}Ta journée compte déjà. {% endif %}Termine les autres pour une journée complète.</p>
+    {% else %}
+    <p style="margin:6px 0 0;font-size:14px;opacity:.85">Trois activités courtes, trois matières : environ 15 minutes.{% if streak %} Une seule suffit pour passer à {{ streak|add:1 }} jours 🔥{% endif %}</p>
+    {% endif %}
+    <div style="margin-top:8px">
+    {% for it in programme %}
+      <a class="prog-it{% if it.fait %} fait{% endif %}" href="{{ it.url }}">
+        <span class="prog-ck" aria-hidden="true">{% if it.fait %}✓{% else %}{{ forloop.counter }}{% endif %}</span>
+        <span style="flex:1;min-width:0"><strong>{{ it.title }}</strong><br><span class="prog-tx">{{ it.text }}</span></span>
+        {% if not it.fait %}<span class="prog-go" aria-label="{{ it.cta|default:'Commencer' }}">›</span>{% endif %}
+      </a>
+    {% endfor %}
+    </div>
+  </div>
+  <style>.mission .streak{font-size:13px;font-weight:800;background:rgba(255,255,255,.12);padding:4px 10px;border-radius:99px;white-space:nowrap}
+  .prog-it{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.12);color:var(--ivoire);text-decoration:none}
+  .prog-it:first-child{border-top:0}
+  .prog-it.fait{opacity:.55}.prog-it.fait strong{text-decoration:line-through}
+  .prog-ck{width:28px;height:28px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;background:rgba(255,255,255,.14)}
+  .prog-it.fait .prog-ck{background:var(--vert);color:#fff}
+  .prog-tx{font-size:13px;opacity:.8}
+  .prog-go{font-size:26px;line-height:1;font-weight:800;color:var(--or)}</style>
+  {% elif mission %}
   <div class="card mission" style="margin-top:12px;background:var(--encre);color:var(--ivoire)">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <p style="margin:0;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--or)">Mission du jour</p>
@@ -60,6 +92,40 @@
       <span>Nouveau cours : <strong>{{ new_lesson.title }}</strong></span></a>
     {% endif %}
   </div>
+  {% endif %}
+
+  {% if matieres %}
+  <div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+      <p style="margin:0;font-weight:800">Ma progression dans le programme</p>
+      <a class="small" href="{% url 'lessons_list' space.slug %}">Tous les cours ›</a>
+    </div>
+    {% if semaine and semaine.total > 1 %}
+    <p class="small" style="margin:6px 0 0">
+      {% if semaine.complete %}🏅 Objectif de la semaine atteint : tes {{ semaine.total }} matières travaillées !
+      {% else %}🎯 Cette semaine : {{ semaine.faites }}/{{ semaine.total }} matières. Il te manque {{ semaine.manquantes|join:", " }}.{% endif %}
+      {% if semaine.semaines_completes %}<br>Semaines complètes : {{ semaine.semaines_completes }} 🏅{% endif %}</p>
+    {% endif %}
+    {% for m in matieres %}
+    <a class="mat" href="{% if m.prochain %}{% if m.prochain.lesson and not m.prochain.fait %}{% url 'lesson_detail' space.slug m.prochain.lesson.id %}{% else %}{% url 'quiz_home' space.slug m.prochain.quiz.slug %}{% endif %}{% else %}{% url 'lessons_list' space.slug %}{% endif %}">
+      <span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <strong>{{ m.nom }}</strong>
+        {% if m.nb_retard %}<span class="mat-tag retard">{{ m.nb_retard }} en retard</span>
+        {% elif m.attendus %}<span class="mat-tag ok">À jour</span>{% endif %}
+      </span>
+      <span class="mat-bar" aria-hidden="true"><span style="width:{{ m.pct }}%"></span><span class="ok" style="width:{{ m.pct_reussis }}%"></span></span>
+      <span class="small">{{ m.travailles }}/{{ m.total }} chapitres travaillés · {{ m.reussis }} réussi{{ m.reussis|pluralize }}{% if m.jours_sans is not None and m.jours_sans >= 4 %} · rien depuis {{ m.jours_sans }} jours{% elif m.jours_sans is None %} · pas encore commencé{% endif %}</span>
+      {% if m.prochain %}<span class="small" style="display:block;color:var(--encre)">Ensuite : {{ m.prochain.nom }} ›</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <style>.mat{display:block;padding:10px 0;border-top:1px solid var(--sable);text-decoration:none;color:inherit}
+  .mat:first-of-type{border-top:0}
+  .mat-bar{position:relative;display:block;height:8px;border-radius:99px;background:var(--sable);margin:6px 0 4px;overflow:hidden}
+  .mat-bar span{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--or)}
+  .mat-bar span.ok{background:var(--vert)}
+  .mat-tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
+  .mat-tag.retard{background:#FDE7D6;color:#A3480A}.mat-tag.ok{background:#DDF3E8;color:#0B6B42}</style>
   {% endif %}
 
   {% if reward_text or space.elimination %}

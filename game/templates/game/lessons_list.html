@@ -37,7 +37,7 @@
             {% else %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>{% endif %}
           </span>
           <span style="flex:1;min-width:0"><strong>{{ l.title }}</strong><br>
-            <span class="small">{% if l.video_id %}Vidéo{% endif %}{% if l.video_id and l.has_pdf %} + {% endif %}{% if l.has_pdf %}Fiche PDF{% endif %}{% if not l.video_id and not l.has_pdf %}Fiche{% endif %}</span>
+            <span class="small">{% if l.video_id %}Vidéo{% endif %}{% if l.video_id and l.has_pdf %} + {% endif %}{% if l.has_pdf %}Fiche PDF{% endif %}{% if not l.video_id and not l.has_pdf %}Fiche{% endif %}{% if l.mois %} · {{ l.get_mois_display }}{% endif %}</span>
             <span class="mq-hit" hidden>· trouvé dans la fiche</span></span>
           {% if l.free_preview %}<span class="badge">Gratuit</span>{% endif %}
         </a>

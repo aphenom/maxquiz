@@ -51,6 +51,15 @@ On peut relancer les imports sans risque :
 - les questions déjà présentes (même texte) ne sont pas recréées ;
 - les cours existants sont mis à jour.
 
+## Ordre de l'année (contenu/progression.py)
+
+Chaque matière y a la liste de ses chapitres dans l'ordre habituel des établissements ivoiriens,
+avec le mois où chacun est étudié (10 = octobre). `generer.py` range les chapitres, numérote les
+fiches et remplit la colonne `mois` de `cours.xlsx` à partir de ce fichier ; il refuse de
+générer si un chapitre y manque. L'application s'en sert pour dire à l'élève s'il est « à jour »
+ou « en retard » dans chaque matière. Une école peut ajuster le mois d'un cours dans
+l'administration (Cours > Mois du programme).
+
 ## Corriger ou compléter
 
 - **Petite correction** (une faute, une vidéo à ajouter) : corrige directement dans l'administration (Cours, Questions).
