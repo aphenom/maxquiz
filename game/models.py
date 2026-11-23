@@ -1191,3 +1191,63 @@ class SmsEnvoi(models.Model):
 
     def __str__(self):
         return f"{self.phone} · {self.status}"
+
+
+class Incident(models.Model):
+    """Problème rencontré par les utilisateurs (erreur serveur, plantage d'une page, lenteur,
+    panne de connexion, alerte de santé du serveur), regroupé par cause."""
+    KINDS = [("serveur", "Erreur du serveur"), ("page", "Erreur dans la page (téléphone, ordinateur)"),
+             ("lenteur", "Lenteur"), ("reseau", "Connexion impossible au serveur"), ("sante", "Santé du site")]
+    STATUS = [("nouveau", "Nouveau"), ("en_cours", "En cours"), ("resolu", "Résolu")]
+    signature = models.CharField(max_length=64, unique=True)
+    kind = models.CharField("Type", max_length=10, choices=KINDS)
+    title = models.CharField("Problème", max_length=200)
+    page = models.CharField("Page", max_length=200, blank=True, default="")
+    detail = models.TextField("Détail technique", blank=True, default="")
+    status = models.CharField("Statut", max_length=10, choices=STATUS, default="nouveau")
+    count = models.PositiveIntegerField("Occurrences", default=0)
+    users = models.PositiveIntegerField("Utilisateurs touchés", default=0)
+    first_seen = models.DateTimeField("Première fois", auto_now_add=True)
+    last_seen = models.DateTimeField("Dernière fois", default=timezone.now, db_index=True)
+    alerted_at = models.DateTimeField("Dernière alerte", null=True, blank=True)
+    alert_level = models.PositiveIntegerField(default=0)        # palier d'utilisateurs déjà signalé
+    note = models.TextField("Note de l'équipe", blank=True, default="")
+    resolved_at = models.DateTimeField("Résolu le", null=True, blank=True)
+    users_notified_at = models.DateTimeField("Élèves prévenus le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Incident"
+        verbose_name_plural = "Incidents"
+        ordering = ["-last_seen"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} · {self.title}"
+
+
+class IncidentEvent(models.Model):
+    """Une occurrence d'un incident : qui, où, sur quel appareil."""
+    incident = models.ForeignKey(Incident, on_delete=models.CASCADE, related_name="events")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    visiteur = models.CharField(max_length=16, blank=True, default="")
+    path = models.CharField("Adresse", max_length=300, blank=True, default="")
+    device = models.CharField("Appareil", max_length=12, blank=True, default="")
+    user_agent = models.CharField(max_length=250, blank=True, default="")
+    duration_ms = models.PositiveIntegerField(null=True, blank=True)
+    extra = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "Occurrence"
+        verbose_name_plural = "Occurrences"
+        ordering = ["-created_at"]
+
+
+class Pouls(models.Model):
+    """Dernier passage d'une tâche planifiée (pour vérifier qu'elle tourne)."""
+    nom = models.CharField(max_length=40, unique=True)
+    dernier = models.DateTimeField(default=timezone.now)
+    valeur = models.CharField(max_length=60, blank=True, default="")
+
+    class Meta:
+        verbose_name = "Tâche planifiée (dernier passage)"
+        verbose_name_plural = "Tâches planifiées (derniers passages)"

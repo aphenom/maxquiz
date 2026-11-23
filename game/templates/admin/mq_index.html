@@ -7,6 +7,7 @@
     <tr><th scope="row"><a href="{% url 'dashboard_engagement' catalog_slug %}">🔥 Assiduité</a></th><td>Élèves actifs par jour, missions, rappels, séries</td></tr>
     <tr><th scope="row"><a href="{% url 'dashboard_partners' catalog_slug %}">🤝 Partenaires</a></th><td>Influenceurs : visites, inscrits, abonnés et commissions par code</td></tr>
     <tr><th scope="row"><a href="{% url 'dashboard_ads' catalog_slug %}">📣 Résultats des pubs</a></th><td>Inscrits et payants par campagne</td></tr>
+    <tr><th scope="row"><a href="{% url 'admin:game_incident_changelist' %}?status__exact=nouveau">🚨 Incidents{% if incidents_ouverts %} <span style="background:#D6452C;color:#fff;border-radius:99px;padding:1px 8px">{{ incidents_ouverts }}</span>{% endif %}</a></th><td>Erreurs, plantages, lenteurs et santé du site, avec les élèves touchés</td></tr>
     <tr><th scope="row"><a href="{% url 'admin:game_signalement_changelist' %}">⚑ Signalements et assistance</a></th><td>Erreurs signalées et demandes des élèves</td></tr>
   </tbody></table>
 </div>

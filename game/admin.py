@@ -14,6 +14,16 @@ admin.site.site_header = "MaxQuiz — MQ Technologies"
 admin.site.site_title = "MaxQuiz"
 admin.site.index_title = "Back-office MaxQuiz"
 admin.site.index_template = "admin/mq_index.html"
+_index_original = admin.site.index
+
+
+def _index_avec_incidents(request, extra_context=None):
+    from .models import Incident
+    extra = dict(extra_context or {}, incidents_ouverts=Incident.objects.filter(status="nouveau").count())
+    return _index_original(request, extra_context=extra)
+
+
+admin.site.index = _index_avec_incidents
 
 
 @admin.register(GameConfig)
@@ -513,3 +523,68 @@ class SmsEnvoiAdmin(admin.ModelAdmin):
     list_filter = ("status", "operateur", "kind", "provider")
     search_fields = ("phone", "resource_id")
     date_hierarchy = "created_at"
+
+
+from django.utils.html import format_html, format_html_join  # noqa: E402
+
+from .models import Incident, Pouls  # noqa: E402
+
+
+@admin.register(Incident)
+class IncidentAdmin(admin.ModelAdmin):
+    list_display = ("etat", "kind", "title", "users", "count", "last_seen", "page")
+    list_display_links = ("title",)
+    list_filter = ("status", "kind")
+    search_fields = ("title", "page", "detail")
+    readonly_fields = ("kind", "title", "page", "count", "users", "first_seen", "last_seen", "alerted_at",
+                       "resolved_at", "users_notified_at", "occurrences", "detail")
+    fields = ("status", "note", "kind", "title", "page", "users", "count", "first_seen", "last_seen",
+              "alerted_at", "resolved_at", "users_notified_at", "occurrences", "detail")
+    actions = ["marquer_en_cours", "resolu_et_prevenir", "resolu_sans_prevenir"]
+
+    @admin.display(description="Statut", ordering="status")
+    def etat(self, obj):
+        color = {"nouveau": "#D6452C", "en_cours": "#E9A820", "resolu": "#0B9A5C"}[obj.status]
+        return format_html('<b style="color:{}">● {}</b>', color, obj.get_status_display())
+
+    @admin.display(description="Dernières occurrences")
+    def occurrences(self, obj):
+        rows = obj.events.select_related("player")[:30]
+        if not rows:
+            return "—"
+        return format_html("<table><tr><th>Quand</th><th>Qui</th><th>Appareil</th><th>Adresse</th>"
+                           "<th>Durée</th><th>Détail</th></tr>{}</table>", format_html_join(
+                               "", "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                               ((timezone.localtime(e.created_at).strftime("%d/%m %H:%M"),
+                                 f"{e.player.pseudo} · {e.player.phone}" if e.player_id else (e.visiteur or "visiteur"),
+                                 e.device or "-", e.path or "-",
+                                 f"{e.duration_ms / 1000:.1f} s" if e.duration_ms else "",
+                                 (e.extra or e.user_agent)[:120]) for e in rows)))
+
+    def save_model(self, request, obj, form, change):
+        if obj.status == "resolu" and not obj.resolved_at:
+            obj.resolved_at = timezone.now()
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description="Marquer « en cours »")
+    def marquer_en_cours(self, request, queryset):
+        queryset.update(status="en_cours")
+
+    @admin.action(description="Résolu, et prévenir les élèves touchés")
+    def resolu_et_prevenir(self, request, queryset):
+        from .incidents import prevenir_utilisateurs
+        n = 0
+        for inc in queryset:
+            Incident.objects.filter(pk=inc.pk).update(status="resolu", resolved_at=timezone.now())
+            n += prevenir_utilisateurs(inc)
+        self.message_user(request, f"{queryset.count()} incident(s) résolu(s), {n} élève(s) prévenu(s).")
+
+    @admin.action(description="Résolu (sans prévenir)")
+    def resolu_sans_prevenir(self, request, queryset):
+        queryset.update(status="resolu", resolved_at=timezone.now())
+
+
+@admin.register(Pouls)
+class PoulsAdmin(admin.ModelAdmin):
+    list_display = ("nom", "dernier", "valeur")
+    readonly_fields = ("nom", "dernier", "valeur")

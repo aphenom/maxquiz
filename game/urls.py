@@ -7,6 +7,7 @@ from . import views_push as pushv
 from . import views_student as eleve
 from . import views_support as aide_views
 from . import views_sms
+from . import views_incidents
 from .views_student import jeu_public
 
 urlpatterns = [
@@ -56,6 +57,8 @@ urlpatterns = [
     path("e/<slug:slug>/tableau-de-bord/partenaires/", subs.dashboard_partners, name="dashboard_partners"),
     path("p/<str:code>/", subs.promo_link, name="promo_link"),
     path("sms/orange/accuse/", views_sms.orange_dlr, name="orange_dlr"),
+    path("api/incident/", views_incidents.incident_navigateur, name="incident_navigateur"),
+    path("sante/", views_incidents.sante, name="sante"),
     path("telecharger/maxquiz.apk", subs.apk_download, name="apk_download"),
     path("stats/installation/", subs.stats_installation, name="stats_installation"),
     path("e/<slug:slug>/tableau-de-bord/", views.space_dashboard, name="space_dashboard"),

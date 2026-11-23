@@ -21,3 +21,5 @@ urlpatterns = [
     path('', include('game.urls')),
     path('admin/', admin.site.urls),
 ]
+
+handler500 = "game.views_incidents.erreur_500"

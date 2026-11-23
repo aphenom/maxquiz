@@ -604,3 +604,18 @@ les directives Apache du site servent les trois adresses.
 - Envoi des SMS : la fonction `_send_otp` (game/views.py) affiche le code dans les journaux
   du serveur ; à brancher sur un fournisseur SMS avant l'ouverture au public. En attendant,
   `OTP_AFFICHER_CODE=True` affiche le code à l'écran pour les tests (jamais pour le grand public).
+
+## Incidents et santé du site
+
+- Erreurs du serveur (500), erreurs dans les pages, pages lentes et pannes de connexion pendant
+  un quiz sont enregistrées dans **Administration > Incidents**, regroupées par cause, avec les
+  élèves touchés, l'appareil et le détail technique. L'élève voit une page « L'équipe a été
+  prévenue » au lieu de « Server Error (500) ».
+- L'équipe est prévenue par push (`INCIDENTS_ALERT_PHONES`) et par e-mail (`INCIDENTS_EMAIL`) :
+  nouveau problème, problème qui revient, ou qui touche 10, 50, 200 utilisateurs.
+- Action « Résolu, et prévenir les élèves touchés » : chacun reçoit « Problème corrigé ✅ ».
+- `python manage.py verifier_sante` toutes les 10 minutes (cron) : disque, tâche des rappels,
+  SMS, paiements Jèko bloqués ; bilan des 24 h chaque matin vers 7 h.
+- `/sante/` répond 200 si le site et la base répondent : à surveiller de l'extérieur
+  (UptimeRobot) pour être prévenu si le serveur tombe complètement.
+

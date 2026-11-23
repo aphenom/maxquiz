@@ -2,6 +2,16 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<script>/* Incidents : erreurs de la page, chargement trop long, envoyés discrètement à l'équipe */
+(function(){var sent=0,seen={};function send(d){if(sent>=5)return;var k=d.kind+'|'+(d.message||'');if(seen[k])return;seen[k]=1;sent++;
+d.path=location.pathname+location.search;try{var b=JSON.stringify(d);if(navigator.sendBeacon){navigator.sendBeacon('/api/incident/',new Blob([b],{type:'application/json'}));}
+else{fetch('/api/incident/',{method:'POST',body:b,keepalive:true,headers:{'Content-Type':'application/json'}});}}catch(e){}}
+window.mqIncident=send;
+window.addEventListener('error',function(e){if(!e||!e.message)return;send({kind:'erreur',message:String(e.message).slice(0,300),source:e.filename||'',line:e.lineno||'',col:e.colno||'',stack:e.error&&e.error.stack?String(e.error.stack).slice(0,1500):''});});
+window.addEventListener('unhandledrejection',function(e){var r=(e&&e.reason)||{};send({kind:'erreur',message:'Promesse rejetée : '+String(r.message||r).slice(0,250),stack:r.stack?String(r.stack).slice(0,1500):''});});
+window.addEventListener('load',function(){setTimeout(function(){try{var n=performance.getEntriesByType('navigation')[0];var ms=n?(n.loadEventEnd||n.duration):0;
+if(ms>8000)send({kind:'lenteur',ms:Math.round(ms),detail:'réseau '+((navigator.connection&&navigator.connection.effectiveType)||'?')});}catch(e){}},0);});})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{% block title %}MaxQuiz{% endblock %}</title>
 <link rel="manifest" href="/manifest.webmanifest">

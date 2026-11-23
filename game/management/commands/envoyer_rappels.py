@@ -14,6 +14,8 @@ class Command(BaseCommand):
         # Lancée par cron, la commande s'arrête aussitôt son travail fini : les envois push
         # doivent donc partir AVANT la fin (et non en arrière-plan, où ils seraient perdus).
         settings.PUSH_SYNC = True
+        from game.incidents import battement
+        battement("rappels")
         res = run_reminders()
         missions = envoyer_rappels_missions()
         self.stdout.write(self.style.SUCCESS(f"{res['sessions']} séance(s), {res['subscriptions']} abonnement(s), "

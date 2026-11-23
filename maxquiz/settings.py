@@ -77,6 +77,7 @@ MIDDLEWARE = [
     'game.middleware.ProductMiddleware',
     'game.middleware.VisiteEleveMiddleware',
     'game.middleware.StatistiquesMiddleware',
+    'game.incidents.IncidentsMiddleware',
 ]
 
 ROOT_URLCONF = 'maxquiz.urls'
@@ -252,4 +253,17 @@ CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "")
 # Signalements et demandes d'assistance : copie par e-mail à cette adresse (vide = administration seulement).
 # Sur le VPS, l'envoi passe par le serveur de messagerie local (Postfix d'ISPConfig).
 SIGNALEMENTS_EMAIL = os.environ.get("SIGNALEMENTS_EMAIL", "")
+# Incidents : numéros (comptes élèves de l'équipe) prévenus par push, et adresse e-mail
+INCIDENTS_ALERT_PHONES = os.environ.get("INCIDENTS_ALERT_PHONES", "")
+INCIDENTS_EMAIL = os.environ.get("INCIDENTS_EMAIL", "")
+
+# Les erreurs et alertes vont dans le journal du service (journalctl -u maxquiz)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"simple": {"format": "%(asctime)s %(levelname)s %(name)s : %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "simple"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {"maxquiz.incidents": {"level": "INFO"}},
+}
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "MaxQuiz <noreply@maxquiz.net>")

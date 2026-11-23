@@ -17,7 +17,7 @@ from django.utils import timezone
 
 BOTS = re.compile(r"bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|curl|wget|python|headless", re.I)
 IGNORE = ("/admin/", "/api/", "/sms/", "/static/", "/media/", "/sw.js", "/manifest.webmanifest", "/hors-ligne/",
-          "/.well-known/", "/favicon", "/robots.txt", "/paiement/jeko/webhook/", "/stats/", "/telecharger/")
+          "/.well-known/", "/favicon", "/robots.txt", "/paiement/jeko/webhook/", "/stats/", "/telecharger/", "/sante/")
 
 
 def _ip(request):

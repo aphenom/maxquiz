@@ -189,7 +189,7 @@ if (G.next) {
 function api(url, body) {
   return fetch(url, { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-    body: JSON.stringify(body) }).then(r => r.json());
+    body: JSON.stringify(body) }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
 }
 function confetti(n = 34) {
   if (reduced) return;
@@ -265,6 +265,7 @@ async function answer(choice, btn) {
     if (q.kind !== 'survey' && r && !r.error) graded++;
     reportQ = q.id; $('reportBtn').hidden = (q.kind === 'survey');
   } catch(e) {
+    if (window.mqIncident) mqIncident({kind: 'reseau', message: 'Réponse au quiz : ' + String(e && e.message || e)});
     $('qcard').classList.remove('loading');
     $('verdict').textContent='Connexion perdue… réessaie.';
     $('verdict').style.color='var(--rouge)';
