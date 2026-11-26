@@ -18,6 +18,7 @@ Chaque chapitre comprend :
 - un **quiz** de 12 à 15 questions de difficulté 1 à 4, avec une explication pour chaque réponse.
 
 Le premier chapitre de chaque matière est ouvert sans abonnement, pour faire découvrir.
+Les questions marquées d'un schéma l'affichent pendant la partie (voir « Schémas et illustrations »).
 
 ## Ce qui est livré : Terminale (dossier `terminale/`)
 
@@ -36,24 +37,28 @@ Le premier chapitre de chaque matière est ouvert sans abonnement, pour faire d�
 
 | Matière | Chapitres | Questions |
 | --- | --- | --- |
-| Mathématiques | 10 chapitres + Révision de l'année | 112 |
-| Physique-Chimie | 8 chapitres (électricité, lumière) + Révision de l'année | 90 |
-| EDHC | 8 chapitres + Révision de l'année | 90 |
+| Mathématiques | 10 chapitres + Révision de l'année | 116 |
+| Physique-Chimie | 8 chapitres (électricité, lumière) + Révision de l'année | 97 |
+| EDHC | 8 chapitres + Révision de l'année | 91 |
 
 ## Ce qui est livré : 5ème (dossier `5eme/`)
 
 | Matière | Chapitres | Questions |
 | --- | --- | --- |
-| Mathématiques | 11 chapitres + Révision de l'année | 120 |
-| Physique-Chimie | 8 chapitres (matière, mélanges, air, combustions, masse volumique) + Révision | 90 |
+| Mathématiques | 11 chapitres + Révision de l'année | 124 |
+| Physique-Chimie | 8 chapitres (matière, mélanges, air, combustions, masse volumique) + Révision | 94 |
 | EDHC | 8 chapitres + Révision de l'année | 90 |
 
 ## Ce qui est livré : 6ème (dossier `6eme/`)
 
 | Matière | Chapitres | Questions |
 | --- | --- | --- |
-| Physique-Chimie | 7 chapitres (grandeurs, longueurs, aires, volumes, masse, temps, température) + Révision | 80 |
-| EDHC | 7 chapitres + Révision de l'année | 80 |
+| Physique-Chimie | 7 chapitres (grandeurs, longueurs, aires, volumes, masse, temps, température) + Révision | 83 |
+| EDHC | 7 chapitres + Révision de l'année | 81 |
+| Français | Récit, description, phrase, groupe nominal, verbe, discours rapporté, adverbes, lettre, orthographe + Révision | 110 |
+| Anglais | 7 unités (At school … Health and environment) + Révision | 80 |
+| Histoire-Géographie | 7 leçons d'histoire (de l'objet de l'histoire au néolithique ivoirien) + Révision | 81 |
+| SVT | 9 chapitres (production végétale, êtres vivants, fermentations, alimentation, puberté, eau, air) + Révision | 101 |
 
 Un chapitre commun à plusieurs classes est importé une fois par classe (une ligne par classe dans les Excel), avec une seule fiche PDF.
 

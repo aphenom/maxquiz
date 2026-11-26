@@ -86,7 +86,7 @@ class ContenuTests(TestCase):
         self._college("4eme", "4ème", ["EDHC", "Mathématiques", "Physique-Chimie"])
 
     def test_contenu_6eme_complet(self):
-        self._college("6eme", "6ème", ["EDHC", "Physique-Chimie"])
+        self._college("6eme", "6ème", ["Anglais", "EDHC", "Français", "Histoire-Géographie", "Physique-Chimie", "SVT"])
 
     def test_contenu_5eme_complet(self):
         self._college("5eme", "5ème", ["EDHC", "Mathématiques", "Physique-Chimie"])

@@ -1067,6 +1067,66 @@ def courbe_dosage():
     return s
 
 
+@schema
+def fleur():
+    s = S(460, 300)
+    cx, base = 230, 250
+    s.line(cx, base + 40, cx, base, c=VERT, w=5)
+    # réceptacle et sépales
+    s.path(f"M{cx - 30},{base} Q{cx},{base + 22} {cx + 30},{base} Z", c=VERT, w=2, fill="#9AD7B8")
+    s.path(f"M{cx - 28},{base - 2} Q{cx - 70},{base - 10} {cx - 60},{base - 40} Q{cx - 35},{base - 20} {cx - 18},{base - 8}",
+           c=VERT, w=2, fill="#BFE6CF")
+    s.path(f"M{cx + 28},{base - 2} Q{cx + 70},{base - 10} {cx + 60},{base - 40} Q{cx + 35},{base - 20} {cx + 18},{base - 8}",
+           c=VERT, w=2, fill="#BFE6CF")
+    # pétales
+    s.path(f"M{cx - 20},{base - 10} C{cx - 120},{base - 60} {cx - 110},{base - 170} {cx - 40},{base - 120} Z",
+           c=ORANGE, w=2, fill="#FDE3CC")
+    s.path(f"M{cx + 20},{base - 10} C{cx + 120},{base - 60} {cx + 110},{base - 170} {cx + 40},{base - 120} Z",
+           c=ORANGE, w=2, fill="#FDE3CC")
+    # pistil : ovaire, style, stigmate
+    s.ellipse(cx, base - 25, 18, 22, c=VERT, w=2, fill="#E2F4EB")
+    s.circle(cx - 6, base - 28, 4, c=VERT, w=1, fill="#FFFFFF")
+    s.circle(cx + 6, base - 22, 4, c=VERT, w=1, fill="#FFFFFF")
+    s.line(cx, base - 47, cx, base - 140, c=VERT, w=4)
+    s.ellipse(cx, base - 146, 12, 7, c=VERT, w=2, fill="#9AD7B8")
+    # étamines
+    for dx in (-38, 38):
+        s.line(cx + dx * 0.4, base - 30, cx + dx, base - 120, c=BRUN, w=2)
+        s.ellipse(cx + dx, base - 127, 9, 13, c=BRUN, w=2, fill=JAUNE)
+    labels = [(cx + 60, 95, "anthère", cx + 40, base - 128, BRUN), (cx + 95, 150, "filet", cx + 28, base - 90, BRUN),
+              (cx - 85, 95, "stigmate", cx - 12, base - 146, VERT), (cx - 105, 150, "style", cx - 3, base - 100, VERT),
+              (cx - 115, 222, "ovaire (ovules)", cx - 18, base - 25, VERT), (cx + 120, 205, "pétale", cx + 75, base - 85, ORANGE),
+              (cx + 115, 262, "sépale", cx + 55, base - 30, VERT)]
+    for tx, ty, t, px, py, col in labels:
+        s.line(tx + (-4 if tx > cx else 4), ty - 4, px, py, c=GRIS, w=1)
+        s.text(tx, ty, t, 12, c=col, bold=True, anchor="start" if tx > cx else "end")
+    s.text(cx, 26, "étamines = organes mâles · pistil = organe femelle", 12, c=ENCRE, bold=True)
+    return s
+
+
+# ============================================================ HISTOIRE
+@schema
+def frise_cote_divoire():
+    s = S(480, 175)
+    y = 100
+    xs = {"−1500": 30, "1470": 160, "1893": 265, "1960": 360}
+    s.arrow(20, y, 465, y, w=3)
+    blocs = [(30, 160, "#EADFCE", "Période ancienne"), (160, 265, "#FDE3CC", "Précoloniale"),
+             (265, 360, "#F6C9A0", "Coloniale"), (360, 458, "#CDEBDB", "Indépendance")]
+    for x1, x2, col, nom in blocs:
+        s.rect(x1, y - 28, x2 - x1, 28, c="none", sw=0, fill=col)
+        s.text((x1 + x2) / 2, y - 10, nom, 11.5, c=ENCRE, bold=True)
+    for lab, x in xs.items():
+        s.line(x, y - 6, x, y + 8, w=2)
+        s.text(x, y + 26, lab, 13, c=ORANGE if lab != "−1500" else BRUN, bold=True)
+    s.text(360, y + 44, "7 août 1960", 11, c=VERT)
+    s.text(265, y + 44, "colonie", 11, c=BRUN)
+    s.text(160, y + 44, "Portugais", 11, c=BRUN)
+    s.text(240, 34, "Les périodes de l'histoire de la Côte d'Ivoire", 13, c=ENCRE, bold=True)
+    s.text(240, 52, "(frise simplifiée, pas à l'échelle)", 10.5, c=BRUN)
+    return s
+
+
 # ============================================================ EDHC
 @schema
 def drapeau_ci():
