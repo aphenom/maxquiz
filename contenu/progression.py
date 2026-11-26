@@ -73,6 +73,28 @@ PROGRESSION = {
         ("Révision BEPC", 5),
     ],
 
+    # ------------------------------------------------------------------ 6ème
+    ("6ème", "Physique-Chimie"): [
+        ("Grandeurs physiques et unités", 10),
+        ("Les longueurs et leur mesure", 11),
+        ("Les aires et leur mesure", 12),
+        ("Les volumes et leur mesure", 1),
+        ("La masse et sa mesure", 2),
+        ("Le temps et sa mesure", 3),
+        ("La température et le thermomètre", 4),
+        ("Révision de l'année", 5),
+    ],
+    ("6ème", "EDHC"): [
+        ("L'école et le règlement intérieur", 10),
+        ("La vie de classe et les délégués", 10),
+        ("Les symboles de la République", 11),
+        ("La politesse et le savoir-vivre", 12),
+        ("L'hygiène corporelle et la propreté de l'école", 1),
+        ("La solidarité et l'entraide", 2),
+        ("La sécurité sur le chemin de l'école", 3),
+        ("Révision de l'année", 5),
+    ],
+
     # ------------------------------------------------------------------ 5ème
     ("5ème", "Mathématiques"): [
         ("Nombres décimaux relatifs", 10),

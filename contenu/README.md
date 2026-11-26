@@ -48,6 +48,13 @@ Le premier chapitre de chaque matière est ouvert sans abonnement, pour faire d�
 | Physique-Chimie | 8 chapitres (matière, mélanges, air, combustions, masse volumique) + Révision | 90 |
 | EDHC | 8 chapitres + Révision de l'année | 90 |
 
+## Ce qui est livré : 6ème (dossier `6eme/`)
+
+| Matière | Chapitres | Questions |
+| --- | --- | --- |
+| Physique-Chimie | 7 chapitres (grandeurs, longueurs, aires, volumes, masse, temps, température) + Révision | 80 |
+| EDHC | 7 chapitres + Révision de l'année | 80 |
+
 Un chapitre commun à plusieurs classes est importé une fois par classe (une ligne par classe dans les Excel), avec une seule fiche PDF.
 
 ## Mettre le contenu en ligne (sur le serveur)
@@ -66,6 +73,10 @@ maxquiz import_cours contenu/4eme/cours.xlsx --fiches contenu/4eme/fiches
 # 5ème
 maxquiz import_questions contenu/5eme/quiz.xlsx --shared
 maxquiz import_cours contenu/5eme/cours.xlsx --fiches contenu/5eme/fiches
+
+# 6ème
+maxquiz import_questions contenu/6eme/quiz.xlsx --shared
+maxquiz import_cours contenu/6eme/cours.xlsx --fiches contenu/6eme/fiches
 
 # Terminale
 maxquiz import_questions contenu/terminale/quiz.xlsx --shared
