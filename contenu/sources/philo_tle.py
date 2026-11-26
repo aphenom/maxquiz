@@ -738,4 +738,205 @@ questions=[
 (4, "Associe l'auteur à son idée : « La science progresse en rectifiant ses erreurs ».", "Bachelard", "Rabelais", "Durkheim", "Hobbes",
  "La Formation de l'esprit scientifique (1938)."),
 ]),
+dict(
+nom="Autrui et la connaissance de soi",
+fiche="""## Qui est autrui ?
+Autrui, c'est l'autre homme : semblable à moi (une conscience, un sujet libre) et différent de moi (je ne vis pas ce qu'il vit de l'intérieur).
+
+## Peut-on se connaître seul ?
+• Descartes : le cogito (« je pense, donc je suis ») est une certitude que le sujet atteint seul, par la réflexion ; autrui n'est pas nécessaire à cette première vérité.
+• Les limites de cette solitude : sans les autres, pas de langage, pas de culture, pas de jugement extérieur sur soi.
+
+## Autrui, médiateur indispensable pour accéder à soi
+• Hegel : la conscience de soi a besoin d'être reconnue par une autre conscience (dialectique du maître et de l'esclave).
+• Sartre : « Autrui est le médiateur indispensable entre moi et moi-même » ; la honte montre que je me découvre sous le regard d'autrui.
+• Les « enfants sauvages » montrent qu'on ne devient humain qu'au milieu des humains.
+
+## Autrui, condition de la connaissance
+• Le savoir se construit avec les autres : dialogue socratique, transmission par l'école et les livres, débat scientifique.
+• Platon : la pensée est « le dialogue de l'âme avec elle-même », appris d'abord dans le dialogue avec autrui.
+
+## Autrui, menace ou chance ?
+• Menace : jugement, conflit, domination (« L'enfer, c'est les autres », Sartre, Huis clos).
+• Chance : amitié (Aristote : l'ami est « un autre soi-même »), solidarité, responsabilité devant le visage d'autrui (Levinas).
+
+## Morale
+Kant (Fondements de la métaphysique des mœurs, 1785) : traiter l'humanité, en soi et en autrui, toujours comme une fin, jamais simplement comme un moyen.""",
+questions=[
+(1, "En philosophie, « autrui » désigne :", "l'autre homme, à la fois semblable et différent de moi", "un objet de la nature", "Dieu", "la société seulement",
+ "Un autre sujet conscient."),
+(2, "Pour Sartre, autrui est « le médiateur indispensable » :", "entre moi et moi-même", "entre l'homme et Dieu", "entre la science et la religion", "entre le corps et l'âme",
+ "Je me découvre sous le regard d'autrui."),
+(2, "Le sentiment qui montre que je me découvre sous le regard d'autrui, selon Sartre, est :", "la honte", "la faim", "la peur du noir", "l'ennui",
+ "Être vu me révèle ce que je suis pour les autres."),
+(2, "Pour Aristote, l'ami est :", "un autre soi-même", "un ennemi caché", "un moyen pour réussir", "un étranger",
+ "L'amitié rapproche des êtres semblables."),
+(3, "Pour Descartes, la première certitude (« je pense, donc je suis ») est atteinte :", "par le sujet seul, par la réflexion", "grâce au regard d'autrui", "par l'expérience des sens", "par la révélation",
+ "C'est une thèse souvent opposée à celle de Sartre."),
+(3, "Chez Hegel, la conscience de soi a besoin :", "d'être reconnue par une autre conscience", "de rester isolée", "de la nature seulement", "de l'argent",
+ "Dialectique du maître et de l'esclave."),
+(3, "Les cas d'enfants sauvages sont souvent cités pour montrer que :", "on ne devient humain qu'au milieu des humains", "l'homme naît savant", "la société est inutile", "le langage est inné",
+ "Sans autrui, pas de langage ni de culture."),
+(3, "Autrui est une condition de la connaissance parce que :", "le savoir se transmet et se construit par le dialogue et l'éducation", "il pense à ma place", "il connaît tout", "il m'empêche de douter",
+ "École, livres, débat scientifique."),
+(4, "Pour Levinas, le visage d'autrui :", "m'appelle à la responsabilité envers lui", "est un simple objet", "me rend indifférent", "n'a aucune valeur morale",
+ "Il exprime l'interdit « Tu ne tueras point »."),
+(4, "Pour Platon, penser c'est :", "le dialogue de l'âme avec elle-même", "répéter ce que disent les autres", "sentir", "obéir",
+ "La pensée prolonge le dialogue avec autrui."),
+(4, "« Agis de telle sorte que tu traites l'humanité, aussi bien dans ta personne que dans la personne de tout autre, toujours en même temps comme une fin, et jamais simplement comme un moyen » est une règle morale de :", "Kant", "Sartre", "Hobbes", "Machiavel",
+ "Seconde formulation de l'impératif catégorique."),
+]),
+
+dict(
+nom="Le problème de la connaissance",
+fiche="""## La question
+D'où viennent nos connaissances ? Des sens (l'expérience) ou de la raison ? Et peut-on tout connaître ?
+
+## Le rationalisme
+• La raison est la source des connaissances vraies ; les sens peuvent tromper (le bâton qui paraît brisé dans l'eau).
+• Platon : connaître, c'est se ressouvenir (réminiscence) des Idées que l'âme a contemplées.
+• Descartes : il existe des idées innées ; la méthode (doute méthodique, évidence, analyse) conduit à la vérité.
+
+## L'empirisme
+• Toute connaissance vient de l'expérience.
+• Locke : l'esprit à la naissance est une « table rase » (une feuille blanche) que l'expérience remplit.
+• Hume : nos idées sont des copies de nos impressions ; la causalité n'est qu'une habitude.
+
+## Le criticisme (Kant)
+« Si toute notre connaissance débute avec l'expérience, cela ne prouve pas qu'elle dérive toute de l'expérience » (Critique de la raison pure, 1787).
+Les sens fournissent la matière ; l'esprit fournit les formes : formes a priori de la sensibilité (espace, temps) et catégories de l'entendement. On connaît les phénomènes (ce qui apparaît), pas les choses en soi.
+
+## Les limites de la connaissance
+• Scepticisme : on ne peut rien savoir avec certitude (on suspend son jugement).
+• Dogmatisme : affirmer des vérités sans examen.
+• Bachelard : l'opinion est le premier obstacle à la connaissance.
+
+## Les degrés de la connaissance
+Opinion (croire), connaissance commune, connaissance scientifique (démontrée, vérifiée), connaissance philosophique (réflexion sur le sens).""",
+questions=[
+(1, "Le courant qui affirme que toute connaissance vient de l'expérience est :", "l'empirisme", "le rationalisme", "le criticisme", "le dogmatisme",
+ "Locke, Hume."),
+(2, "Pour Locke, l'esprit à la naissance est :", "une table rase", "rempli d'idées innées", "une machine", "une âme qui se ressouvient",
+ "L'expérience y inscrit tout."),
+(2, "Les idées innées sont défendues notamment par :", "Descartes", "Locke", "Hume", "Bachelard",
+ "C'est une thèse rationaliste."),
+(2, "Pour Platon, connaître c'est :", "se ressouvenir des Idées (réminiscence)", "accumuler des sensations", "obéir à la tradition", "voter",
+ "Voir le dialogue du Ménon."),
+(2, "Le scepticisme consiste à :", "douter de la possibilité d'une connaissance certaine", "affirmer sans examen", "croire tout ce qu'on voit", "rejeter la raison au profit de la foi",
+ "Le sceptique suspend son jugement."),
+(3, "Kant dit que la connaissance « commence avec l'expérience » mais ne « dérive » pas toute d'elle. C'est le :", "criticisme", "empirisme pur", "rationalisme pur", "scepticisme",
+ "Il réconcilie les deux courants."),
+(3, "Pour Kant, nous connaissons :", "les phénomènes, pas les choses en soi", "les choses en soi", "uniquement Dieu", "rien du tout",
+ "Le monde tel qu'il nous apparaît."),
+(3, "Pour Hume, la relation de cause à effet vient :", "de l'habitude", "d'une idée innée", "de la révélation", "d'une démonstration mathématique",
+ "Nous voyons des successions répétées, pas la causalité elle-même."),
+(3, "L'exemple du bâton qui paraît brisé dans l'eau sert à montrer que :", "les sens peuvent tromper", "la raison se trompe toujours", "l'eau est dangereuse", "la science est inutile",
+ "Argument rationaliste."),
+(4, "Le dogmatisme est :", "l'attitude qui affirme des vérités sans les examiner", "le doute systématique", "la méthode expérimentale", "la recherche du vrai par le dialogue",
+ "Il s'oppose à l'esprit critique."),
+(4, "Pour Bachelard, le premier obstacle à la connaissance scientifique est :", "l'opinion", "la raison", "la vérification", "la mathématique",
+ "Elle est le premier obstacle à surmonter : « L'opinion pense mal ; elle ne pense pas » (La Formation de l'esprit scientifique, 1938)."),
+]),
+
+dict(
+nom="Le commentaire de texte philosophique",
+fiche="""## L'épreuve
+Un extrait d'un philosophe (une quinzaine de lignes), avec souvent des questions ou la consigne de dégager le thème, le problème, la thèse et d'en faire l'étude.
+
+## Les étapes de la lecture
+1. Le thème : de quoi parle le texte (le travail, la liberté…).
+2. Le problème : la question à laquelle l'auteur répond (« Le travail libère-t-il l'homme ? »).
+3. La thèse : la réponse de l'auteur, en une phrase.
+4. L'enjeu : ce qui est en jeu (pourquoi c'est important).
+5. Le mouvement du texte : les grandes étapes de l'argumentation (avec les lignes).
+
+## La rédaction
+• Introduction : présentation du thème, du problème, de la thèse de l'auteur et annonce du plan (le mouvement).
+• Étude ordonnée : expliquer chaque étape, définir les concepts, analyser les exemples de l'auteur, citer les lignes.
+• Intérêt philosophique (discussion) : montrer la portée de la thèse (ce qu'elle apporte) puis ses limites, en la confrontant à d'autres auteurs.
+• Conclusion : bilan et réponse au problème.
+
+## Les erreurs à éviter
+• Paraphraser (répéter le texte sans l'expliquer).
+• Réciter le cours sans partir du texte.
+• Confondre thème (sujet) et thèse (position).
+• Oublier de discuter la thèse.
+
+## Formules utiles
+« Dans ce texte, l'auteur se demande si… Il soutient que… Pour le montrer, il procède en deux temps : d'abord (l. 1 à 6)… ensuite (l. 7 à 15)… »""",
+questions=[
+(1, "Le thème d'un texte philosophique est :", "ce dont il parle", "la position de l'auteur", "la conclusion", "la biographie de l'auteur",
+ "La thèse est la position défendue."),
+(2, "La thèse d'un texte est :", "la réponse que l'auteur donne au problème", "le sujet général", "une citation d'un autre auteur", "la première ligne",
+ "Elle se formule en une phrase."),
+(2, "Le problème d'un texte est :", "la question à laquelle l'auteur répond", "une difficulté de vocabulaire", "une erreur de l'auteur", "le nombre de lignes",
+ "Souvent formulé sous forme de question."),
+(2, "Le mouvement du texte désigne :", "les grandes étapes de son argumentation", "la vitesse de lecture", "la date de publication", "le style de l'auteur",
+ "On l'indique avec les lignes."),
+(3, "La paraphrase est une erreur parce qu'elle :", "répète le texte sans l'expliquer", "cite les lignes", "définit les concepts", "discute la thèse",
+ "Il faut expliquer, pas redire."),
+(3, "La partie « intérêt philosophique » sert à :", "montrer la portée et les limites de la thèse", "résumer le texte", "réciter le cours", "présenter l'auteur",
+ "On confronte la thèse à d'autres pensées."),
+(3, "L'introduction d'un commentaire philosophique présente :", "le thème, le problème, la thèse et le mouvement du texte", "uniquement la vie de l'auteur", "la conclusion", "toutes les citations",
+ "Elle annonce la démarche."),
+(3, "L'enjeu d'un texte, c'est :", "ce qui est en jeu, l'importance de la question posée", "le prix du livre", "le nombre de mots", "la difficulté du vocabulaire",
+ "Pourquoi la question mérite d'être posée."),
+(4, "Réciter le cours sur la liberté face à un texte sur la liberté est une erreur car :", "il faut partir du texte et de son argumentation", "le cours est faux", "il ne faut jamais citer d'auteur", "c'est trop long",
+ "Le commentaire explique ce texte précis."),
+(4, "Pour discuter la thèse d'un auteur, on peut :", "la confronter à la pensée d'autres philosophes", "la recopier", "dire qu'on n'est pas d'accord sans argument", "changer de sujet",
+ "On argumente et on cite des auteurs."),
+]),
+
+dict(
+nom="Les grandes citations à connaître",
+fiche="""## Pourquoi apprendre des citations ?
+Une citation bien choisie et bien expliquée appuie un argument dans la dissertation ou le commentaire. Une citation récitée sans explication ne rapporte rien.
+
+## La philosophie
+• « Connais-toi toi-même » (devise reprise par Socrate).
+• « Tout ce que je sais, c'est que je ne sais rien » (formule traditionnellement attribuée à Socrate).
+• « L'étonnement est le début de la philosophie » (Platon, Aristote).
+
+## La conscience, la liberté, autrui
+• « Je pense, donc je suis » (Descartes).
+• « L'existence précède l'essence » ; « L'homme est condamné à être libre » (Sartre).
+• « L'enfer, c'est les autres » (Sartre, Huis clos).
+• « Les hommes se croient libres parce qu'ils sont conscients de leurs actions et ignorants des causes qui les déterminent » (Spinoza).
+
+## La société, l'État, la morale
+• « L'homme est un animal politique » (Aristote).
+• « L'homme est un loup pour l'homme » (Hobbes, reprenant Plaute).
+• « L'homme est né libre, et partout il est dans les fers » (Rousseau, Du contrat social).
+• « Il faut que le pouvoir arrête le pouvoir » (Montesquieu).
+• « Agis seulement d'après la maxime grâce à laquelle tu peux vouloir en même temps qu'elle devienne une loi universelle » (Kant).
+
+## Le travail, la science, l'art
+• « Le travail éloigne de nous trois grands maux : l'ennui, le vice et le besoin » (Voltaire, Candide).
+• « Science sans conscience n'est que ruine de l'âme » (Rabelais).
+• « Est beau ce qui plaît universellement sans concept » (Kant).
+• « En Afrique, quand un vieillard meurt, c'est une bibliothèque qui brûle » (Amadou Hampâté Bâ).""",
+questions=[
+(1, "« Je pense, donc je suis » est de :", "Descartes", "Sartre", "Kant", "Platon",
+ "Discours de la méthode (1637)."),
+(1, "« L'homme est un animal politique » est une formule de :", "Aristote", "Rousseau", "Marx", "Hegel",
+ "La Politique."),
+(2, "« L'homme est né libre, et partout il est dans les fers » est de :", "Rousseau", "Hobbes", "Montesquieu", "Voltaire",
+ "Du contrat social (1762), livre I, chapitre 1."),
+(2, "« L'existence précède l'essence » est de :", "Sartre", "Descartes", "Spinoza", "Aristote",
+ "L'existentialisme est un humanisme (1946)."),
+(2, "« Il faut que le pouvoir arrête le pouvoir » est de :", "Montesquieu", "Machiavel", "Hobbes", "Platon",
+ "De l'esprit des lois (1748)."),
+(2, "« Science sans conscience n'est que ruine de l'âme » est de :", "Rabelais", "Pascal", "Bachelard", "Comte",
+ "Pantagruel."),
+(3, "La formule « L'homme est un loup pour l'homme » est reprise par :", "Hobbes", "Rousseau", "Kant", "Aristote",
+ "Il l'emprunte au poète latin Plaute."),
+(3, "« Les hommes se croient libres parce qu'ils sont conscients de leurs actions et ignorants des causes qui les déterminent » est de :", "Spinoza", "Sartre", "Kant", "Descartes",
+ "Éthique."),
+(3, "« Est beau ce qui plaît universellement sans concept » est de :", "Kant", "Hegel", "Platon", "Aristote",
+ "Critique de la faculté de juger (1790)."),
+(4, "« En Afrique, quand un vieillard meurt, c'est une bibliothèque qui brûle » est de :", "Amadou Hampâté Bâ", "Cheikh Anta Diop", "Senghor", "Hountondji",
+ "Il souligne la valeur de la tradition orale."),
+(4, "Une citation dans une dissertation n'a de valeur que si :", "elle est expliquée et reliée à l'argument", "elle est longue", "elle est en latin", "elle est mise en conclusion",
+ "Sinon c'est du « placage »."),
+]),
 ]

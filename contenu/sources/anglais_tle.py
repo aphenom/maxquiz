@@ -428,4 +428,123 @@ questions=[
 (4, "The ___ we protect the environment, the ___ our future will be.", "more / better", "most / best", "much / good", "more / good",
  "Double comparatif."),
 ]),
+dict(
+nom="Getting ready : reading comprehension",
+fiche="""## Les questions de compréhension au BAC
+• True or false : justifier en recopiant la phrase exacte du texte, entre guillemets, avec le numéro de ligne.
+• Multiple choice : relire la phrase du texte ; attention aux réponses vraies mais qui ne répondent pas à la question.
+• Wh-questions : répondre par une phrase complète, au même temps que la question, avec tes mots si possible.
+• Main idea / title : la phrase qui résume TOUT le texte, pas un détail.
+• Find in the text a word that means… : chercher dans le paragraphe indiqué un mot de la même nature (nom, verbe, adjectif).
+• What does « it » / « they » refer to? : chercher le nom remplacé juste avant.
+
+## Méthode
+1. Lire d'abord les questions, puis le texte.
+2. Souligner les mots-clés et les connecteurs (however, therefore, because…).
+3. Deviner le sens d'un mot inconnu par le contexte et la formation du mot.
+4. Ne jamais répondre de mémoire : tout se justifie par le texte.
+
+## Mots utiles des consignes
+justify (justifier), quote (citer), refer to (renvoyer à), the writer (l'auteur), paragraph (paragraphe), line (ligne), suitable (approprié), according to (selon).""",
+questions=[
+(1, "In a « true or false » exercise, you must :", "justify with an exact quotation from the text", "give your personal opinion", "translate the whole text", "write a summary",
+ "Recopie la phrase du texte entre guillemets."),
+(2, "« According to the writer » means :", "selon l'auteur", "contre l'auteur", "à propos de l'écrivain", "comme l'auteur l'a écrit hier",
+ "According to = selon."),
+(2, "To answer « Why did she leave her village? », you should start with :", "« She left her village because… »", "« Yes, she did. »", "« No, because… »", "« Leaving the village… is true. »",
+ "Phrase complète, même temps que la question."),
+(2, "The best title for a text is the one that :", "sums up the whole text", "repeats the first sentence", "mentions a small detail", "is the longest",
+ "Il doit résumer l'idée générale."),
+(2, "« Find in paragraph 2 a word meaning ‘happy’. » The answer must be :", "an adjective", "a verb", "a noun", "an adverb",
+ "Même nature que le mot donné."),
+(3, "« The farmers sold their cocoa because it was in high demand. » « It » refers to :", "the cocoa", "the farmers", "the price", "the village",
+ "Le nom singulier remplacé juste avant."),
+(3, "The best strategy is to read :", "the questions first, then the text", "only the first paragraph", "the text once quickly and answer from memory", "only the title",
+ "On sait ce qu'on cherche."),
+(3, "« However » in a text announces :", "an opposition", "a consequence", "an addition", "an example",
+ "However = cependant."),
+(4, "To guess an unknown word, the most useful clue is :", "the context and the way the word is formed", "its length", "the first letter only", "the title of the text",
+ "Préfixes, suffixes et phrase autour du mot."),
+(4, "« The writer's purpose is to warn young people. » « Purpose » means :", "but, intention", "pays d'origine", "métier", "regret",
+ "Purpose = objectif."),
+]),
+
+dict(
+nom="Getting ready : vocabulary and word formation",
+fiche="""## Former des mots
+• Noms : -ment (develop → development), -tion (educate → education), -ness (happy → happiness), -ity (equal → equality), -er/-or (teach → teacher, act → actor), -ship (friend → friendship), -hood (child → childhood).
+• Adjectifs : -ful (care → careful), -less (care → careless : sans), -able (rely → reliable), -ous (danger → dangerous), -al (nation → national), -ive (create → creative).
+• Verbes : -en (wide → widen), -ise/-ize (modern → modernise), en- (courage → encourage).
+• Adverbes : -ly (quick → quickly).
+• Contraires : un- (happy → unhappy), in-/im-/il-/ir- (possible → impossible, legal → illegal, regular → irregular), dis- (agree → disagree), mis- (understand → misunderstand).
+
+## Faux amis fréquents
+actually (en fait), eventually (finalement), library (bibliothèque), sensible (raisonnable), deception (tromperie), to attend (assister à), to pretend (faire semblant).
+
+## Thèmes du BAC
+Environment (pollution, deforestation, renewable energy), health (disease, vaccine, healthcare), education (dropout, scholarship), economy (unemployment, poverty, loan), technology (device, social media, cyberbullying), society (gender equality, child labour, corruption).""",
+questions=[
+(1, "The noun formed from « develop » is :", "development", "developness", "developation", "developance",
+ "Suffixe -ment."),
+(2, "The opposite of « careful » is :", "careless", "uncareful", "discareful", "carefuller",
+ "-less = sans."),
+(2, "The noun formed from « child » meaning « enfance » is :", "childhood", "childship", "childness", "childment",
+ "-hood exprime un état ou une période."),
+(2, "« Actually » means :", "en fait", "actuellement", "activement", "exactement",
+ "Faux ami : « actuellement » = currently."),
+(2, "A « library » is :", "une bibliothèque", "une librairie", "un laboratoire", "une liberté",
+ "Une librairie = a bookshop."),
+(3, "The adjective formed from « danger » is :", "dangerous", "dangerful", "dangerable", "dangerive",
+ "Suffixe -ous."),
+(3, "The opposite of « legal » is :", "illegal", "unlegal", "inlegal", "dislegal",
+ "Devant l, on utilise il-."),
+(3, "« To pretend » means :", "faire semblant", "prétendre à un poste", "préparer", "présenter",
+ "Faux ami fréquent."),
+(3, "Students who leave school before the end of their studies are :", "dropouts", "graduates", "scholars", "boarders",
+ "A dropout = un élève qui abandonne l'école (décrocheur) ; dropping out = le décrochage scolaire."),
+(4, "The verb formed from « wide » is :", "widen", "widize", "enwide", "wideful",
+ "Suffixe -en : rendre plus large."),
+(4, "Harassing someone online is called :", "cyberbullying", "cybersecurity", "networking", "downloading",
+ "Thème fréquent : technology and society."),
+]),
+
+dict(
+nom="Getting ready : grammar in context",
+fiche="""## Les points de grammaire les plus fréquents au BAC
+• Temps : present perfect (since/for), past simple (ago, yesterday), past perfect (action antérieure), futur (will, be going to).
+• Voix passive : be + participe passé. « Schools are built by the State. » Au passé : « was/were built ».
+• Discours indirect : recul des temps, said/told, asked if.
+• Conditionnelles : type 1 (if + présent, will), type 2 (if + prétérit, would), type 3 (if + past perfect, would have + participe).
+• Modaux : must/mustn't/have to/should/can/may.
+• Relatifs : who (personnes), which (choses), whose (possession), where (lieu), when (temps).
+• Comparatifs et superlatifs ; so/such ; too/enough.
+• Questions sur le mot souligné : trouver le bon mot interrogatif (who, what, where, when, why, how much, how long).
+• Rewriting (reformuler sans changer le sens) : « Although it rained, they played. » = « Despite the rain, they played. »
+
+## Astuce
+Dans un exercice à trous, cherche l'indice : un marqueur de temps (since, yesterday, by the time), un sujet singulier ou pluriel, un « if ».""",
+questions=[
+(1, "The bridge ___ in 2019. (voix passive)", "was built", "built", "is building", "has build",
+ "Passif au passé : was + participe passé."),
+(2, "The woman ___ son won the prize is my aunt.", "whose", "who", "which", "whom",
+ "Whose exprime la possession."),
+(2, "This is the school ___ I studied.", "where", "which", "who", "whose",
+ "Where pour un lieu."),
+(2, "If I ___ rich, I would build a hospital.", "were", "am", "will be", "had been",
+ "Type 2 : if + prétérit (were pour tous les sujets)."),
+(2, "Rewrite : « Although it rained, they played. » → « Despite ___, they played. »", "the rain", "it rained", "raining it", "of the rain",
+ "Despite + nom ou -ing."),
+(3, "By the time the police arrived, the thieves ___.", "had escaped", "have escaped", "escape", "were escaping already",
+ "Action antérieure dans le passé : past perfect."),
+(3, "It was ___ an interesting film that we watched it twice.", "such", "so", "too", "very",
+ "Such + (a/an) + adjectif + nom."),
+(3, "She is not old ___ to vote.", "enough", "too", "so", "such",
+ "Adjectif + enough."),
+(3, "« They have lived here for ten years. » Question on the underlined part « for ten years » :", "How long have they lived here?", "When have they lived here?", "How much have they lived here?", "Where have they lived?",
+ "How long = depuis combien de temps."),
+(4, "If they had studied, they ___ the exam.", "would have passed", "will have passed", "will pass", "passed",
+ "Type 3 : would have + participe passé."),
+(4, "« Don't touch the wires, » he said to us. → He told us ___ the wires.", "not to touch", "don't touch", "to not touching", "that we don't touch",
+ "Ordre négatif rapporté : not to + base."),
+]),
 ]

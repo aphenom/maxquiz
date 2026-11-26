@@ -28,8 +28,9 @@ Le premier chapitre de chaque matière est ouvert sans abonnement, pour faire d�
 | Physique-Chimie | Tle C et D | 7 de physique + 7 de chimie + Révision BAC | 159 |
 | SVT | Tle C et D | 9 chapitres + Révision BAC | 110 |
 | Histoire-Géographie | Tle A, C et D | 7 d'histoire + 7 de géographie + Révision BAC | 165 |
-| Philosophie | Tle A, C et D | 14 leçons + Méthode et révision BAC | 164 |
-| Anglais | Tle A, C et D | 8 unités + Révision BAC | 101 |
+| Philosophie | Tle A, C et D | 16 leçons + commentaire de texte, citations, méthode et révision BAC | 207 |
+| Anglais | Tle A, C et D | 8 unités + 3 « Getting ready » (préparation au BAC) + Révision BAC | 133 |
+| Français | Tle A, C et D | Figures de style, registres et versification, argumentation, résumé et discussion, commentaire composé, dissertation, littérature africaine, Révision BAC | 97 |
 
 Un chapitre commun à plusieurs classes est importé une fois par classe (une ligne par classe dans les Excel), avec une seule fiche PDF.
 

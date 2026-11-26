@@ -33,7 +33,7 @@ SETS = {
     "3eme": ["maths3_a.py", "maths3_b.py", "pc3.py", "svt3.py", "anglais3.py", "hg3.py"],
     # Un chapitre peut servir à plusieurs classes : NIVEAUX dans le module, ou « niveaux » dans le chapitre.
     "terminale": ["maths_tle_cd.py", "maths_tle_a.py", "pc_tle.py", "svt_tle.py", "hg_tle.py",
-                  "philo_tle.py", "anglais_tle.py"],
+                  "philo_tle.py", "anglais_tle.py", "francais_tle.py"],
 }
 SOURCES = SETS[NIVEAU_CIBLE]
 FREE = {"Calcul littéral", "Lentilles minces", "Les micro-organismes et les maladies infectieuses",
