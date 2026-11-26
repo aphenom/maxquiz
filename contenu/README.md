@@ -32,6 +32,14 @@ Le premier chapitre de chaque matière est ouvert sans abonnement, pour faire d�
 | Anglais | Tle A, C et D | 8 unités + 3 « Getting ready » (préparation au BAC) + Révision BAC | 133 |
 | Français | Tle A, C et D | Figures de style, registres et versification, argumentation, résumé et discussion, commentaire composé, dissertation, littérature africaine, Révision BAC | 97 |
 
+## Ce qui est livré : 4ème (dossier `4eme/`)
+
+| Matière | Chapitres | Questions |
+| --- | --- | --- |
+| Mathématiques | 10 chapitres + Révision de l'année | 112 |
+| Physique-Chimie | 8 chapitres (électricité, lumière) + Révision de l'année | 90 |
+| EDHC | 8 chapitres + Révision de l'année | 90 |
+
 Un chapitre commun à plusieurs classes est importé une fois par classe (une ligne par classe dans les Excel), avec une seule fiche PDF.
 
 ## Mettre le contenu en ligne (sur le serveur)
@@ -42,6 +50,10 @@ maxquiz import_questions contenu/3eme/quiz.xlsx --shared --dry-run
 maxquiz import_questions contenu/3eme/quiz.xlsx --shared
 maxquiz import_cours contenu/3eme/cours.xlsx --fiches contenu/3eme/fiches --dry-run
 maxquiz import_cours contenu/3eme/cours.xlsx --fiches contenu/3eme/fiches
+
+# 4ème
+maxquiz import_questions contenu/4eme/quiz.xlsx --shared
+maxquiz import_cours contenu/4eme/cours.xlsx --fiches contenu/4eme/fiches
 
 # Terminale
 maxquiz import_questions contenu/terminale/quiz.xlsx --shared

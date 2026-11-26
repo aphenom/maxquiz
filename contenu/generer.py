@@ -25,7 +25,7 @@ from reportlab.platypus import (KeepTogether, Paragraph, SimpleDocTemplate, Spac
 
 rl_config.invariant = 1                                  # PDF identiques d'une génération à l'autre
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Usage : python contenu/generer.py [3eme|terminale] [dossier de sortie]
+# Usage : python contenu/generer.py [3eme|4eme|terminale] [dossier de sortie]
 NIVEAU_CIBLE = sys.argv[1] if len(sys.argv) > 1 and not os.sep in sys.argv[1] else "3eme"
 OUT = sys.argv[2] if len(sys.argv) > 2 else (sys.argv[1] if len(sys.argv) > 1 and os.sep in sys.argv[1]
                                              else os.path.join(HERE, NIVEAU_CIBLE))
@@ -34,10 +34,11 @@ SETS = {
     # Un chapitre peut servir à plusieurs classes : NIVEAUX dans le module, ou « niveaux » dans le chapitre.
     "terminale": ["maths_tle_cd.py", "maths_tle_a.py", "pc_tle.py", "svt_tle.py", "hg_tle.py",
                   "philo_tle.py", "anglais_tle.py", "francais_tle.py"],
+    "4eme": ["maths4.py", "pc4.py", "edhc4.py"],
 }
 SOURCES = SETS[NIVEAU_CIBLE]
 FREE = {"Calcul littéral", "Lentilles minces", "Les micro-organismes et les maladies infectieuses",
-        "Simple past et present perfect", "La Seconde Guerre mondiale"}          # chapitres ouverts sans abonnement
+        "Simple past et present perfect", "La Seconde Guerre mondiale"}          # 3ème : chapitres ouverts sans abonnement
 
 ORANGE, VERT, ENCRE, IVOIRE, BRUN, SABLE = (HexColor(c) for c in
                                             ("#F2790F", "#0B9A5C", "#221A12", "#FDF6EC", "#6E6152", "#EADFCE"))
@@ -255,7 +256,7 @@ def main():
             label = levels[0] if len(levels) == 1 else ", ".join(levels[:-1]) + " et " + levels[-1]
             fname = f"{slug('-'.join(levels))}-{slug(matiere)}-{base:02d}-{slug(chap['nom'])}.pdf"
             pdf(chap, label, matiere, os.path.join(OUT, "fiches", fname))
-            free = chap.get("gratuit") or chap["nom"] in FREE or base == 1
+            free = chap.get("gratuit") or (NIVEAU_CIBLE == "3eme" and chap["nom"] in FREE) or base == 1
             shuffled_qs = [shuffled(q) for q in chap["questions"]]
             for niveau in levels:
                 for d, text, opts, letter, expl in shuffled_qs:

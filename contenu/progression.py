@@ -73,6 +73,43 @@ PROGRESSION = {
         ("Révision BEPC", 5),
     ],
 
+    # ------------------------------------------------------------------ 4ème
+    ("4ème", "Mathématiques"): [
+        ("Nombres décimaux relatifs et puissances de 10", 10),
+        ("Angles et droites parallèles", 10),
+        ("Nombres rationnels", 11),
+        ("Distances et bissectrice", 11),
+        ("Calcul littéral", 12),
+        ("Cercles et triangles", 1),
+        ("Équations et inéquations", 1),
+        ("Propriété de Pythagore", 2),
+        ("Statistique", 3),
+        ("Perspective cavalière", 4),
+        ("Révision de l'année", 5),
+    ],
+    ("4ème", "Physique-Chimie"): [
+        ("Le circuit électrique", 10),
+        ("Circuits en série et en dérivation", 10),
+        ("L'intensité du courant", 11),
+        ("La tension électrique", 12),
+        ("La résistance et la loi d'Ohm", 1),
+        ("La tension alternative", 2),
+        ("L'installation électrique de la maison", 3),
+        ("La lumière : sources, propagation et ombres", 4),
+        ("Révision de l'année", 5),
+    ],
+    ("4ème", "EDHC"): [
+        ("Les droits de l'homme", 10),
+        ("La Constitution ivoirienne", 11),
+        ("Les institutions de la République", 12),
+        ("La décentralisation et les collectivités territoriales", 1),
+        ("Le civisme fiscal et le bien public", 2),
+        ("La sécurité routière", 3),
+        ("Les conduites à risque : drogue, alcool et tabac", 3),
+        ("La protection de l'environnement", 4),
+        ("Révision de l'année", 5),
+    ],
+
     # ------------------------------------------------------------- Terminale
     ("Tle C+Tle D", "Mathématiques"): [
         ("Limites et continuité", 10),
