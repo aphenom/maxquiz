@@ -60,7 +60,7 @@ Les questions marquées d'un schéma l'affichent pendant la partie (voir « Sch�
 | EDHC | 7 chapitres + Révision de l'année | 81 |
 | Français | Récit, description, phrase, groupe nominal, verbe, discours rapporté, adverbes, lettre, orthographe + Révision | 110 |
 | Anglais | 7 unités (At school … Health and environment) + Révision | 80 |
-| Histoire-Géographie | 7 leçons d'histoire (de l'objet de l'histoire au néolithique ivoirien) + Révision | 81 |
+| Histoire-Géographie | 7 leçons d'histoire + 9 de géographie (relief, climat, cartes, mouvements de la Terre, eau, impôt…) + 2 révisions | 184 |
 | SVT | 9 chapitres (production végétale, êtres vivants, fermentations, alimentation, puberté, eau, air) + Révision | 101 |
 
 Un chapitre commun à plusieurs classes est importé une fois par classe (une ligne par classe dans les Excel), avec une seule fiche PDF.

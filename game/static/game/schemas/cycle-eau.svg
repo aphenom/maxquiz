@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" width="480" height="300" font-family="DejaVu Sans">
+<rect x="1" y="1" width="478" height="298" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<rect x="2.0" y="220.0" width="200.0" height="76.0" rx="0" stroke="none" stroke-width="0" fill="#BFDDF5"/>
+<text x="100.0" y="270.0" font-family="DejaVu Sans" font-size="13" fill="#2F6FB5" text-anchor="middle" font-weight="bold">océan</text>
+<polygon points="202.0,296.0 202.0,220.0 300.0,180.0 380.0,120.0 440.0,170.0 478.0,150.0 478.0,296.0" stroke="#6E6152" stroke-width="2" fill="#EADFCE" stroke-linejoin="round"/>
+<circle cx="50.0" cy="50.0" r="24.0" stroke="#F2790F" stroke-width="2" fill="#F5C431"/>
+<ellipse cx="150.0" cy="60.0" rx="60.0" ry="22.0" stroke="#9A8F84" stroke-width="1.5" fill="#F2F2F2"/>
+<ellipse cx="290.0" cy="60.0" rx="60.0" ry="22.0" stroke="#9A8F84" stroke-width="1.5" fill="#F2F2F2"/>
+<line x1="70.0" y1="210.0" x2="80.0" y2="110.0" stroke="#F2790F" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,4"/>
+<polygon points="80.0,110.0 83.0,119.6 75.2,118.8" stroke="#F2790F" stroke-width="1" fill="#F2790F" stroke-linejoin="round"/>
+<line x1="110.0" y1="210.0" x2="120.0" y2="110.0" stroke="#F2790F" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,4"/>
+<polygon points="120.0,110.0 123.0,119.6 115.2,118.8" stroke="#F2790F" stroke-width="1" fill="#F2790F" stroke-linejoin="round"/>
+<line x1="150.0" y1="210.0" x2="160.0" y2="110.0" stroke="#F2790F" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,4"/>
+<polygon points="160.0,110.0 163.0,119.6 155.2,118.8" stroke="#F2790F" stroke-width="1" fill="#F2790F" stroke-linejoin="round"/>
+<text x="110.0" y="242.0" font-family="DejaVu Sans" font-size="12" fill="#F2790F" text-anchor="middle" font-weight="bold">évaporation</text>
+<line x1="205.0" y1="60.0" x2="245.0" y2="60.0" stroke="#9A8F84" stroke-width="2" stroke-linecap="round"/>
+<polygon points="245.0,60.0 235.8,63.9 235.8,56.1" stroke="#9A8F84" stroke-width="1" fill="#9A8F84" stroke-linejoin="round"/>
+<text x="225.0" y="48.0" font-family="DejaVu Sans" font-size="11" fill="#6E6152" text-anchor="middle">condensation</text>
+<line x1="270.0" y1="88.0" x2="262.0" y2="150.0" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round"/>
+<polygon points="262.0,150.0 259.3,140.4 267.0,141.4" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5" stroke-linejoin="round"/>
+<line x1="300.0" y1="88.0" x2="292.0" y2="150.0" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round"/>
+<polygon points="292.0,150.0 289.3,140.4 297.0,141.4" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5" stroke-linejoin="round"/>
+<line x1="330.0" y1="88.0" x2="322.0" y2="150.0" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round"/>
+<polygon points="322.0,150.0 319.3,140.4 327.0,141.4" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5" stroke-linejoin="round"/>
+<text x="345.0" y="110.0" font-family="DejaVu Sans" font-size="12" fill="#2F6FB5" text-anchor="start" font-weight="bold">précipitations</text>
+<line x1="330.0" y1="176.0" x2="215.0" y2="222.0" stroke="#0B9A5C" stroke-width="2.5" stroke-linecap="round"/>
+<polygon points="215.0,222.0 222.1,215.0 225.0,222.2" stroke="#0B9A5C" stroke-width="1" fill="#0B9A5C" stroke-linejoin="round"/>
+<text x="300.0" y="216.0" font-family="DejaVu Sans" font-size="12" fill="#0B9A5C" text-anchor="middle" font-weight="bold">ruissellement</text>
+<line x1="380.0" y1="200.0" x2="380.0" y2="262.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,3"/>
+<polygon points="380.0,262.0 376.1,252.8 383.9,252.8" stroke="#6E6152" stroke-width="1" fill="#6E6152" stroke-linejoin="round"/>
+<text x="390.0" y="250.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="start" font-weight="bold">infiltration</text>
+<text x="470.0" y="285.0" font-family="DejaVu Sans" font-size="10.5" fill="#6E6152" text-anchor="end">nappe souterraine</text>
+</svg>

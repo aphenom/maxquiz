@@ -1212,6 +1212,75 @@ def carte_migrations():
     return s
 
 
+# ============================================================ GÉOGRAPHIE
+@schema
+def formes_relief():
+    s = S(480, 250)
+    sea = 190
+    s.rect(2, sea, 96, 32, c="none", sw=0, fill="#BFDDF5")
+    s.text(50, sea + 22, "mer (0 m)", 11, c=BLEU, bold=True)
+    pts = [(98, sea), (150, sea - 4), (200, sea - 8), (230, sea - 60), (330, sea - 66), (345, sea - 70),
+           (380, sea - 150), (405, sea - 115), (430, sea - 165), (478, sea - 90)]
+    s.poly(pts + [(478, 222), (98, 222)], c=BRUN, w=2.5, fill="#EADFCE")
+    s.text(150, sea - 16, "plaine", 13, c=VERT, bold=True)
+    s.text(280, sea - 80, "plateau", 13, c=ORANGE, bold=True)
+    s.text(410, 16 + 4, "montagne", 13, c=ROUGE, bold=True)
+    s.line(20, sea, 470, sea, c=BLEU, w=1, dash="4,4")
+    s.line(430, sea - 165, 430, sea, c=GRIS, w=1, dash="3,3")
+    s.text(424, sea - 60, "altitude", 10.5, c=BRUN, anchor="end")
+    s.text(240, 244, "Altitude mesurée à partir du niveau de la mer", 12, c=ENCRE)
+    return s
+
+
+@schema
+def globe_reperes():
+    s = S(470, 340)
+    cx, cy, r = 170, 175, 125
+    s.circle(cx, cy, r, c=BLEU, w=2.5, fill="#E8F1FB")
+    for lat, nom, col in [(0, "équateur (0°)", ROUGE), (23.4, "tropique du Cancer", ORANGE),
+                          (-23.4, "tropique du Capricorne", ORANGE), (66.6, "cercle polaire arctique", BLEU),
+                          (-66.6, "cercle polaire antarctique", BLEU)]:
+        y = cy - r * math.sin(math.radians(lat))
+        half = r * math.cos(math.radians(lat))
+        s.ellipse(cx, y, half, max(3, half * 0.12), c=col, w=2 if lat == 0 else 1.5)
+        s.line(cx + half, y, 305, y, c=col, w=1, dash="2,3")
+        s.text(310, y + 4, nom, 11.5, c=col, bold=(lat == 0), anchor="start")
+    s.ellipse(cx, cy, 40, r, c=VERT, w=2)
+    s.line(cx - 40, cy - 40, 60, 40, c=VERT, w=1, dash="2,3")
+    s.text(20, 34, "méridien de Greenwich (0°)", 11.5, c=VERT, anchor="start", bold=True)
+    s.dot(cx, cy - r, "")
+    s.text(cx + 10, cy - r - 6, "pôle Nord", 12, anchor="start", bold=True)
+    s.dot(cx, cy + r, "")
+    s.text(cx + 10, cy + r + 14, "pôle Sud", 12, anchor="start", bold=True)
+    return s
+
+
+@schema
+def cycle_eau():
+    s = S(480, 300)
+    s.rect(2, 220, 200, 76, c="none", sw=0, fill="#BFDDF5")
+    s.text(100, 270, "océan", 13, c=BLEU, bold=True)
+    s.poly([(202, 296), (202, 220), (300, 180), (380, 120), (440, 170), (478, 150), (478, 296)], c=BRUN, w=2,
+           fill="#EADFCE")
+    s.circle(50, 50, 24, c=ORANGE, fill=JAUNE)
+    for x in (110, 250):
+        s.ellipse(x + 40, 60, 60, 22, c=GRIS, w=1.5, fill="#F2F2F2")
+    for x in (70, 110, 150):
+        s.arrow(x, 210, x + 10, 110, c=ORANGE, w=2, dash="5,4")
+    s.text(110, 242, "évaporation", 12, c=ORANGE, bold=True)
+    s.arrow(205, 60, 245, 60, c=GRIS, w=2)
+    s.text(225, 48, "condensation", 11, c=BRUN)
+    for x in (270, 300, 330):
+        s.arrow(x, 88, x - 8, 150, c=BLEU, w=2)
+    s.text(345, 110, "précipitations", 12, c=BLEU, bold=True, anchor="start")
+    s.arrow(330, 176, 215, 222, c=VERT, w=2.5)
+    s.text(300, 216, "ruissellement", 12, c=VERT, bold=True)
+    s.arrow(380, 200, 380, 262, c=BRUN, w=2, dash="4,3")
+    s.text(390, 250, "infiltration", 12, c=BRUN, bold=True, anchor="start")
+    s.text(470, 285, "nappe souterraine", 10.5, c=BRUN, anchor="end")
+    return s
+
+
 # ============================================================ EDHC
 @schema
 def drapeau_ci():
