@@ -1127,6 +1127,91 @@ def frise_cote_divoire():
     return s
 
 
+# --- Carte simplifiée de la Côte d'Ivoire (longitude, latitude approximatives)
+CI = [(-7.53, 4.36), (-6.9, 4.65), (-6.08, 4.95), (-5.57, 5.08), (-5.0, 5.13), (-4.0, 5.24), (-3.74, 5.2),
+      (-3.25, 5.12), (-2.93, 5.1), (-3.05, 5.6), (-3.2, 6.25), (-3.0, 7.0), (-2.78, 7.9), (-2.6, 8.2),
+      (-2.5, 8.9), (-2.7, 9.6), (-3.2, 9.9), (-3.65, 9.95), (-4.3, 9.65), (-4.75, 9.75), (-5.5, 10.4),
+      (-6.2, 10.6), (-6.75, 10.3), (-7.3, 10.4), (-7.65, 10.45), (-8.05, 10.2), (-8.2, 9.5), (-7.9, 8.8),
+      (-8.2, 8.2), (-8.45, 7.6), (-8.3, 7.1), (-7.75, 6.5), (-7.45, 5.85), (-7.6, 4.9)]
+VILLES = {"Abidjan": (-4.02, 5.33), "Yamoussoukro": (-5.28, 6.82), "Bouaké": (-5.03, 7.69),
+          "Korhogo": (-5.63, 9.46), "Man": (-7.55, 7.41), "San-Pédro": (-6.64, 4.75), "Odienné": (-7.56, 9.51),
+          "Bondoukou": (-2.8, 8.04)}
+
+
+def _ci(s, x0=40, y0=30, k=42, fill="#F7F1E6", villes=("Abidjan", "Yamoussoukro", "Bouaké", "Korhogo", "Man")):
+    def P(lon, lat):
+        return x0 + (lon + 8.6) * k, y0 + (10.8 - lat) * k
+    s.poly([P(*c) for c in CI], c=BRUN, w=2, fill=fill)
+    return P
+
+
+def _villes(s, P, noms):
+    for v in noms:
+        x, y = P(*VILLES[v])
+        s.circle(x, y, 3.5, c=ENCRE, w=1, fill=ENCRE)
+        s.text(x + 6, y - 5, v, 11, c=ENCRE, anchor="start")
+
+
+def _ocean(s, P):
+    x, y = P(-5.4, 4.3)
+    s.text(x, y + 14, "Océan Atlantique", 12, c=BLEU, italic=True)
+
+
+@schema
+def carte_climats_ci():
+    s = S(360, 340)
+    P = _ci(s)
+    zones = [((-5.6, 9.5), 95, 40, "#F6D776", "soudanien"), ((-5.2, 7.7), 100, 30, "#BFE6CF", "baouléen"),
+             ((-5.2, 5.9), 105, 32, "#9AD7B8", "attiéen"), ((-7.9, 7.5), 26, 48, "#BFDDF5", "montagne")]
+    for (lon, lat), rx, ry, col, nom in zones:
+        x, y = P(lon, lat)
+        s.ellipse(x, y, rx, ry, c="none", w=0, fill=col)
+    _ci(s, fill="none")
+    for (lon, lat), rx, ry, col, nom in zones:
+        x, y = P(lon, lat)
+        s.text(x, y + 5, nom, 13, c=ENCRE, bold=True)
+    _ocean(s, P)
+    s.text(180, 24, "Les climats de la Côte d'Ivoire (schéma simplifié)", 12, c=ENCRE, bold=True)
+    return s
+
+
+@schema
+def carte_groupes_ethniques():
+    s = S(360, 340)
+    P = _ci(s)
+    zones = [((-7.0, 9.6), 50, 34, "#F6D776", "Mandé Nord"), ((-4.3, 9.3), 85, 32, "#F6C9A0", "Gour"),
+             ((-7.3, 7.6), 34, 46, "#BFDDF5", "Mandé Sud"), ((-6.4, 5.9), 58, 40, "#E2C8F0", "Krou"),
+             ((-4.2, 6.6), 72, 62, "#BFE6CF", "Akan")]
+    for (lon, lat), rx, ry, col, nom in zones:
+        x, y = P(lon, lat)
+        s.ellipse(x, y, rx, ry, c="none", w=0, fill=col)
+    _ci(s, fill="none")
+    for (lon, lat), rx, ry, col, nom in zones:
+        x, y = P(lon, lat)
+        s.text(x, y + 5, nom, 13, c=ENCRE, bold=True)
+    _ocean(s, P)
+    s.text(180, 24, "Les grands groupes ethniques (schéma simplifié)", 12, c=ENCRE, bold=True)
+    return s
+
+
+@schema
+def carte_migrations():
+    s = S(420, 400)
+    P = _ci(s, x0=80, y0=70)
+    fleches = [((-5.5, 11.6), (-5.4, 9.6), ORANGE, "Sénoufo (dès le Xᵉ s.)", (-5.0, 11.75), "start"),
+               ((-9.3, 10.5), (-7.4, 9.4), ROUGE, "Mandé (XIᵉ-XVᵉ s.)", (-9.3, 10.85), "start"),
+               ((-9.4, 6.0), (-7.0, 6.0), BLEU, "Krou (XIVᵉ-XVᵉ s.)", (-9.5, 5.55), "start"),
+               ((-1.2, 6.9), (-3.9, 6.9), VERT, "Akan (XVIIᵉ-XVIIIᵉ s.)", (-1.0, 6.35), "end")]
+    for (a, b, col, lab, t, anc) in fleches:
+        s.arrow(*P(*a), *P(*b), c=col, w=4, head=14)
+        x, y = P(*t)
+        s.text(x, y, lab, 11.5, c=col, bold=True, anchor=anc)
+    _villes(s, P, ("Abidjan", "Korhogo", "Man"))
+    _ocean(s, P)
+    s.text(210, 390, "Les grandes migrations (schéma simplifié)", 12, c=ENCRE, bold=True)
+    return s
+
+
 # ============================================================ EDHC
 @schema
 def drapeau_ci():

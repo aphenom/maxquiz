@@ -35,7 +35,7 @@ SETS = {
     "terminale": ["maths_tle_cd.py", "maths_tle_a.py", "pc_tle.py", "svt_tle.py", "hg_tle.py",
                   "philo_tle.py", "anglais_tle.py", "francais_tle.py"],
     "4eme": ["maths4.py", "pc4.py", "edhc4.py"],
-    "5eme": ["maths5.py", "pc5.py", "edhc5.py"],
+    "5eme": ["maths5.py", "pc5.py", "edhc5.py", "edhc5b.py", "francais5.py", "anglais5.py", "hg5.py"],
     "6eme": ["pc6.py", "edhc6.py", "francais6.py", "anglais6.py", "hg6.py", "svt6.py"],
 }
 SOURCES = SETS[NIVEAU_CIBLE]

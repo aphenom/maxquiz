@@ -47,7 +47,10 @@ Les questions marquées d'un schéma l'affichent pendant la partie (voir « Sch�
 | --- | --- | --- |
 | Mathématiques | 11 chapitres + Révision de l'année | 124 |
 | Physique-Chimie | 8 chapitres (matière, mélanges, air, combustions, masse volumique) + Révision | 94 |
-| EDHC | 8 chapitres + Révision de l'année | 90 |
+| EDHC | 19 leçons (programme officiel complet + compléments) + Révision de l'année | 200 |
+| Français | Portrait, poème en vers libres, compte rendu, GN, adjectif, pronoms, verbe et voix passive, orthographe + Révision | 100 |
+| Anglais | 6 unités (At school … Food, drinks and health) + Révision | 70 |
+| Histoire-Géographie | 5 leçons d'histoire + 5 de géographie + Révision | 113 |
 
 ## Ce qui est livré : 6ème (dossier `6eme/`)
 

@@ -89,7 +89,8 @@ class ContenuTests(TestCase):
         self._college("6eme", "6ème", ["Anglais", "EDHC", "Français", "Histoire-Géographie", "Physique-Chimie", "SVT"])
 
     def test_contenu_5eme_complet(self):
-        self._college("5eme", "5ème", ["EDHC", "Mathématiques", "Physique-Chimie"])
+        self._college("5eme", "5ème", ["Anglais", "EDHC", "Français", "Histoire-Géographie", "Mathématiques",
+                                       "Physique-Chimie"])
 
     def test_contenu_terminale_complet(self):
         self.assertEqual(self._contenu_complet("terminale"), {"Tle A", "Tle C", "Tle D"})

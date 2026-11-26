@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 340" width="360" height="340" font-family="DejaVu Sans">
+<rect x="1" y="1" width="358" height="338" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="84.9,300.5 111.4,288.3 145.8,275.7 167.3,270.2 191.2,268.1 233.2,263.5 244.1,265.2 264.7,268.6 278.1,269.4 273.1,248.4 266.8,221.1 275.2,189.6 284.4,151.8 292.0,139.2 296.2,109.8 287.8,80.4 266.8,67.8 247.9,65.7 220.6,78.3 201.7,74.1 170.2,46.8 140.8,38.4 117.7,51.0 94.6,46.8 79.9,44.7 63.1,55.2 56.8,84.6 69.4,114.0 56.8,139.2 46.3,164.4 52.6,185.4 75.7,210.6 88.3,237.9 82.0,277.8" stroke="#6E6152" stroke-width="2" fill="#F7F1E6" stroke-linejoin="round"/>
+<ellipse cx="166.0" cy="84.6" rx="95.0" ry="40.0" stroke="none" stroke-width="0" fill="#F6D776"/>
+<ellipse cx="182.8" cy="160.2" rx="100.0" ry="30.0" stroke="none" stroke-width="0" fill="#BFE6CF"/>
+<ellipse cx="182.8" cy="235.8" rx="105.0" ry="32.0" stroke="none" stroke-width="0" fill="#9AD7B8"/>
+<ellipse cx="69.4" cy="168.6" rx="26.0" ry="48.0" stroke="none" stroke-width="0" fill="#BFDDF5"/>
+<polygon points="84.9,300.5 111.4,288.3 145.8,275.7 167.3,270.2 191.2,268.1 233.2,263.5 244.1,265.2 264.7,268.6 278.1,269.4 273.1,248.4 266.8,221.1 275.2,189.6 284.4,151.8 292.0,139.2 296.2,109.8 287.8,80.4 266.8,67.8 247.9,65.7 220.6,78.3 201.7,74.1 170.2,46.8 140.8,38.4 117.7,51.0 94.6,46.8 79.9,44.7 63.1,55.2 56.8,84.6 69.4,114.0 56.8,139.2 46.3,164.4 52.6,185.4 75.7,210.6 88.3,237.9 82.0,277.8" stroke="#6E6152" stroke-width="2" fill="none" stroke-linejoin="round"/>
+<text x="166.0" y="89.6" font-family="DejaVu Sans" font-size="13" fill="#221A12" text-anchor="middle" font-weight="bold">soudanien</text>
+<text x="182.8" y="165.2" font-family="DejaVu Sans" font-size="13" fill="#221A12" text-anchor="middle" font-weight="bold">baouléen</text>
+<text x="182.8" y="240.8" font-family="DejaVu Sans" font-size="13" fill="#221A12" text-anchor="middle" font-weight="bold">attiéen</text>
+<text x="69.4" y="173.6" font-family="DejaVu Sans" font-size="13" fill="#221A12" text-anchor="middle" font-weight="bold">montagne</text>
+<text x="174.4" y="317.0" font-family="DejaVu Sans" font-size="12" fill="#2F6FB5" text-anchor="middle" font-style="italic">Océan Atlantique</text>
+<text x="180.0" y="24.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle" font-weight="bold">Les climats de la Côte d'Ivoire (schéma simplifié)</text>
+</svg>
