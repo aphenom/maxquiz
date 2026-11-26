@@ -30,11 +30,11 @@ NIVEAU_CIBLE = sys.argv[1] if len(sys.argv) > 1 and not os.sep in sys.argv[1] el
 OUT = sys.argv[2] if len(sys.argv) > 2 else (sys.argv[1] if len(sys.argv) > 1 and os.sep in sys.argv[1]
                                              else os.path.join(HERE, NIVEAU_CIBLE))
 SETS = {
-    "3eme": ["maths3_a.py", "maths3_b.py", "pc3.py", "svt3.py", "anglais3.py", "hg3.py"],
+    "3eme": ["maths3_a.py", "maths3_b.py", "pc3.py", "svt3.py", "anglais3.py", "hg3.py", "francais3.py"],
     # Un chapitre peut servir à plusieurs classes : NIVEAUX dans le module, ou « niveaux » dans le chapitre.
     "terminale": ["maths_tle_cd.py", "maths_tle_a.py", "pc_tle.py", "svt_tle.py", "hg_tle.py",
                   "philo_tle.py", "anglais_tle.py", "francais_tle.py"],
-    "4eme": ["maths4.py", "pc4.py", "edhc4.py"],
+    "4eme": ["maths4.py", "pc4.py", "edhc4.py", "francais4.py", "anglais4.py", "hg4.py", "svt4.py"],
     "5eme": ["maths5.py", "pc5.py", "edhc5.py", "edhc5b.py", "francais5.py", "anglais5.py", "hg5.py"],
     "6eme": ["pc6.py", "edhc6.py", "francais6.py", "anglais6.py", "hg6.py", "hg6g.py", "svt6.py"],
 }

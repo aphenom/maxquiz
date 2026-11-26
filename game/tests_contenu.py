@@ -83,7 +83,8 @@ class ContenuTests(TestCase):
         self.assertEqual(sorted(libres.values_list("shared_subject_name", flat=True)), matieres)
 
     def test_contenu_4eme_complet(self):
-        self._college("4eme", "4ème", ["EDHC", "Mathématiques", "Physique-Chimie"])
+        self._college("4eme", "4ème", ["Anglais", "EDHC", "Français", "Histoire-Géographie", "Mathématiques",
+                                       "Physique-Chimie", "SVT"])
 
     def test_contenu_6eme_complet(self):
         self._college("6eme", "6ème", ["Anglais", "EDHC", "Français", "Histoire-Géographie", "Physique-Chimie", "SVT"])

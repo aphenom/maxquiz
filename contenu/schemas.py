@@ -1212,6 +1212,26 @@ def carte_migrations():
     return s
 
 
+@schema
+def commerce_triangulaire():
+    s = S(480, 300)
+    E, Af, Am = (330, 60), (360, 220), (90, 150)
+    for (x, y), nom, col in [(E, "EUROPE", BLEU), (Af, "AFRIQUE", ORANGE), (Am, "AMÉRIQUE", VERT)]:
+        s.ellipse(x, y, 62, 28, c=col, w=2, fill="#FFFFFF")
+        s.text(x, y + 5, nom, 13, c=col, bold=True)
+    s.arrow(E[0] + 10, E[1] + 28, Af[0] - 2, Af[1] - 30, c=BLEU, w=3, head=12)
+    s.text(360, 128, "1. tissus, armes,", 11.5, c=BLEU, anchor="start")
+    s.text(360, 143, "alcool, pacotille", 11.5, c=BLEU, anchor="start")
+    s.arrow(Af[0] - 60, Af[1] - 4, Am[0] + 50, Am[1] + 22, c=ROUGE, w=3, head=12)
+    s.text(205, 238, "2. captifs africains", 12, c=ROUGE, bold=True)
+    s.text(205, 254, "(« passage du milieu »)", 11, c=ROUGE)
+    s.arrow(Am[0] + 46, Am[1] - 20, E[0] - 60, E[1] + 4, c=VERT, w=3, head=12)
+    s.text(150, 72, "3. sucre, café,", 11.5, c=VERT, anchor="middle")
+    s.text(150, 87, "coton, tabac", 11.5, c=VERT, anchor="middle")
+    s.text(240, 288, "Le commerce triangulaire (XVIᵉ-XIXᵉ siècle)", 12.5, c=ENCRE, bold=True)
+    return s
+
+
 # ============================================================ GÉOGRAPHIE
 @schema
 def formes_relief():
@@ -1278,6 +1298,50 @@ def cycle_eau():
     s.arrow(380, 200, 380, 262, c=BRUN, w=2, dash="4,3")
     s.text(390, 250, "infiltration", 12, c=BRUN, bold=True, anchor="start")
     s.text(470, 285, "nappe souterraine", 10.5, c=BRUN, anchor="end")
+    return s
+
+
+@schema
+def roches_magma():
+    s = S(460, 300)
+    s.rect(2, 60, 456, 236, c="none", sw=0, fill="#EADFCE")
+    s.poly([(170, 60), (230, 10), (290, 60)], c=BRUN, w=2, fill="#B89C7A")
+    s.path("M230,14 C235,40 222,60 230,90 C240,130 220,170 230,210", c=ROUGE, w=6)
+    s.ellipse(230, 250, 90, 32, c=ROUGE, w=2, fill="#F6A37A")
+    s.text(230, 256, "magma", 13, c=ENCRE, bold=True)
+    s.ellipse(230, 140, 30, 14, c=ORANGE, w=2, fill="#FCD3B6")
+    s.ellipse(310, 52, 40, 8, c=ENCRE, w=1.5, fill="#55504A")
+    s.text(165, 26, "basalte : refroidissement", 11.5, c=ENCRE, anchor="end", bold=True)
+    s.text(165, 41, "rapide en surface (lave)", 11.5, c=ENCRE, anchor="end")
+    s.text(268, 136, "microgranite :", 11.5, c=ENCRE, anchor="start", bold=True)
+    s.text(268, 151, "à mi-profondeur", 11.5, c=ENCRE, anchor="start")
+    s.ellipse(110, 225, 60, 26, c=GRIS, w=2, fill="#D8D3CC")
+    s.text(110, 222, "granite :", 11.5, c=ENCRE, bold=True)
+    s.text(110, 237, "lent, en profondeur", 11, c=ENCRE)
+    s.arrow(20, 70, 20, 280, c=BLEU, w=1.5, head=8)
+    s.text(28, 84, "profondeur", 10.5, c=BLEU, anchor="start")
+    s.text(230, 294, "Plus le refroidissement est lent, plus les cristaux sont gros", 11.5, c=VERT, bold=True)
+    return s
+
+
+@schema
+def profil_sol():
+    s = S(470, 340)
+    x0, w = 30, 150
+    couches = [(20, 18, "#6B4E2E", "litière"), (38, 70, "#5A4632", "horizon A : humus + minéraux"),
+               (108, 80, "#C26A3D", "horizon B : argile, sable, fer"), (188, 62, "#D9C3A0", "horizon C : roche altérée (arène)"),
+               (250, 68, "#9A9086", "roche mère")]
+    for y, h, col, lab in couches:
+        s.rect(x0, y, w, h, c="#FFFFFF", sw=1, fill=col)
+        s.line(x0 + w, y + h / 2, x0 + w + 14, y + h / 2, c=GRIS, w=1)
+        s.text(x0 + w + 18, y + h / 2 + 4, lab, 11.5, c=ENCRE, anchor="start", bold=True)
+    for k in range(6):
+        s.line(x0 + 15 + k * 22, 20, x0 + 10 + k * 22, 14, c=VERT, w=2)
+    for cx, cy in [(70, 280), (120, 300), (160, 270), (95, 260)]:
+        s.poly([(cx - 14, cy - 6), (cx + 10, cy - 10), (cx + 16, cy + 6), (cx - 8, cy + 10)], c="#6E6152", w=1,
+               fill="#B5ACA2")
+    s.path(f"M{x0 + 60},{40} q8,25 -4,50 q-10,20 6,45", c="#E8D7B5", w=2)
+    s.text(235, 334, "Profil d'un sol (coupe verticale)", 12, c=VERT, bold=True)
     return s
 
 

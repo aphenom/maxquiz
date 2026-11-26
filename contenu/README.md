@@ -11,6 +11,7 @@ Cours et quiz originaux MaxQuiz, visibles par tous les élèves de la classe con
 | SVT | 7 chapitres + Révision BEPC | 99 |
 | Anglais | 8 chapitres + Révision BEPC | 112 |
 | Histoire-Géographie | 9 chapitres + Révision BEPC | 123 |
+| Français | 7 chapitres + Révision BEPC | 80 |
 
 Chaque chapitre comprend :
 - une **fiche de cours** affichée dans l'application. Elle contient l'essentiel, la méthode, un exemple corrigé, les pièges à éviter et ce qui tombe au BEPC ;
@@ -40,6 +41,10 @@ Les questions marquées d'un schéma l'affichent pendant la partie (voir « Sch�
 | Mathématiques | 10 chapitres + Révision de l'année | 116 |
 | Physique-Chimie | 8 chapitres (électricité, lumière) + Révision de l'année | 97 |
 | EDHC | 8 chapitres + Révision de l'année | 91 |
+| Français | Texte explicatif, dialogue argumentatif, compte rendu, lettre officielle, résumé, pronoms, modes, subordonnées, orthographe + Révision | 110 |
+| Anglais | 6 unités (School life … Communication and technology) + Révision | 70 |
+| Histoire-Géographie | 8 leçons d'histoire (peuples de Côte d'Ivoire, contacts avec l'Europe, traite, Révolution française, révolution industrielle, pénétration française) + Révision | 91 |
+| SVT | 9 chapitres (puberté, fécondation, roches, sols, maladies liées à l'eau, traitement de l'eau) + Révision | 102 |
 
 ## Ce qui est livré : 5ème (dossier `5eme/`)
 
