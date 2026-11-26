@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="DejaVu Sans">
+<rect x="1" y="1" width="438" height="248" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="40.0,200.0 150.0,200.0 150.0,80.0 40.0,80.0" stroke="#221A12" stroke-width="2" fill="none" stroke-linejoin="round"/>
+<polygon points="40.0,80.0 150.0,80.0 80.0,40.0" stroke="#F2790F" stroke-width="2" fill="#FDE3CC" stroke-linejoin="round"/>
+<line x1="150.0" y1="200.0" x2="80.0" y2="160.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,4"/>
+<line x1="40.0" y1="200.0" x2="80.0" y2="160.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,4"/>
+<line x1="80.0" y1="160.0" x2="80.0" y2="40.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,4"/>
+<line x1="150.0" y1="80.0" x2="80.0" y2="40.0" stroke="#F2790F" stroke-width="2" stroke-linecap="round"/>
+<text x="100.0" y="236.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Prisme droit</text>
+<ellipse cx="320.0" cy="60.0" rx="60.0" ry="16.0" stroke="#F2790F" stroke-width="2" fill="#FDE3CC"/>
+<line x1="260.0" y1="60.0" x2="260.0" y2="190.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="380.0" y1="60.0" x2="380.0" y2="190.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<path d="M260,190 A60,16 0 0,0 380,190" stroke="#221A12" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M260,190 A60,16 0 0,1 380,190" stroke="#6E6152" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,4"/>
+<line x1="320.0" y1="190.0" x2="380.0" y2="190.0" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round"/>
+<text x="350.0" y="184.0" font-family="DejaVu Sans" font-size="14" fill="#2F6FB5" text-anchor="middle" font-weight="bold">r</text>
+<text x="320.0" y="236.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Cylindre</text>
+<text x="220.0" y="24.0" font-family="DejaVu Sans" font-size="14" fill="#221A12" text-anchor="middle" font-weight="bold">V = aire de la base × hauteur</text>
+</svg>

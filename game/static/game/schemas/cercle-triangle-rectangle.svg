@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 280" width="340" height="280" font-family="DejaVu Sans">
+<rect x="1" y="1" width="338" height="278" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<circle cx="170.0" cy="140.0" r="105.0" stroke="#221A12" stroke-width="2" fill="none"/>
+<polygon points="65.0,140.0 275.0,140.0 222.5,49.1" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+<polyline points="213.0,54.6 218.5,64.1 228.0,58.6" stroke="#221A12" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+<circle cx="170.0" cy="140.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="170.0" y="160.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">O</text>
+<circle cx="65.0" cy="140.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="53.0" y="146.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">A</text>
+<circle cx="275.0" cy="140.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="289.0" y="146.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">B</text>
+<circle cx="222.5" cy="49.1" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="228.5" y="39.1" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">C</text>
+<line x1="115.0" y1="133.0" x2="115.0" y2="147.0" stroke="#0B9A5C" stroke-width="2" stroke-linecap="round"/>
+<line x1="120.0" y1="133.0" x2="120.0" y2="147.0" stroke="#0B9A5C" stroke-width="2" stroke-linecap="round"/>
+<line x1="220.0" y1="133.0" x2="220.0" y2="147.0" stroke="#0B9A5C" stroke-width="2" stroke-linecap="round"/>
+<line x1="225.0" y1="133.0" x2="225.0" y2="147.0" stroke="#0B9A5C" stroke-width="2" stroke-linecap="round"/>
+<text x="170.0" y="270.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="middle" font-weight="bold">[AB] diamètre ⇔ ABC rectangle en C</text>
+</svg>

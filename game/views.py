@@ -205,7 +205,7 @@ def start(request):
         "pot_sponsor": cfg.pot_sponsor,
         "questions": [
             {"id": q.id, "cat": q.get_category_display(), "difficulty": q.difficulty,
-             "text": q.text, "options": q.options(),
+             "text": q.text, "options": q.options(), "img": q.illustration_url(),
              "explanation": q.explanation if mode == "training" else ""}
             for q in deck
         ],
@@ -1059,7 +1059,8 @@ def space_start(request, slug):
                   "reward": reward_text, "reward_type": reward_type},
         "questions": [
             {"id": q.id, "cat": q.get_category_display(), "difficulty": q.difficulty,
-             "kind": q.kind, "text": q.text, "options": q.options(), "explanation": ""}
+             "kind": q.kind, "text": q.text, "options": q.options(), "img": q.illustration_url(),
+             "explanation": ""}
             for q in deck
         ],
         "ads": [], "video_ads": [],
@@ -1225,7 +1226,7 @@ def quiz_start(request, slug, quiz_slug):
         "questions": [
             {"id": q.id, "cat": q.sub_category.name if q.sub_category else q.get_category_display(),
              "difficulty": q.difficulty, "kind": q.kind, "text": q.text,
-             "options": q.options(), "explanation": "",
+             "options": q.options(), "img": q.illustration_url(), "explanation": "",
              "timer": question_timer(cfg, q, space, quiz)}
             for q in deck
         ],

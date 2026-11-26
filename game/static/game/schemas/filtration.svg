@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 290" width="300" height="290" font-family="DejaVu Sans">
+<rect x="1" y="1" width="298" height="288" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="80.0,40.0 220.0,40.0 160.0,130.0 160.0,170.0 140.0,170.0 140.0,130.0" stroke="#221A12" stroke-width="2" fill="#FFFFFF" stroke-linejoin="round"/>
+<polygon points="92.0,46.0 208.0,46.0 150.0,125.0" stroke="#6E6152" stroke-width="1.5" fill="#F3EBDD" stroke-linejoin="round"/>
+<polygon points="110.0,62.0 190.0,62.0 150.0,112.0" stroke="none" stroke-width="0" fill="#B58A5A" stroke-linejoin="round"/>
+<text x="225.0" y="70.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="start">papier filtre</text>
+<text x="225.0" y="86.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="start">+ résidu</text>
+<path d="M95,200 L95,270 L205,270 L205,200" stroke="#221A12" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="97.0" y="235.0" width="106.0" height="33.0" rx="0" stroke="none" stroke-width="0" fill="#BFDDF5"/>
+<circle cx="150.0" cy="180.0" r="3.0" stroke="#2F6FB5" stroke-width="0" fill="#2F6FB5"/>
+<circle cx="150.0" cy="196.0" r="3.0" stroke="#2F6FB5" stroke-width="0" fill="#2F6FB5"/>
+<circle cx="150.0" cy="212.0" r="3.0" stroke="#2F6FB5" stroke-width="0" fill="#2F6FB5"/>
+<text x="150.0" y="255.0" font-family="DejaVu Sans" font-size="13" fill="#2F6FB5" text-anchor="middle" font-weight="bold">filtrat</text>
+<text x="150.0" y="25.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Filtration</text>
+</svg>

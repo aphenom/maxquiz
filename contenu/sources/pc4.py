@@ -18,10 +18,13 @@ Les fils électriques ont un cœur en cuivre (conducteur) entouré de plastique 
 On représente chaque dipôle par un symbole normalisé, les fils par des traits droits.
 Pile : un grand trait (borne +) et un petit trait épais (borne −).
 
+[[schema:symboles-electriques|Les symboles normalisés]]
 ## Le sens du courant
 Par convention, le courant sort par la borne + du générateur et revient par la borne −.
 La diode ne laisse passer le courant que dans un sens (sens passant) ; une DEL est une diode qui éclaire.""",
 questions=[
+(1, 'Parmi les symboles du schéma, celui de la lampe est :', "un cercle barré d'une croix", 'un cercle avec la lettre M', 'un triangle et un trait', 'un cercle avec la lettre A',
+ "M est le moteur, A l'ampèremètre, le triangle la diode.", 'symboles-electriques'),
 (1, "Un circuit dans lequel le courant circule est :", "fermé", "ouvert", "coupé", "isolé",
  "Il forme une boucle sans interruption."),
 (1, "Lequel de ces matériaux est un conducteur ?", "le cuivre", "le plastique", "le verre", "le caoutchouc",
@@ -51,11 +54,13 @@ Tous les dipôles forment une seule boucle.
 • Si une lampe grille, toutes les autres s'éteignent.
 • Plus on ajoute de lampes, moins elles brillent.
 
+[[schema:circuit-serie|Circuit en série]]
 ## Circuit en dérivation (parallèle)
 Le circuit comporte plusieurs boucles ; les points où les fils se séparent s'appellent des nœuds.
 • Chaque branche fonctionne indépendamment : si une lampe grille, les autres restent allumées.
 • Les appareils de la maison sont branchés en dérivation.
 
+[[schema:circuit-derivation|Circuit en dérivation]]
 ## Le court-circuit
 Relier les deux bornes d'un dipôle par un fil (presque sans résistance) : le courant passe par le fil et non plus par le dipôle, qui s'éteint.
 Court-circuiter le générateur est dangereux : le courant devient très intense, les fils chauffent et peuvent provoquer un incendie.
@@ -65,6 +70,10 @@ Court-circuiter le générateur est dangereux : le courant devient très intense
 • Ne pas surcharger une multiprise.
 • Le fusible et le disjoncteur coupent le courant en cas de surintensité.""",
 questions=[
+(2, 'Le circuit du schéma est monté :', 'en série', 'en dérivation', 'en court-circuit', 'sans générateur',
+ "Il n'y a qu'une seule boucle.", 'circuit-serie'),
+(2, 'Dans le circuit du schéma, si L1 grille, L2 :', 'reste allumée', "s'éteint aussi", 'brille moins', 'explose',
+ 'En dérivation, chaque branche est indépendante.', 'circuit-derivation'),
 (1, "Dans un circuit en série, si une lampe grille :", "toutes les lampes s'éteignent", "les autres brillent plus fort", "rien ne change", "seule cette lampe s'éteint",
  "Il n'y a qu'une seule boucle."),
 (2, "Les appareils électriques d'une maison sont branchés :", "en dérivation", "en série", "en court-circuit", "sans fil",
@@ -97,6 +106,7 @@ L'intensité mesure le « débit » du courant électrique. Symbole I, unité l'
 • Il se branche EN SÉRIE, le courant entrant par la borne A (ou mA) et sortant par la borne COM.
 • Commencer par le plus grand calibre, puis descendre pour plus de précision.
 
+[[schema:amperemetre-voltmetre|Branchement de l'ampèremètre et du voltmètre]]
 ## Les lois
 • En série : l'intensité est la même en tout point du circuit (I = I₁ = I₂).
 • En dérivation (loi des nœuds) : l'intensité dans la branche principale est égale à la somme des intensités dans les branches dérivées (I = I₁ + I₂).
@@ -108,6 +118,8 @@ Une lampe en série dans un circuit où passe 150 mA : elle est traversée par 1
 ## Ordres de grandeur
 Lampe de poche : quelques centaines de mA. Fer à repasser : environ 5 A.""",
 questions=[
+(2, "Sur le schéma, l'appareil marqué A est branché :", 'en série', 'en dérivation', 'aux bornes de la lampe', 'hors du circuit',
+ "L'ampèremètre est traversé par le courant.", 'amperemetre-voltmetre'),
 (1, "L'unité de l'intensité du courant est :", "l'ampère", "le volt", "l'ohm", "le watt",
  "Symbole A."),
 (1, "L'intensité se mesure avec :", "un ampèremètre", "un voltmètre", "un thermomètre", "un ohmmètre",
@@ -140,6 +152,7 @@ La tension (U) est ce qui « pousse » le courant ; elle existe entre deux point
 • Il se branche EN DÉRIVATION, aux bornes du dipôle (borne V du côté +, borne COM du côté −).
 • Une pile neuve de 4,5 V affiche environ 4,5 V même hors circuit.
 
+[[schema:amperemetre-voltmetre|Branchement de l'ampèremètre et du voltmètre]]
 ## Les lois
 • En dérivation : la tension est la même aux bornes de toutes les branches (U = U₁ = U₂).
 • En série : la tension du générateur est égale à la somme des tensions aux bornes des récepteurs (U = U₁ + U₂).
@@ -186,6 +199,7 @@ U = R × I (U en volts, R en ohms, I en ampères).
 • R = U / I ; I = U / R.
 • Graphique : la caractéristique U = f(I) est une droite passant par l'origine.
 
+[[schema:loi-ohm|Caractéristique d'un résistor]]
 ## Exemples
 • R = 100 Ω, I = 0,05 A : U = 100 × 0,05 = 5 V.
 • U = 12 V, R = 60 Ω : I = 12 / 60 = 0,2 A.
@@ -198,6 +212,8 @@ U = R × I (U en volts, R en ohms, I en ampères).
 ## L'effet Joule
 Un conducteur traversé par un courant chauffe : c'est utilisé dans le fer à repasser, la bouilloire, le fusible.""",
 questions=[
+(3, "D'après le graphique, pour I = 0,3 A, la tension vaut :", '6 V', '3 V', '0,3 V', '10 V',
+ 'U = 20 × 0,3 = 6 V.', 'loi-ohm'),
 (1, "L'unité de la résistance électrique est :", "l'ohm", "le volt", "l'ampère", "le watt",
  "Symbole Ω."),
 (2, "La loi d'Ohm s'écrit :", "U = R × I", "U = R / I", "I = R × U", "R = U × I",
@@ -236,11 +252,14 @@ Il affiche la tension en fonction du temps. Une tension continue donne une droit
 • Tension efficace Ueff : celle qu'affiche un voltmètre en position alternative (AC) ; pour une tension sinusoïdale, Ueff = Umax / √2.
 Le secteur en Côte d'Ivoire : 220 V efficaces, 50 Hz (période 0,02 s).
 
+[[schema:tension-alternative|Tension alternative sinusoïdale]]
 ## Produire et transformer
 • Un alternateur (aimant qui tourne devant une bobine) produit une tension alternative : centrales hydroélectriques (Kossou, Soubré), thermiques, dynamo de vélo.
 • Un transformateur élève ou abaisse une tension alternative sans changer sa fréquence.
 • Un adaptateur (chargeur) abaisse la tension, la redresse avec des diodes et la lisse pour obtenir du continu.""",
 questions=[
+(2, "Sur le schéma, la durée d'un motif complet s'appelle :", 'la période', 'la fréquence', 'la tension maximale', "l'amplitude efficace",
+ 'On la note T, en secondes.', 'tension-alternative'),
 (1, "Une pile fournit une tension :", "continue", "alternative", "nulle", "variable en sens",
  "Elle garde toujours le même sens."),
 (1, "L'unité de la fréquence est :", "le hertz", "le volt", "la seconde", "l'ampère",
@@ -325,11 +344,15 @@ Un objet opaque éclairé présente :
 • une ombre portée : la zone sombre derrière lui sur un écran.
 • Le cône d'ombre : la zone de l'espace non éclairée derrière l'objet.
 
+[[schema:ombres|Ombre propre, ombre portée et cône d'ombre]]
 ## La Lune et les éclipses
 • La Lune ne produit pas de lumière : elle est éclairée par le Soleil. Ses phases (nouvelle lune, premier quartier, pleine lune, dernier quartier) dépendent de la partie éclairée visible depuis la Terre ; cycle d'environ 29,5 jours.
 • Éclipse de Soleil : la Lune passe entre le Soleil et la Terre (à la nouvelle lune).
-• Éclipse de Lune : la Terre passe entre le Soleil et la Lune ; la Lune entre dans l'ombre de la Terre (à la pleine lune).""",
+• Éclipse de Lune : la Terre passe entre le Soleil et la Lune ; la Lune entre dans l'ombre de la Terre (à la pleine lune).
+[[schema:eclipses|Les deux éclipses]]""",
 questions=[
+(3, 'Sur le schéma du haut, quel astre se trouve entre le Soleil et la Terre ?', 'la Lune', 'Mars', 'aucun', 'le Soleil',
+ "C'est une éclipse de Soleil.", 'eclipses'),
 (1, "Lequel est une source primaire de lumière ?", "le Soleil", "la Lune", "un miroir", "un mur blanc",
  "Il produit sa propre lumière."),
 (1, "Dans un milieu transparent et homogène, la lumière se propage :", "en ligne droite", "en zigzag", "en cercle", "elle ne se propage pas",

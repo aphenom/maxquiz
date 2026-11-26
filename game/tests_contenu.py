@@ -99,6 +99,38 @@ class ContenuTests(TestCase):
             self.assertEqual(libres.values("shared_subject_name").distinct().count(), libres.count(), niveau)
             self.assertGreaterEqual(libres.count(), 2, niveau)
 
+    def test_schemas_dans_les_fiches_et_les_quiz(self):
+        """Les schémas cités par les fiches et les questions existent, s'affichent et s'importent."""
+        import re
+        html = fiche("■ Titre\n[[schema:thales|Configuration <b>de</b> Thalès]]\n[[schema:../x|y]]")
+        self.assertIn('<figure class="fiche-fig"><img src="/static/game/schemas/thales.svg"', html)
+        self.assertIn("Configuration &lt;b&gt;de&lt;/b&gt; Thalès", html)
+        self.assertNotIn("schemas/../x", html)                            # nom de schéma invalide : texte simple
+        dossier = os.path.join(ROOT, "game", "static", "game", "schemas")
+        cites = set()
+        for niveau in ("3eme", "4eme", "5eme", "6eme", "terminale"):
+            base = os.path.join(ROOT, "contenu", niveau)
+            for f, col in (("quiz.xlsx", 11), ("cours.xlsx", 4)):
+                ws = openpyxl.load_workbook(os.path.join(base, f), read_only=True).worksheets[0]
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    cell = row[col] if len(row) > col else None
+                    if f == "quiz.xlsx" and cell:
+                        cites.add(cell)
+                    elif cell:
+                        cites |= set(re.findall(r"\[\[schema:([a-z0-9-]+)", cell))
+        self.assertGreater(len(cites), 30)
+        for nom in cites:
+            self.assertTrue(os.path.exists(os.path.join(dossier, f"{nom}.svg")), nom)
+        call_command("import_questions", os.path.join(ROOT, "contenu", "4eme", "quiz.xlsx"), "--shared", verbosity=0)
+        q = Question.objects.get(text="Le circuit du schéma est monté :")
+        self.assertEqual(q.illustration_url(), "/static/game/schemas/circuit-serie.svg")
+        Question.objects.filter(pk=q.pk).update(illustration="")                # ré-import : le schéma revient
+        call_command("import_questions", os.path.join(ROOT, "contenu", "4eme", "quiz.xlsx"), "--shared", verbosity=0)
+        q.refresh_from_db()
+        self.assertEqual(q.illustration, "circuit-serie")
+        self.assertEqual(Question(illustration="https://ex.com/a.png").illustration_url(), "https://ex.com/a.png")
+        self.assertEqual(Question(illustration="javascript:x").illustration_url(), "")
+
     def test_filtre_fiche_echappe(self):
         html = fiche("■ Titre\n• a < b\n1. étape\n<script>x</script>")
         self.assertIn('<h3 class="fiche-h">Titre</h3>', html)

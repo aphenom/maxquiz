@@ -498,6 +498,7 @@ On repère l'équivalence par un saut de pH (méthode des tangentes) ou par le v
    À la demi-équivalence (Vb = VbE/2), pH = pKa : on lit le pKa du couple.
 • Base faible par acide fort : pH à l'équivalence < 7 ; rouge de méthyle adapté.
 
+[[schema:courbe-dosage|Allure de la courbe pH = f(Vb) (acide fort et base forte)]]
 ## Méthode des tangentes
 On trace deux tangentes parallèles de part et d'autre du saut, puis la parallèle équidistante : elle coupe la courbe au point d'équivalence.
 
@@ -505,6 +506,8 @@ On trace deux tangentes parallèles de part et d'autre du saut, puis la parallè
 20 mL d'acide éthanoïque dosés par de la soude à 0,1 mol/L : VbE = 10 mL.
 Ca = 0,1 × 10/20 = 0,05 mol/L. Le pH lu pour Vb = 5 mL donne le pKa (≈ 4,8).""",
 questions=[
+(3, 'Sur la courbe du schéma, le point E correspond :', "à l'équivalence", 'au début du dosage', 'à la demi-équivalence', 'à la fin de la burette',
+ "Le saut de pH est maximal à l'équivalence ; ici pH = 7 (acide fort et base forte).", 'courbe-dosage'),
 (1, "Dans un dosage, la solution titrante est placée :", "dans la burette", "dans le bécher", "dans l'éprouvette seulement", "dans le pH-mètre",
  "On connaît sa concentration et on mesure le volume versé."),
 (2, "À l'équivalence d'un dosage acide/base :", "les réactifs sont dans les proportions stœchiométriques", "le pH vaut toujours 7", "l'acide est en excès", "le volume versé est nul",

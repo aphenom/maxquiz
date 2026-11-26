@@ -87,6 +87,24 @@ On peut relancer les imports sans risque :
 - les questions déjà présentes (même texte) ne sont pas recréées ;
 - les cours existants sont mis à jour.
 
+## Schémas et illustrations (contenu/schemas.py)
+
+Les schémas (figures de géométrie, circuits, montages, courbes, drapeau, panneaux…) sont dessinés
+en code dans `contenu/schemas.py`, qui écrit un SVG par schéma dans `game/static/game/schemas/`.
+- Dans une fiche : une ligne `[[schema:thales|Configuration de Thalès]]` affiche le schéma et sa légende
+  (dans l'application et dans le PDF).
+- Dans une question : un 8e élément au tuple, le nom du schéma ; il s'affiche au-dessus des réponses
+  pendant la partie, et dans la colonne `schema` de quiz.xlsx.
+- En administration, le champ « Schéma ou image » d'une question accepte aussi une adresse https.
+
+```bash
+pip install svglib          # une fois, pour mettre les schémas dans les PDF
+python contenu/schemas.py   # redessine les schémas
+python contenu/generer.py 4eme
+```
+Sur le serveur, les schémas arrivent avec `collectstatic` ; ré-importer quiz.xlsx met à jour
+le schéma des questions déjà en ligne.
+
 ## Ordre de l'année (contenu/progression.py)
 
 Chaque matière y a la liste de ses chapitres dans l'ordre habituel des établissements ivoiriens,

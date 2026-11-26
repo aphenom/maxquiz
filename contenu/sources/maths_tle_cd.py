@@ -170,6 +170,7 @@ fiche="""## Définition
 ln est la primitive de 1/x sur ]0 ; +∞[ qui s'annule en 1.
 ln 1 = 0 ; ln e = 1 (e ≈ 2,718) ; (ln x)' = 1/x : ln est strictement croissante.
 
+[[schema:courbes-ln-exp|Courbes de ln et de exp]]
 ## Propriétés algébriques (a > 0, b > 0, n entier)
 • ln(ab) = ln a + ln b   ln(a/b) = ln a − ln b
 • ln(1/a) = −ln a   ln(aⁿ) = n ln a   ln √a = ½ ln a
@@ -192,6 +193,8 @@ ln 1 = 0 ; ln e = 1 (e ≈ 2,718) ; (ln x)' = 1/x : ln est strictement croissant
 ln x + ln(x − 2) = ln 3, avec x > 2 : ln[x(x − 2)] = ln 3, donc x² − 2x − 3 = 0, x = 3 ou x = −1.
 Seul x = 3 vérifie x > 2.""",
 questions=[
+(2, 'Sur le schéma, les courbes de ln et de exp sont symétriques par rapport à :', "la droite d'équation y = x", "l'axe des abscisses", "l'origine du repère", "l'axe des ordonnées",
+ 'ln et exp sont des fonctions réciproques.', 'courbes-ln-exp'),
 (1, "ln 1 est égal à :", "0", "1", "e", "−1",
  "Par définition, ln s'annule en 1."),
 (1, "La fonction ln est définie sur :", "]0 ; +∞[", "ℝ", "[0 ; +∞[", "]−∞ ; 0[",
@@ -222,6 +225,7 @@ fiche="""## Définition
 exp est la fonction réciproque de ln : pour tout réel x, eˣ > 0, et ln(eˣ) = x ; pour x > 0, e^(ln x) = x.
 e⁰ = 1 ; e¹ = e ; (eˣ)' = eˣ : exp est strictement croissante.
 
+[[schema:courbes-ln-exp|Courbes de exp et de ln]]
 ## Propriétés algébriques
 • e^(a + b) = eᵃ × eᵇ   e^(a − b) = eᵃ/eᵇ   e^(−a) = 1/eᵃ   (eᵃ)ⁿ = e^(na)
 

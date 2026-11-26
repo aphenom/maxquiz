@@ -14,12 +14,15 @@ La matière est faite de particules très petites (molécules).
 • Liquide : particules serrées, en désordre, qui glissent les unes sur les autres.
 • Gaz : particules très éloignées, en désordre, en mouvement rapide.
 
+[[schema:etats-matiere|Les particules dans les trois états]]
 ## L'eau dans la nature
 L'eau existe sous les trois états : glace (solide), eau liquide (fleuves, mer, pluie), vapeur d'eau (invisible, dans l'air). La brume et les nuages sont de fines gouttelettes d'eau liquide, pas de la vapeur.
 
 ## Les poudres
 Le sable, le sucre en poudre ou la farine coulent, mais ce sont des solides : chaque grain a sa forme propre.""",
 questions=[
+(2, 'Sur le schéma, les particules éloignées et très agitées sont celles :', 'du gaz', 'du solide', 'du liquide', 'des trois états',
+ "C'est pourquoi un gaz est compressible.", 'etats-matiere'),
 (1, "Un corps qui a une forme propre et un volume propre est :", "solide", "liquide", "gazeux", "invisible",
  "On peut le saisir."),
 (1, "La surface libre d'un liquide au repos est :", "plane et horizontale", "toujours courbe", "verticale", "inclinée",
@@ -51,6 +54,7 @@ fiche="""## Les noms des changements d'état
 • Liquéfaction (condensation) : gaz → liquide (buée sur une vitre froide).
 • Sublimation : solide → gaz ; condensation solide : gaz → solide (givre).
 
+[[schema:changements-etat|Les changements d'état]]
 ## Les températures de l'eau pure (pression normale)
 • Fusion et solidification : 0 °C.
 • Ébullition : 100 °C.
@@ -66,6 +70,8 @@ Au cours d'un changement d'état, la masse se conserve ; le volume change. L'eau
 ## Le cycle de l'eau
 Évaporation des mers et des fleuves → liquéfaction en nuages → pluie → ruissellement et infiltration → retour à la mer.""",
 questions=[
+(2, "Sur le schéma, le passage du liquide au gaz s'appelle :", 'la vaporisation', 'la liquéfaction', 'la fusion', 'la solidification',
+ 'On chauffe le liquide.', 'changements-etat'),
 (1, "Le passage de l'état solide à l'état liquide s'appelle :", "la fusion", "la solidification", "la vaporisation", "la liquéfaction",
  "La glace fond."),
 (1, "L'eau pure bout à :", "100 °C", "0 °C", "50 °C", "37 °C",
@@ -102,6 +108,7 @@ fiche="""## Corps pur et mélange
 • Miscibles : ils forment un mélange homogène (eau et alcool, eau et vinaigre).
 • Non miscibles : ils se séparent en couches (eau et huile ; l'huile, moins dense, flotte au-dessus).
 
+[[schema:ampoule-decanter|Eau et huile dans une ampoule à décanter]]
 ## Reconnaître un corps pur
 Un corps pur a des températures de changement d'état fixes : l'eau pure bout à 100 °C. L'eau salée bout au-dessus de 100 °C et sa température varie pendant l'ébullition.
 
@@ -138,13 +145,17 @@ fiche="""## Mélanges hétérogènes
 • L'ampoule à décanter : elle sépare deux liquides non miscibles (eau et huile) ; on ouvre le robinet pour faire couler le liquide du bas.
 • Le tamisage sépare des grains de tailles différentes ; le triage magnétique (aimant) sépare la limaille de fer.
 
+[[schema:filtration|La filtration]]
 ## Mélanges homogènes
 • L'évaporation (ou vaporisation) : on chauffe l'eau salée, l'eau part, le sel reste (marais salants).
 • La distillation : on chauffe le mélange, la vapeur est refroidie dans un réfrigérant et recueillie : c'est le distillat (eau distillée).
 
+[[schema:distillation|La distillation]]
 ## Rendre l'eau potable
 Une eau limpide n'est pas forcément potable : elle peut contenir des microbes invisibles. Après décantation et filtration, il faut la désinfecter (ébullition, comprimés de chlore, eau de Javel en petite quantité) ; la SODECI traite l'eau distribuée en Côte d'Ivoire.""",
 questions=[
+(2, 'Le montage du schéma est :', 'une distillation', 'une filtration', 'une décantation', 'un tamisage',
+ 'La vapeur est refroidie dans le réfrigérant.', 'distillation'),
 (1, "Laisser reposer un mélange pour que les solides tombent au fond s'appelle :", "la décantation", "la distillation", "l'évaporation", "la fusion",
  "Les particules lourdes se déposent."),
 (2, "Le liquide qui traverse un filtre s'appelle :", "le filtrat", "le distillat", "le résidu", "le décantat",
@@ -264,6 +275,7 @@ Une combustion nécessite trois éléments :
 • une source de chaleur (allumette, étincelle) pour l'allumage.
 Si on supprime un seul des trois, le feu s'éteint.
 
+[[schema:triangle-feu|Le triangle du feu]]
 ## La combustion du carbone (charbon de bois)
 carbone + dioxygène → dioxyde de carbone.
 Le dioxyde de carbone trouble l'eau de chaux : c'est le test d'identification.
@@ -279,6 +291,8 @@ butane + dioxygène → dioxyde de carbone + eau.
 • Éteindre un feu d'huile avec un couvercle (on supprime le comburant), jamais avec de l'eau.
 • Sapeurs-pompiers : 180.""",
 questions=[
+(2, 'Sur le schéma du triangle du feu, le comburant est :', 'le dioxygène', 'le bois', 'la chaleur', "l'eau",
+ 'Le combustible brûle, le comburant permet la combustion.', 'triangle-feu'),
 (1, "Le comburant dans une combustion ordinaire est :", "le dioxygène", "le bois", "l'allumette", "le diazote",
  "Il est présent dans l'air."),
 (1, "Le charbon de bois est :", "un combustible", "un comburant", "une source de chaleur seulement", "un gaz",
@@ -312,6 +326,7 @@ fiche="""## La masse
 • Liquides : éprouvette graduée (lecture au bas du ménisque, l'œil à hauteur).
 • Solide de forme quelconque : déplacement d'eau. Eau 50 mL, puis 65 mL avec le caillou : V = 15 mL = 15 cm³.
 
+[[schema:eprouvette-menisque|Lecture d'une éprouvette graduée]]
 ## La masse volumique
 ρ = m ÷ V. Unités : g/cm³, kg/m³ ou g/L.
 • Eau : 1 g/cm³ (1 000 kg/m³) ; huile : environ 0,9 g/cm³ ; fer : 7,8 g/cm³.

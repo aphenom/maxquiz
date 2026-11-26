@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 260" width="320" height="260" font-family="DejaVu Sans">
+<rect x="1" y="1" width="318" height="258" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="60.0,210.0 190.0,210.0 190.0,80.0 60.0,80.0" stroke="#221A12" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+<line x1="190.0" y1="210.0" x2="236.0" y2="164.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="190.0" y1="80.0" x2="236.0" y2="34.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="60.0" y1="80.0" x2="106.0" y2="34.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="236.0" y1="164.0" x2="236.0" y2="34.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="236.0" y1="34.0" x2="106.0" y2="34.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="60.0" y1="210.0" x2="106.0" y2="164.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,5"/>
+<line x1="106.0" y1="164.0" x2="236.0" y2="164.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,5"/>
+<line x1="106.0" y1="164.0" x2="106.0" y2="34.0" stroke="#6E6152" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,5"/>
+<path d="M216.0,210.0 A26,26 0 0,0 208.4,191.6" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="226.0" y="200.1" font-family="DejaVu Sans" font-size="12" fill="#F2790F" text-anchor="middle" font-weight="bold">45°</text>
+<text x="160.0" y="246.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle">Arêtes cachées en pointillés</text>
+</svg>

@@ -251,6 +251,7 @@ fiche="""## Le neurone
 Corps cellulaire (noyau), dendrites (reçoivent), axone (conduit) parfois entouré de myéline, terminaisons synaptiques.
 Un nerf est un ensemble de fibres nerveuses.
 
+[[schema:neurone|Structure d'un neurone]]
 ## Potentiel de repos
 La membrane est polarisée : environ −70 mV (intérieur négatif).
 Il est dû à la répartition inégale des ions (K⁺ plus concentré dedans, Na⁺ dehors), maintenue par la pompe Na⁺/K⁺ (qui consomme de l'ATP).

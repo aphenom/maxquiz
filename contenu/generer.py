@@ -47,6 +47,12 @@ ORANGE, VERT, ENCRE, IVOIRE, BRUN, SABLE = (HexColor(c) for c in
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 pdfmetrics.registerFont(TTFont("DV", f"{FONT_DIR}/DejaVuSans.ttf"))
 pdfmetrics.registerFont(TTFont("DVB", f"{FONT_DIR}/DejaVuSans-Bold.ttf"))
+try:                                                     # schémas SVG : même police que dans l'application
+    from svglib.fonts import register_font
+    register_font("DejaVu Sans", f"{FONT_DIR}/DejaVuSans.ttf")
+    register_font("DejaVu Sans", f"{FONT_DIR}/DejaVuSans-Bold.ttf", weight="bold")
+except ImportError:                                      # pip install svglib (seulement pour générer)
+    pass
 
 
 def load(name):
@@ -63,13 +69,33 @@ def slug(text):
 
 
 # --- Vérifications -------------------------------------------------------------
+SCHEMAS = os.path.join(os.path.dirname(HERE), "game", "static", "game", "schemas")
+LIGNE_SCHEMA = re.compile(r"^\[\[schema:([a-z0-9-]+)(?:\|(.*))?\]\]$")
+
+
+def schema_path(nom):
+    return os.path.join(SCHEMAS, f"{nom}.svg")
+
+
+def parts(q):
+    """(d, texte, bonne, 3 fausses, explication), schéma : un 8e élément facultatif nomme le schéma."""
+    return (q[:7], q[7]) if len(q) == 8 else (q, "")
+
+
 def check(chap, errors):
     names = set()
+    for line in chap["fiche"].splitlines():
+        m = LIGNE_SCHEMA.match(line.strip())
+        if m and not os.path.exists(schema_path(m.group(1))):
+            errors.append(f"{chap['nom']} : schéma introuvable « {m.group(1)} » (lance contenu/schemas.py)")
     for i, q in enumerate(chap["questions"], 1):
         where = f"{chap['nom']} · Q{i}"
-        if len(q) != 7:
-            errors.append(f"{where} : {len(q)} éléments au lieu de 7")
+        if len(q) not in (7, 8):
+            errors.append(f"{where} : {len(q)} éléments au lieu de 7 (ou 8 avec un schéma)")
             continue
+        q, sch = parts(q)
+        if sch and not os.path.exists(schema_path(sch)):
+            errors.append(f"{where} : schéma introuvable « {sch} »")
         d, text, good, *wrong, expl = q
         opts = [good] + wrong
         if d not in (1, 2, 3, 4):
@@ -89,11 +115,28 @@ def check(chap, errors):
 
 def shuffled(q):
     """Ordre des réponses stable d'une génération à l'autre (graine = la question)."""
+    q, sch = parts(q)
     d, text, good, *wrong, expl = q
     opts = [good] + wrong
     rnd = random.Random(hashlib.sha1(text.encode()).hexdigest())
     rnd.shuffle(opts)
-    return d, text, opts, "ABCD"[opts.index(good)], expl
+    return d, text, opts, "ABCD"[opts.index(good)], expl, sch
+
+
+def figure(nom, legende, largeur_max, hauteur_max=62 * mm):
+    """Schéma SVG mis à l'échelle pour la fiche PDF, centré, avec sa légende."""
+    from svglib.svglib import svg2rlg
+    dessin = svg2rlg(schema_path(nom))
+    k = min(largeur_max, 105 * mm) / dessin.width            # au plus 10,5 cm de large…
+    k = min(k, hauteur_max / dessin.height)                   # … et 6,2 cm de haut
+    dessin.width, dessin.height = dessin.width * k, dessin.height * k
+    dessin.scale(k, k)
+    dessin.hAlign = "CENTER"
+    bloc = [Spacer(1, 4), dessin]
+    if legende:
+        bloc.append(Paragraph(esc(legende), ParagraphStyle("leg", parent=ST["c"], alignment=1, leftIndent=0)))
+    bloc.append(Spacer(1, 4))
+    return bloc
 
 
 # --- Fiche (texte affiché dans l'application) ------------------------------------
@@ -148,7 +191,10 @@ def pdf(chap, niveau, matiere, path):
         s = line.rstrip()
         if not s.strip():
             continue
-        if s.startswith("## "):
+        m = LIGNE_SCHEMA.match(s.strip())
+        if m:
+            story.append(KeepTogether(figure(m.group(1), (m.group(2) or "").strip(), doc.width)))
+        elif s.startswith("## "):
             story.append(Paragraph(esc(s[3:]), ST["h"]))
         elif s.lstrip().startswith("• "):
             story.append(Paragraph(fmt(s.lstrip()[2:]), ST["b"], bulletText="•"))
@@ -160,15 +206,18 @@ def pdf(chap, niveau, matiere, path):
         else:
             story.append(Paragraph(fmt(s), ST["p"]))
     # Teste-toi : quatre questions du quiz, corrigé en bas
-    picks = [q for q in chap["questions"] if q[0] >= 2][:4]
+    picks = ([q for q in chap["questions"] if q[0] >= 2 and len(q) == 8][:1]
+             + [q for q in chap["questions"] if q[0] >= 2 and len(q) == 7])[:4]
     story.append(Spacer(1, 8))
-    story.append(Paragraph("Teste-toi", ParagraphStyle("t", parent=ST["h"], textColor=ORANGE)))
+    titre = Paragraph("Teste-toi", ParagraphStyle("t", parent=ST["h"], textColor=ORANGE))
     corr = []
     for i, q in enumerate(picks, 1):
-        d, text, opts, letter, expl = shuffled(q)
+        d, text, opts, letter, expl, sch = shuffled(q)
         block = [Paragraph(f"{i}. {fmt(text)}", ST["q"])]
+        if sch:
+            block += figure(sch, "", doc.width * 0.6, 42 * mm)
         block += [Paragraph(f"{'ABCD'[k]}. {fmt(o)}", ST["o"]) for k, o in enumerate(opts)]
-        story.append(KeepTogether(block))
+        story.append(KeepTogether(([titre] if i == 1 else []) + block))
         corr.append(Paragraph(f"<b>{i}. {letter}</b> : {fmt(expl)}", ST["c"]))
     story.append(Spacer(1, 6))
     story.append(KeepTogether([Paragraph("Corrigé", ParagraphStyle("t2", parent=ST["h"], textColor=BRUN,
@@ -197,7 +246,7 @@ def sheet(path, headers, rows, widths):
     for c in ws[1]:
         c.font = Font(bold=True, color="FFFFFF")
         c.fill = PatternFill("solid", fgColor="F2790F")
-    for col, w in zip("ABCDEFGHIJK", widths):
+    for col, w in zip("ABCDEFGHIJKL", widths):
         ws.column_dimensions[col].width = w
     for row in ws.iter_rows(min_row=2):
         for c in row:
@@ -261,16 +310,17 @@ def main():
             free = chap.get("gratuit") or (NIVEAU_CIBLE == "3eme" and chap["nom"] in FREE) or base == 1
             shuffled_qs = [shuffled(q) for q in chap["questions"]]
             for niveau in levels:
-                for d, text, opts, letter, expl in shuffled_qs:
+                for d, text, opts, letter, expl, sch in shuffled_qs:
                     letters[letter] += 1
-                    qrows.append([niveau, matiere, chap["nom"], d, text, *opts, letter, expl])
+                    qrows.append([niveau, matiere, chap["nom"], d, text, *opts, letter, expl, sch])
                 crows.append([niveau, matiere, chap["nom"], chap["nom"], app_summary(chap["fiche"]),
                               "", fname, base, "oui" if free else "non", chap["mois"]])
             stats.append((matiere, f"{base:02d}. {chap['nom']} [{', '.join(levels)}] · mois {chap['mois']}",
                           len(chap["questions"])))
     sheet(os.path.join(OUT, "quiz.xlsx"),
-          ["niveau", "matiere", "thematique", "difficulte", "question", "a", "b", "c", "d", "bonne", "explication"],
-          qrows, [8, 16, 30, 6, 60, 28, 28, 28, 28, 6, 70])
+          ["niveau", "matiere", "thematique", "difficulte", "question", "a", "b", "c", "d", "bonne", "explication",
+           "schema"],
+          qrows, [8, 16, 30, 6, 60, 28, 28, 28, 28, 6, 70, 16])
     sheet(os.path.join(OUT, "cours.xlsx"),
           ["niveau", "matiere", "chapitre", "titre", "resume", "youtube", "fiche_pdf", "ordre", "gratuit", "mois"],
           crows, [8, 16, 30, 30, 90, 30, 45, 6, 8, 6])

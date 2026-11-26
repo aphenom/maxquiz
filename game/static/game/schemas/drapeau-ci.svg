@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 250" width="360" height="250" font-family="DejaVu Sans">
+<rect x="1" y="1" width="358" height="248" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<rect x="40.0" y="40.0" width="93.3" height="180.0" rx="0" stroke="none" stroke-width="0" fill="#F77F00"/>
+<rect x="133.3" y="40.0" width="93.3" height="180.0" rx="0" stroke="none" stroke-width="0" fill="#FFFFFF"/>
+<rect x="226.7" y="40.0" width="93.3" height="180.0" rx="0" stroke="none" stroke-width="0" fill="#009E60"/>
+<rect x="40.0" y="40.0" width="280.0" height="180.0" rx="0" stroke="#9A8F84" stroke-width="1.5" fill="none"/>
+<line x1="34.0" y1="30.0" x2="34.0" y2="230.0" stroke="#6E6152" stroke-width="5" stroke-linecap="round"/>
+<text x="86.7" y="240.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">orange</text>
+<text x="180.0" y="240.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">blanc</text>
+<text x="273.3" y="240.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">vert</text>
+<text x="180.0" y="26.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle" font-weight="bold">Drapeau de la Côte d'Ivoire (hampe à gauche)</text>
+</svg>

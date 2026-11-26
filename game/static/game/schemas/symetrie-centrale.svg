@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" width="420" height="260" font-family="DejaVu Sans">
+<rect x="1" y="1" width="418" height="258" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="90.0,70.0 60.0,160.0 140.0,190.0" stroke="#2F6FB5" stroke-width="2" fill="#DCE8F6" stroke-linejoin="round"/>
+<polygon points="330.0,190.0 360.0,100.0 280.0,70.0" stroke="#F2790F" stroke-width="2" fill="#FDE3CC" stroke-linejoin="round"/>
+<line x1="90.0" y1="70.0" x2="330.0" y2="190.0" stroke="#9A8F84" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<circle cx="90.0" cy="70.0" r="3.5" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5"/>
+<text x="75.7" y="67.8" font-family="DejaVu Sans" font-size="15" fill="#2F6FB5" text-anchor="middle" font-weight="bold">A</text>
+<circle cx="330.0" cy="190.0" r="3.5" stroke="#F2790F" stroke-width="1" fill="#F2790F"/>
+<text x="346.1" y="203.0" font-family="DejaVu Sans" font-size="15" fill="#F2790F" text-anchor="middle" font-weight="bold">A′</text>
+<line x1="60.0" y1="160.0" x2="360.0" y2="100.0" stroke="#9A8F84" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<circle cx="60.0" cy="160.0" r="3.5" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5"/>
+<text x="44.3" y="168.1" font-family="DejaVu Sans" font-size="15" fill="#2F6FB5" text-anchor="middle" font-weight="bold">B</text>
+<circle cx="360.0" cy="100.0" r="3.5" stroke="#F2790F" stroke-width="1" fill="#F2790F"/>
+<text x="377.7" y="101.5" font-family="DejaVu Sans" font-size="15" fill="#F2790F" text-anchor="middle" font-weight="bold">B′</text>
+<line x1="140.0" y1="190.0" x2="280.0" y2="70.0" stroke="#9A8F84" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<circle cx="140.0" cy="190.0" r="3.5" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5"/>
+<text x="127.9" y="205.4" font-family="DejaVu Sans" font-size="15" fill="#2F6FB5" text-anchor="middle" font-weight="bold">C</text>
+<circle cx="280.0" cy="70.0" r="3.5" stroke="#F2790F" stroke-width="1" fill="#F2790F"/>
+<text x="293.7" y="63.3" font-family="DejaVu Sans" font-size="15" fill="#F2790F" text-anchor="middle" font-weight="bold">C′</text>
+<circle cx="210.0" cy="130.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="210.0" y="118.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">O</text>
+<text x="210.0" y="248.0" font-family="DejaVu Sans" font-size="14" fill="#221A12" text-anchor="middle" font-weight="bold">O est le milieu de [AA′], [BB′] et [CC′]</text>
+</svg>

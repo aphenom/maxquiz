@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 260" width="380" height="260" font-family="DejaVu Sans">
+<rect x="1" y="1" width="378" height="258" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="70.0,200.0 300.0,200.0 70.0,50.0" stroke="#221A12" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+<polyline points="81.0,200.0 81.0,189.0 70.0,189.0" stroke="#221A12" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+<text x="185.0" y="222.0" font-family="DejaVu Sans" font-size="17" fill="#2F6FB5" text-anchor="middle" font-weight="bold">b</text>
+<text x="50.0" y="130.0" font-family="DejaVu Sans" font-size="17" fill="#2F6FB5" text-anchor="middle" font-weight="bold">a</text>
+<text x="200.0" y="115.0" font-family="DejaVu Sans" font-size="15" fill="#F2790F" text-anchor="start" font-weight="bold">c (hypoténuse)</text>
+<text x="190.0" y="250.0" font-family="DejaVu Sans" font-size="17" fill="#0B9A5C" text-anchor="middle" font-weight="bold">c² = a² + b²</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="400" height="260" font-family="DejaVu Sans">
+<rect x="1" y="1" width="398" height="258" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<line x1="50.0" y1="210.0" x2="370.0" y2="210.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="50.0" y1="210.0" x2="290.0" y2="30.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="50.0" y1="210.0" x2="363.1" y2="105.6" stroke="#F2790F" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="7,5"/>
+<text x="357.1" y="97.6" font-family="DejaVu Sans" font-size="13" fill="#F2790F" text-anchor="end" font-weight="bold">bissectrice</text>
+<line x1="249.2" y1="143.6" x2="249.2" y2="210.0" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<line x1="249.2" y1="143.6" x2="209.4" y2="90.5" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<polyline points="238.2,210.0 238.2,199.0 249.2,199.0" stroke="#2F6FB5" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+<polyline points="200.6,97.1 207.2,105.9 216.0,99.3" stroke="#2F6FB5" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+<line x1="256.2" y1="176.8" x2="242.2" y2="176.8" stroke="#0B9A5C" stroke-width="2" stroke-linecap="round"/>
+<line x1="223.7" y1="121.2" x2="234.9" y2="112.8" stroke="#0B9A5C" stroke-width="2" stroke-linecap="round"/>
+<circle cx="249.2" cy="143.6" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="263.2" y="147.6" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">M</text>
+<path d="M90.0,210.0 A40,40 0 0,0 87.9,197.4" stroke="#0B9A5C" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M93.6,195.5 A46,46 0 0,0 86.8,182.4" stroke="#0B9A5C" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="50.0" cy="210.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="40.0" y="220.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">O</text>
+<text x="200.0" y="248.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle">Un point de la bissectrice est à égale distance des deux côtés</text>
+</svg>

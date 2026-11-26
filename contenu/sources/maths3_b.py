@@ -9,6 +9,7 @@ Pour l'angle B :
 • le côté adjacent est [AB] (il touche B et n'est pas l'hypoténuse) ;
 • le côté opposé est [AC] (il est en face de B).
 
+[[schema:trigonometrie|Les trois côtés vus depuis l'angle α]]
 ## Les trois formules
 • cos B = adjacent ÷ hypoténuse = AB/BC
 • sin B = opposé ÷ hypoténuse = AC/BC
@@ -39,6 +40,8 @@ Hauteur atteinte = 5 × sin 60° = 5 × √3/2 ≈ 4,33 m.
 • Ces formules ne marchent QUE dans un triangle rectangle.
 • L'adjacent et l'opposé changent selon l'angle choisi : pour l'angle C, l'adjacent est [AC].""",
 questions=[
+(2, 'Sur le schéma, sin α est égal à :', 'côté opposé / hypoténuse', 'côté adjacent / hypoténuse', 'côté opposé / côté adjacent', 'hypoténuse / côté opposé',
+ 'SOH : sinus = opposé sur hypoténuse.', 'trigonometrie'),
 (1, "ABC est rectangle en A. cos B est égal à :", "AB/BC", "AC/BC", "AC/AB", "BC/AB",
  "cos = adjacent ÷ hypoténuse. Pour l'angle B, l'adjacent est AB et l'hypoténuse BC."),
 (1, "ABC est rectangle en A. tan B est égal à :", "AC/AB", "AB/AC", "AC/BC", "AB/BC",
@@ -76,6 +79,7 @@ fiche="""## Vocabulaire
 Un angle inscrit mesure la moitié de l'angle au centre qui intercepte le même arc.
 Angle au centre 80° → angle inscrit 40°.
 
+[[schema:angle-inscrit|Angle inscrit et angle au centre qui interceptent le même arc]]
 ## Propriété 2
 Deux angles inscrits qui interceptent le même arc sont égaux.
 
@@ -100,6 +104,8 @@ L'angle BAC intercepte le même arc que BOC, donc il mesure 110° ÷ 2 = 55°.
 • Vérifier que les deux angles interceptent bien le MÊME arc.
 • Ne pas confondre l'angle au centre (360° ÷ n) et l'angle intérieur d'un polygone.""",
 questions=[
+(3, "Sur le schéma, l'angle au centre AOB mesure 100°. L'angle inscrit AMB mesure :", '50°', '100°', '200°', '80°',
+ "L'angle inscrit vaut la moitié de l'angle au centre qui intercepte le même arc.", 'angle-inscrit'),
 (1, "Un angle au centre mesure 80°. L'angle inscrit qui intercepte le même arc mesure :", "40°", "80°", "160°", "20°",
  "L'angle inscrit vaut la moitié de l'angle au centre : 80 ÷ 2 = 40°."),
 (1, "Un angle inscrit mesure 35°. L'angle au centre qui intercepte le même arc mesure :", "70°", "17,5°", "35°", "145°",
@@ -148,6 +154,7 @@ Exemple : →MA + →AB + →BN = →MN.
 Règle du parallélogramme : si ABCD est un parallélogramme, →AB + →AD = →AC.
 Différence : →AC − →AB = →AC + →BA = →BA + →AC = →BC.
 
+[[schema:vecteurs-chasles|Relation de Chasles]]
 ## Produit par un nombre k
 k→AB a la même direction que →AB et une longueur multipliée par |k| ;
 • si k > 0, même sens ;
@@ -262,6 +269,7 @@ fiche="""## Les deux formes
 • Une droite parallèle à l'axe des ordonnées a une équation x = c.
 • y = c est une droite parallèle à l'axe des abscisses (a = 0).
 
+[[schema:droite-repere|La droite d'équation y = 2x − 1]]
 ## Un point appartient-il à une droite ?
 Ses coordonnées doivent vérifier l'équation.
 (1 ; 5) est sur y = 2x + 3 car 2 × 1 + 3 = 5.
@@ -288,6 +296,8 @@ y = x + 1 et y = −x + 5 : x + 1 = −x + 5, donc x = 2 et y = 3. Point (2 ; 3)
 • Dans y = 5 − 2x, le coefficient directeur est −2 et l'ordonnée à l'origine 5.
 • Calculer a toujours dans le même ordre : (yB − yA) ÷ (xB − xA).""",
 questions=[
+(2, "La droite tracée sur le schéma coupe l'axe des ordonnées au point :", '(0 ; −1)', '(1 ; 0)', '(0 ; 2)', '(−1 ; 0)',
+ "Pour x = 0, y = 2 × 0 − 1 = −1 : c'est l'ordonnée à l'origine.", 'droite-repere'),
 (1, "Le coefficient directeur de la droite y = 2x + 3 est :", "2", "3", "5", "2x",
  "Dans y = ax + b, le coefficient directeur est a = 2."),
 (1, "Quel point appartient à la droite y = 2x + 3 ?", "(1 ; 5)", "(5 ; 1)", "(0 ; 2)", "(2 ; 5)",
@@ -398,6 +408,7 @@ fiche="""## La pyramide
 • Aire latérale d'un cône : π × r × g.
 • 1 L = 1 dm³ = 1 000 cm³.
 
+[[schema:pyramide-cone|Pyramide et cône de révolution]]
 ## Section parallèle à la base
 Couper une pyramide ou un cône parallèlement à sa base donne une petite pyramide (ou un petit cône), réduction de la grande de rapport k :
 • longueurs × k ;

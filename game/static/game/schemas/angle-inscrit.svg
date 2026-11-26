@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 280" width="360" height="280" font-family="DejaVu Sans">
+<rect x="1" y="1" width="358" height="278" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<circle cx="180.0" cy="145.0" r="105.0" stroke="#221A12" stroke-width="2" fill="none"/>
+<polyline points="84.8,189.4 170.8,40.4 275.2,189.4" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+<polyline points="84.8,189.4 180.0,145.0 275.2,189.4" stroke="#2F6FB5" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+<path d="M158.8,61.2 A24,24 0 0,0 184.6,60.1" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M160.1,154.3 A22,22 0 0,0 199.9,154.3" stroke="#2F6FB5" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="84.8" cy="189.4" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="72.8" y="203.4" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">A</text>
+<circle cx="275.2" cy="189.4" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="287.2" y="203.4" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">B</text>
+<circle cx="170.8" cy="40.4" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="170.8" y="28.4" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">M</text>
+<circle cx="180.0" cy="145.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="180.0" y="133.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">O</text>
+<text x="180.0" y="272.0" font-family="DejaVu Sans" font-size="13" fill="#221A12" text-anchor="middle" font-weight="bold">angle au centre AOB = 2 × angle inscrit AMB</text>
+</svg>

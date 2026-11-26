@@ -64,6 +64,7 @@ La Constitution est la loi fondamentale de l'État : elle est au-dessus de toute
   – langue officielle : le français ;
   – capitale politique : Yamoussoukro.
 
+[[schema:drapeau-ci|Le drapeau national]]
 ## La révision
 La Constitution peut être modifiée (révisée) par référendum ou par le Parlement, selon les règles qu'elle prévoit.
 
@@ -236,6 +237,7 @@ Piétons, cyclistes, motocyclistes, automobilistes, transporteurs : tous doivent
 • Octogone rouge « STOP » : arrêt absolu.
 Feux : rouge = arrêt, orange = arrêt sauf impossibilité, vert = passage.
 
+[[schema:panneaux-routiers|Les grandes familles de panneaux]]
 ## Les règles du piéton
 • Marcher sur le trottoir, ou sur le bord gauche de la route face aux véhicules s'il n'y en a pas.
 • Traverser au passage pour piétons, après avoir regardé à gauche, à droite puis encore à gauche.
@@ -248,6 +250,8 @@ Excès de vitesse, alcool et drogue au volant, téléphone en conduisant, surcha
 ## Se protéger
 Casque pour les deux-roues, ceinture de sécurité en voiture, siège adapté pour les enfants. En cas d'accident : protéger les lieux, alerter les secours (sapeurs-pompiers : 180 ; SAMU : 185), ne pas déplacer un blessé.""",
 questions=[
+(2, 'Sur le schéma, le panneau triangulaire à bord rouge signale :', 'un danger', 'une obligation', 'une indication', 'un parking',
+ 'Le rond rouge interdit, le rond bleu oblige.', 'panneaux-routiers'),
 (1, "Au feu rouge, on doit :", "s'arrêter", "accélérer", "klaxonner et passer", "tourner sans regarder",
  "Rouge = arrêt."),
 (1, "Le piéton doit traverser :", "au passage pour piétons", "n'importe où en courant", "entre deux voitures garées", "dans un virage",

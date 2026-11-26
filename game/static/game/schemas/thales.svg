@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280" width="420" height="280" font-family="DejaVu Sans">
+<rect x="1" y="1" width="418" height="278" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="210.0,30.0 60.0,225.0 370.0,225.0" stroke="#221A12" stroke-width="2" fill="none" stroke-linejoin="round"/>
+<line x1="142.5" y1="117.8" x2="282.0" y2="117.8" stroke="#F2790F" stroke-width="3" stroke-linecap="round"/>
+<line x1="60.0" y1="225.0" x2="370.0" y2="225.0" stroke="#F2790F" stroke-width="3" stroke-linecap="round"/>
+<circle cx="210.0" cy="30.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="210.0" y="20.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">A</text>
+<circle cx="60.0" cy="225.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="48.0" y="243.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">B</text>
+<circle cx="370.0" cy="225.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="382.0" y="243.0" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">C</text>
+<circle cx="142.5" cy="117.8" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="126.5" y="117.8" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">M</text>
+<circle cx="282.0" cy="117.8" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<text x="298.0" y="117.8" font-family="DejaVu Sans" font-size="15" fill="#221A12" text-anchor="middle" font-weight="bold">N</text>
+<text x="210.0" y="266.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="middle" font-weight="bold">(MN) // (BC)   ⇒   AM/AB = AN/AC = MN/BC</text>
+</svg>

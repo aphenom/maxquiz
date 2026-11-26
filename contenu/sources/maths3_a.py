@@ -402,6 +402,7 @@ Si (MN) est parallèle à (BC), alors :
    AM/AB = AN/AC = MN/BC
 Cela marche aussi en configuration « papillon » (les points de part et d'autre de A).
 
+[[schema:thales|Configuration de Thalès]]
 ## La propriété directe : calculer une longueur
 AM = 3 cm, AB = 6 cm, AC = 8 cm et (MN) // (BC).
 AM/AB = AN/AC, donc 3/6 = AN/8 et AN = 8 × 3 ÷ 6 = 4 cm.
@@ -431,6 +432,8 @@ Les rayons du soleil sont parallèles : hauteur/12 = 1,5/2, donc hauteur = 12 ×
 • Écrire les rapports dans le même ordre : petit triangle en haut, grand triangle en bas.
 • Pour la réciproque, ne pas oublier de citer l'alignement des points dans le même ordre.""",
 questions=[
+(2, 'Sur le schéma, (MN) // (BC). Quelle égalité est vraie ?', 'AM/AB = AN/AC', 'AM/MB = AC/AN', 'AB/AM = AC/MN', 'MN/BC = AB/AM',
+ 'Les rapports se lisent depuis le sommet A commun.', 'thales'),
 (1, "(MN) // (BC), AM = 3 cm, AB = 6 cm et AC = 8 cm. AN mesure :", "4 cm", "5 cm", "16 cm", "11 cm",
  "AM/AB = AN/AC, donc AN = 8 × 3 ÷ 6 = 4 cm."),
 (1, "Dans la configuration de Thalès, AM/AB = AN/AC est aussi égal à :", "MN/BC", "MB/AB", "AB/BC", "MN/AM",

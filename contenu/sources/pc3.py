@@ -22,6 +22,7 @@ fiche="""## Deux types de lentilles
 3. Un rayon qui passe par F ressort parallèle à l'axe.
 Deux de ces rayons suffisent pour construire l'image d'un point.
 
+[[schema:lentille-rayons|Construction de l'image avec les trois rayons particuliers]]
 ## Position de l'objet et image obtenue (lentille convergente)
 • Objet au-delà de 2f : image réelle, renversée, plus petite (appareil photo, œil).
 • Objet à 2f : image réelle, renversée, de même taille, à 2f de l'autre côté.
@@ -37,6 +38,8 @@ Une lentille a une vergence de −4 δ. Elle est divergente et f = 1 ÷ 4 = 0,25
 • Convertir la distance focale en mètres avant de calculer la vergence.
 • Une loupe est une lentille convergente : l'objet doit être placé entre le foyer et la lentille.""",
 questions=[
+(3, "Sur le schéma, l'objet est placé au-delà de 2f. Son image est :", 'réelle, renversée et plus petite', 'virtuelle et droite', 'réelle et plus grande', "rejetée à l'infini",
+ "C'est le cas de l'appareil photo et de l'œil.", 'lentille-rayons'),
 (1, "Une lentille à bords minces est :", "convergente", "divergente", "plane", "un miroir",
  "Bords minces, centre épais : la lentille fait converger la lumière."),
 (1, "La vergence d'une lentille s'exprime en :", "dioptries (δ)", "mètres", "watts", "newtons",

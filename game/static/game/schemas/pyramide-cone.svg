@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="DejaVu Sans">
+<rect x="1" y="1" width="438" height="248" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polyline points="40.0,200.0 160.0,200.0 200.0,165.0" stroke="#221A12" stroke-width="2" fill="none" stroke-linejoin="round"/>
+<polyline points="200.0,165.0 80.0,165.0 40.0,200.0" stroke="#221A12" stroke-width="2" fill="none" stroke-linejoin="round" stroke-dasharray="5,5"/>
+<line x1="120.0" y1="40.0" x2="40.0" y2="200.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="120.0" y1="40.0" x2="160.0" y2="200.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="120.0" y1="40.0" x2="200.0" y2="165.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="120.0" y1="40.0" x2="80.0" y2="165.0" stroke="#221A12" stroke-width="2" stroke-linecap="round" stroke-dasharray="5,5"/>
+<line x1="120.0" y1="40.0" x2="120.0" y2="182.0" stroke="#F2790F" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<text x="132.0" y="120.0" font-family="DejaVu Sans" font-size="15" fill="#F2790F" text-anchor="start" font-weight="bold">h</text>
+<text x="120.0" y="232.0" font-family="DejaVu Sans" font-size="13" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Pyramide : V = (B × h) ÷ 3</text>
+<ellipse cx="330.0" cy="190.0" rx="70.0" ry="18.0" stroke="#221A12" stroke-width="2" fill="none"/>
+<line x1="260.0" y1="190.0" x2="330.0" y2="45.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="400.0" y1="190.0" x2="330.0" y2="45.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="330.0" y1="45.0" x2="330.0" y2="190.0" stroke="#F2790F" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,4"/>
+<line x1="330.0" y1="190.0" x2="400.0" y2="190.0" stroke="#2F6FB5" stroke-width="2" stroke-linecap="round"/>
+<text x="338.0" y="125.0" font-family="DejaVu Sans" font-size="15" fill="#F2790F" text-anchor="start" font-weight="bold">h</text>
+<text x="365.0" y="184.0" font-family="DejaVu Sans" font-size="15" fill="#2F6FB5" text-anchor="middle" font-weight="bold">r</text>
+<text x="330.0" y="232.0" font-family="DejaVu Sans" font-size="13" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Cône : V = (π r² × h) ÷ 3</text>
+</svg>

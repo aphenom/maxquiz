@@ -51,6 +51,7 @@ fiche="""## Définition
 Le symétrique d'un point M par rapport à un point O est le point M' tel que O soit le milieu de [MM'].
 Le symétrique de O est O lui-même. On parle aussi de demi-tour autour de O.
 
+[[schema:symetrie-centrale|Triangle et son symétrique par rapport à O]]
 ## Construction
 Tracer la demi-droite [MO), puis reporter au compas la longueur OM de l'autre côté de O.
 
@@ -68,6 +69,8 @@ Exemples : le parallélogramme (centre = intersection des diagonales), le cercle
 ## Ne pas confondre
 La symétrie axiale (pliage le long d'une droite) et la symétrie centrale (demi-tour autour d'un point).""",
 questions=[
+(2, 'Sur le schéma, le point O est :', 'le milieu de [AA′]', 'un sommet du triangle', 'sur [BC]', 'le symétrique de A',
+ 'O est le centre de la symétrie.', 'symetrie-centrale'),
 (1, "M' est le symétrique de M par rapport à O. Alors O est :", "le milieu de [MM']", "un point quelconque", "une extrémité du segment [MM']", "le symétrique de M",
  "C'est la définition."),
 (2, "Le symétrique d'une droite par rapport à un point est :", "une droite parallèle", "une droite perpendiculaire", "un cercle", "un point",
@@ -144,6 +147,7 @@ fiche="""## Vocabulaire
 • Deux angles adjacents ont le même sommet, un côté commun et sont situés de part et d'autre de ce côté.
 • Deux angles opposés par le sommet sont formés par deux droites sécantes ; ils ont la même mesure.
 
+[[schema:angles-opposes|Angles opposés par le sommet]]
 ## La bissectrice
 La bissectrice d'un angle est la demi-droite qui le partage en deux angles de même mesure. On la construit au compas ou au rapporteur.
 
@@ -189,6 +193,7 @@ Dans un parallélogramme :
 • les angles opposés ont la même mesure ;
 • deux angles consécutifs sont supplémentaires (somme 180°).
 
+[[schema:parallelogramme|Propriétés du parallélogramme]]
 ## Reconnaître un parallélogramme
 Un quadrilatère est un parallélogramme si :
 • ses côtés opposés sont parallèles deux à deux ;
@@ -205,6 +210,8 @@ Un quadrilatère est un parallélogramme si :
 ## Aire
 Aire = base × hauteur (la hauteur est perpendiculaire à la base). Base 8 cm, hauteur 5 cm : A = 40 cm².""",
 questions=[
+(2, 'Sur le schéma, les diagonales [AC] et [BD] :', 'se coupent en leur milieu O', 'sont perpendiculaires', 'ont toujours la même longueur', 'sont parallèles',
+ "C'est une propriété de tout parallélogramme.", 'parallelogramme'),
 (1, "Un parallélogramme a ses côtés opposés :", "parallèles deux à deux", "perpendiculaires", "sécants", "toujours égaux à ses diagonales",
  "C'est la définition."),
 (2, "Les diagonales d'un parallélogramme :", "se coupent en leur milieu", "sont toujours perpendiculaires", "sont toujours égales", "ne se coupent pas",
@@ -295,7 +302,8 @@ Dans un triangle, chaque côté est plus petit que la somme des deux autres. On 
 • Médianes : joignent un sommet au milieu du côté opposé ; elles se coupent au centre de gravité.
 
 ## Aire
-Aire du triangle = (base × hauteur) ÷ 2. Base 6 cm, hauteur 4 cm : A = 12 cm².""",
+Aire du triangle = (base × hauteur) ÷ 2. Base 6 cm, hauteur 4 cm : A = 12 cm².
+[[schema:triangle-hauteur|Hauteur et aire du triangle]]""",
 questions=[
 (1, "La somme des angles d'un triangle est égale à :", "180°", "360°", "90°", "270°",
  "Pour tout triangle."),
@@ -376,6 +384,7 @@ A(3 ; −2) : on avance de 3 vers la droite, puis on descend de 2.
 • Un point de l'axe des abscisses a une ordonnée nulle : B(4 ; 0).
 • Un point de l'axe des ordonnées a une abscisse nulle : C(0 ; −1).
 
+[[schema:repere-points|Lire les coordonnées d'un point]]
 ## Les quatre zones
 • (+ ; +) en haut à droite ; (− ; +) en haut à gauche ; (− ; −) en bas à gauche ; (+ ; −) en bas à droite.
 
@@ -387,6 +396,8 @@ A(3 ; −2) : on avance de 3 vers la droite, puis on descend de 2.
 ## Milieu
 Le milieu de [AB] a pour coordonnées la moyenne des abscisses et la moyenne des ordonnées : A(2 ; 4) et B(6 ; 0) → milieu (4 ; 2).""",
 questions=[
+(2, 'Sur le schéma, le point B a pour coordonnées :', '(4 ; 0)', '(0 ; 4)', '(4 ; 4)', '(3 ; −2)',
+ "Il est sur l'axe des abscisses.", 'repere-points'),
 (1, "Dans un couple de coordonnées, on écrit d'abord :", "l'abscisse", "l'ordonnée", "la plus grande valeur", "la distance à O",
  "(abscisse ; ordonnée)."),
 (1, "Les coordonnées de l'origine O sont :", "(0 ; 0)", "(1 ; 1)", "(0 ; 1)", "(1 ; 0)",
@@ -428,8 +439,11 @@ Avec un tableau d'effectifs : on multiplie chaque valeur par son effectif, on ad
 ## Les graphiques
 • Diagramme en bâtons : hauteur proportionnelle à l'effectif.
 • Diagramme circulaire : angle proportionnel à l'effectif ; 360° pour l'effectif total. 30 % → 0,3 × 360 = 108°.
-• Histogramme pour des valeurs regroupées en classes.""",
+• Histogramme pour des valeurs regroupées en classes.
+[[schema:diagramme-circulaire|Diagramme circulaire]]""",
 questions=[
+(3, 'Sur le diagramme, le secteur « Basket » représente 45 %. Son angle est :', '162°', '45°', '90°', '108°',
+ '0,45 × 360 = 162°.', 'diagramme-circulaire'),
 (1, "Le nombre de fois où une valeur apparaît s'appelle :", "l'effectif", "la fréquence", "la moyenne", "le caractère",
  "L'effectif total est le nombre d'individus."),
 (2, "La moyenne de 8, 12, 10 et 14 est :", "11", "10", "12", "44",
@@ -474,6 +488,7 @@ V = aire de la base × hauteur.
 • Cylindre de rayon 2 cm et hauteur 5 cm : V = π × 2² × 5 = 20π ≈ 62,8 cm³.
 1 dm³ = 1 L ; 1 m³ = 1 000 L.
 
+[[schema:prisme-cylindre|Prisme droit et cylindre]]
 ## Patron
 Le patron d'un prisme droit à base triangulaire : 2 triangles et 3 rectangles.""",
 questions=[

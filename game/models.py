@@ -134,6 +134,9 @@ class Question(models.Model):
         "Temps de réponse (s)", null=True, blank=True,
         help_text="Laisser vide : temps automatique selon la difficulté et la matière.")
     explanation = models.TextField("Explication", blank=True, default="")
+    illustration = models.CharField(
+        "Schéma ou image", max_length=300, blank=True, default="",
+        help_text="Nom d'un schéma MaxQuiz (ex. thales) ou adresse https d'une image, affiché avec la question.")
     active = models.BooleanField("Active", default=True)
     deleted_at = models.DateTimeField("Supprimée le", null=True, blank=True, default=None)
 
@@ -148,6 +151,10 @@ class Question(models.Model):
 
     def options(self):
         return [self.option_a, self.option_b, self.option_c, self.option_d]
+
+    def illustration_url(self):
+        from game.schemas import url_schema
+        return url_schema(self.illustration)
 
     def correct_text(self):
         return self.options()[self.correct]

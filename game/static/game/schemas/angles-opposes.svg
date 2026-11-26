@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240" width="420" height="240" font-family="DejaVu Sans">
+<rect x="1" y="1" width="418" height="238" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<line x1="70.0" y1="40.0" x2="350.0" y2="180.0" stroke="#221A12" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="70.0" y1="180.0" x2="350.0" y2="40.0" stroke="#221A12" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M210.0,110.0 L240.4,125.2 A34,34 0 0,0 240.4,94.8 Z" stroke="#F2790F" stroke-width="2.5" fill="#FDE3CC" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="257.0" y="115.0" font-family="DejaVu Sans" font-size="14" fill="#F2790F" text-anchor="middle" font-weight="bold">53°</text>
+<path d="M210.0,110.0 L179.6,94.8 A34,34 0 0,0 179.6,125.2 Z" stroke="#F2790F" stroke-width="2.5" fill="#FDE3CC" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="163.0" y="115.0" font-family="DejaVu Sans" font-size="14" fill="#F2790F" text-anchor="middle" font-weight="bold">53°</text>
+<path d="M231.5,99.3 A24,24 0 0,0 188.5,99.3" stroke="#2F6FB5" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="210.0" y="78.0" font-family="DejaVu Sans" font-size="12" fill="#2F6FB5" text-anchor="middle" font-weight="bold">127°</text>
+<text x="210.0" y="226.0" font-family="DejaVu Sans" font-size="14" fill="#221A12" text-anchor="middle" font-weight="bold">Angles opposés par le sommet : même mesure</text>
+</svg>

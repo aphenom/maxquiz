@@ -236,6 +236,7 @@ fiche="""## Organisation
 ## Le neurone
 La cellule nerveuse : un corps cellulaire avec un noyau, des dendrites et un long prolongement, l'axone. Les neurones transmettent un message nerveux de nature électrique.
 
+[[schema:neurone|Structure d'un neurone]]
 ## Le réflexe (acte involontaire)
 • Réponse rapide, involontaire et automatique à une stimulation : retirer la main d'une marmite chaude, réflexe rotulien.
 • Son centre nerveux est la moelle épinière.
@@ -256,6 +257,8 @@ L'alcool, le tabac et les drogues perturbent le fonctionnement des neurones (ré
 • Le centre d'un réflexe comme le retrait de la main ou le réflexe rotulien est la MOELLE ÉPINIÈRE, pas le cerveau.
 • Le nerf sensitif va vers le centre, le nerf moteur part du centre.""",
 questions=[
+(2, 'Sur le schéma du neurone, le message nerveux circule :', "des dendrites vers les terminaisons de l'axone", 'des terminaisons vers les dendrites', 'dans les deux sens à la fois', 'seulement dans le corps cellulaire',
+ 'Il va toujours dans le même sens.', 'neurone'),
 (1, "Le système nerveux central comprend :", "l'encéphale et la moelle épinière", "les nerfs et les muscles", "le cœur et les vaisseaux", "les os et les articulations",
  "Les nerfs forment le système nerveux périphérique."),
 (1, "La cellule nerveuse s'appelle :", "le neurone", "le lymphocyte", "l'hématie", "le néphron",

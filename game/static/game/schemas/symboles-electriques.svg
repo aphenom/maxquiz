@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 260" width="440" height="260" font-family="DejaVu Sans">
+<rect x="1" y="1" width="438" height="258" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<line x1="30.0" y1="70.0" x2="52.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="88.0" y1="70.0" x2="110.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="70.0" y="108.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Pile</text>
+<line x1="140.0" y1="70.0" x2="162.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="198.0" y1="70.0" x2="220.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="180.0" y="108.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Lampe</text>
+<line x1="250.0" y1="70.0" x2="272.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="308.0" y1="70.0" x2="330.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="290.0" y="108.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Interrupteur</text>
+<text x="290.0" y="122.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">ouvert</text>
+<line x1="350.0" y1="70.0" x2="372.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="408.0" y1="70.0" x2="430.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="390.0" y="108.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Interrupteur</text>
+<text x="390.0" y="122.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">fermé</text>
+<line x1="30.0" y1="170.0" x2="52.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="88.0" y1="170.0" x2="110.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="70.0" y="208.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Moteur</text>
+<line x1="140.0" y1="170.0" x2="162.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="198.0" y1="170.0" x2="220.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="180.0" y="208.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Diode</text>
+<line x1="250.0" y1="170.0" x2="272.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="308.0" y1="170.0" x2="330.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="290.0" y="208.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Ampèremètre</text>
+<line x1="350.0" y1="170.0" x2="372.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="408.0" y1="170.0" x2="430.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="390.0" y="208.0" font-family="DejaVu Sans" font-size="11.5" fill="#6E6152" text-anchor="middle">Voltmètre</text>
+<line x1="52.0" y1="70.0" x2="66.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="74.0" y1="70.0" x2="88.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="66.0" y1="54.0" x2="66.0" y2="86.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="74.0" y1="62.0" x2="74.0" y2="78.0" stroke="#221A12" stroke-width="5" stroke-linecap="round"/>
+<text x="58.0" y="52.0" font-family="DejaVu Sans" font-size="14" fill="#D23B2F" text-anchor="middle" font-weight="bold">+</text>
+<line x1="162.0" y1="70.0" x2="167.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="193.0" y1="70.0" x2="198.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<circle cx="180.0" cy="70.0" r="13.0" stroke="#221A12" stroke-width="2" fill="#FFFFFF"/>
+<line x1="170.9" y1="60.9" x2="189.1" y2="79.1" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="170.9" y1="79.1" x2="189.1" y2="60.9" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<circle cx="272.0" cy="70.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<circle cx="308.0" cy="70.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<line x1="272.0" y1="70.0" x2="304.0" y2="54.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<circle cx="372.0" cy="70.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<circle cx="408.0" cy="70.0" r="3.5" stroke="#221A12" stroke-width="1" fill="#221A12"/>
+<line x1="372.0" y1="70.0" x2="408.0" y2="70.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<circle cx="70.0" cy="170.0" r="16.0" stroke="#221A12" stroke-width="2" fill="#FFFFFF"/>
+<text x="70.0" y="175.0" font-family="DejaVu Sans" font-size="14" fill="#221A12" text-anchor="middle" font-weight="bold">M</text>
+<line x1="162.0" y1="170.0" x2="170.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<polygon points="170.0,158.0 170.0,182.0 190.0,170.0" stroke="#221A12" stroke-width="2" fill="#221A12" stroke-linejoin="round"/>
+<line x1="190.0" y1="158.0" x2="190.0" y2="182.0" stroke="#221A12" stroke-width="3" stroke-linecap="round"/>
+<line x1="190.0" y1="170.0" x2="198.0" y2="170.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<circle cx="290.0" cy="170.0" r="16.0" stroke="#2F6FB5" stroke-width="2" fill="#FFFFFF"/>
+<text x="290.0" y="175.0" font-family="DejaVu Sans" font-size="14" fill="#2F6FB5" text-anchor="middle" font-weight="bold">A</text>
+<circle cx="390.0" cy="170.0" r="16.0" stroke="#0B9A5C" stroke-width="2" fill="#FFFFFF"/>
+<text x="390.0" y="175.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="middle" font-weight="bold">V</text>
+</svg>

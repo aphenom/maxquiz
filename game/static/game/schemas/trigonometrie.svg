@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 250" width="420" height="250" font-family="DejaVu Sans">
+<rect x="1" y="1" width="418" height="248" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="40.0,200.0 330.0,200.0 330.0,45.0" stroke="#221A12" stroke-width="2" fill="none" stroke-linejoin="round"/>
+<polyline points="319.0,200.0 319.0,189.0 330.0,189.0" stroke="#221A12" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+<path d="M78.0,200.0 A38,38 0 0,0 73.5,182.1" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="89.5" y="192.6" font-family="DejaVu Sans" font-size="14" fill="#F2790F" text-anchor="middle" font-weight="bold">α</text>
+<text x="200.0" y="225.0" font-family="DejaVu Sans" font-size="14" fill="#2F6FB5" text-anchor="middle" font-weight="bold">côté adjacent à α</text>
+<text x="350.0" y="120.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="start" font-weight="bold">côté</text>
+<text x="350.0" y="138.0" font-family="DejaVu Sans" font-size="14" fill="#0B9A5C" text-anchor="start" font-weight="bold">opposé</text>
+<text x="165.0" y="105.0" font-family="DejaVu Sans" font-size="14" fill="#F2790F" text-anchor="middle" font-weight="bold">hypoténuse</text>
+<text x="210.0" y="30.0" font-family="DejaVu Sans" font-size="13" fill="#221A12" text-anchor="middle">cos α = adj/hyp · sin α = opp/hyp · tan α = opp/adj</text>
+</svg>

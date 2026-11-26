@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300" font-family="DejaVu Sans">
+<rect x="1" y="1" width="298" height="298" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<path d="M150,30 C90,60 80,150 120,200 L140,225 L160,225 L180,200 C220,150 210,60 150,30 Z" stroke="#221A12" stroke-width="2" fill="#FFFFFF" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M96,95 C92,120 95,150 110,175 L190,175 C205,150 208,120 204,95 Z" stroke="none" stroke-width="0" fill="#F6D776" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M110,175 L120,200 L140,225 L160,225 L180,200 L190,175 Z" stroke="none" stroke-width="0" fill="#BFDDF5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M150,30 C90,60 80,150 120,200 L140,225 L160,225 L180,200 C220,150 210,60 150,30 Z" stroke="#221A12" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="150.0" y1="225.0" x2="150.0" y2="270.0" stroke="#221A12" stroke-width="3" stroke-linecap="round"/>
+<rect x="138.0" y="240.0" width="24.0" height="10.0" rx="2" stroke="#221A12" stroke-width="1.5" fill="#F2790F"/>
+<text x="230.0" y="130.0" font-family="DejaVu Sans" font-size="13" fill="#A67C00" text-anchor="start" font-weight="bold">huile</text>
+<text x="230.0" y="198.0" font-family="DejaVu Sans" font-size="13" fill="#2F6FB5" text-anchor="start" font-weight="bold">eau</text>
+<text x="175.0" y="250.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="start">robinet</text>
+<text x="150.0" y="292.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle">Le liquide le plus dense est en bas</text>
+</svg>

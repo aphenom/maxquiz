@@ -104,6 +104,7 @@ Premier Président : Félix Houphouët-Boigny.
 • La devise : Union – Discipline – Travail.
 • Les armoiries : une tête d'éléphant, animal emblème du pays.
 
+[[schema:drapeau-ci|Le drapeau de la Côte d'Ivoire]]
 ## Les attributs
 • Capitale politique : Yamoussoukro ; capitale économique : Abidjan.
 • Langue officielle : le français.
@@ -112,6 +113,8 @@ Premier Président : Félix Houphouët-Boigny.
 ## Respecter les symboles
 Se lever et se tenir droit pendant l'hymne, ne pas déchirer ni salir le drapeau, participer à la montée des couleurs.""",
 questions=[
+(1, 'Le drapeau du schéma est celui de :', "la Côte d'Ivoire", "l'Irlande", "l'Italie", 'le Niger',
+ 'Orange côté hampe, blanc, vert.', 'drapeau-ci'),
 (1, "La Côte d'Ivoire est devenue indépendante le :", "7 août 1960", "1er janvier 1960", "8 novembre 2016", "20 novembre 1989",
  "Le 7 août est la fête de l'Indépendance."),
 (1, "La devise de la Côte d'Ivoire est :", "Union – Discipline – Travail", "Liberté – Égalité – Fraternité", "Paix – Unité – Progrès", "Travail – Famille – Patrie",

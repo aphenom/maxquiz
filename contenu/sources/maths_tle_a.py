@@ -160,6 +160,7 @@ exp(x) = eˣ est définie sur ℝ ; eˣ > 0 pour tout x ; e⁰ = 1 ; e¹ = e.
 (eˣ)' = eˣ : la fonction est strictement croissante.
 eˣ et ln x sont réciproques : ln(eˣ) = x et e^(ln x) = x pour x > 0.
 
+[[schema:courbes-ln-exp|Courbes de exp et de ln]]
 ## Propriétés
 • e^(a + b) = eᵃ × eᵇ
 • e^(a − b) = eᵃ / eᵇ

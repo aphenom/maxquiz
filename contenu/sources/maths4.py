@@ -59,6 +59,7 @@ fiche="""## Deux droites coupées par une sécante
 • Si les deux droites sont parallèles, les angles alternes-internes sont égaux et les angles correspondants sont égaux.
 • Réciproque : si deux angles alternes-internes (ou correspondants) sont égaux, les droites sont parallèles.
 
+[[schema:angles-paralleles|Angles alternes-internes]]
 ## Rappels
 • Angles opposés par le sommet : égaux.
 • Angles supplémentaires : somme 180° ; complémentaires : somme 90°.
@@ -72,6 +73,8 @@ fiche="""## Deux droites coupées par une sécante
 ## Exemple
 (d) // (d') coupées par (s). Un angle alterne-interne mesure 65° : l'autre aussi mesure 65°, et l'angle qui lui est adjacent sur la même droite mesure 180 − 65 = 115°.""",
 questions=[
+(2, 'Sur le schéma, d et d′ sont parallèles. Les angles a et b sont :', 'alternes-internes et égaux', 'correspondants et supplémentaires', 'opposés par le sommet', 'complémentaires',
+ "Ils sont de part et d'autre de la sécante, entre les deux droites.", 'angles-paralleles'),
 (1, "Deux angles opposés par le sommet sont :", "égaux", "supplémentaires", "complémentaires", "toujours droits",
  "Propriété à connaître."),
 (2, "Deux droites parallèles coupées par une sécante forment des angles alternes-internes :", "égaux", "supplémentaires", "complémentaires", "toujours de 90°",
@@ -143,6 +146,7 @@ fiche="""## Distance d'un point à une droite
 C'est la longueur du segment perpendiculaire mené du point à la droite : c'est la plus courte distance entre le point et la droite.
 Si H est le pied de la perpendiculaire à (d) passant par A, la distance de A à (d) est AH.
 
+[[schema:bissectrice|Bissectrice et distances aux côtés]]
 ## Distance entre deux droites parallèles
 C'est la distance d'un point quelconque de l'une à l'autre (elle est la même partout).
 
@@ -244,6 +248,7 @@ Un cercle de centre O et de rayon r, une droite (d) à la distance d de O :
 • d < r : la droite est sécante (deux points communs).
 La tangente en un point A du cercle est perpendiculaire au rayon [OA].
 
+[[schema:cercle-triangle-rectangle|Triangle rectangle inscrit dans un demi-cercle]]
 ## Droite des milieux
 • La droite qui passe par les milieux de deux côtés d'un triangle est parallèle au troisième côté.
 • Le segment qui joint ces milieux mesure la moitié du troisième côté.
@@ -255,6 +260,8 @@ La tangente en un point A du cercle est perpendiculaire au rayon [OA].
 • Médianes (d'un sommet au milieu du côté opposé) : concourantes au centre de gravité, situé aux 2/3 de chaque médiane à partir du sommet.
 • Bissectrices : concourantes au centre du cercle inscrit.""",
 questions=[
+(3, 'Sur le schéma, [AB] est un diamètre et C est sur le cercle. Le triangle ABC est :', 'rectangle en C', 'équilatéral', 'rectangle en A', 'isocèle en B',
+ 'Un triangle inscrit dans un demi-cercle est rectangle.', 'cercle-triangle-rectangle'),
 (1, "Une droite qui a un seul point commun avec un cercle est :", "tangente au cercle", "sécante", "extérieure", "un diamètre",
  "Elle « touche » le cercle."),
 (2, "La tangente au cercle en un point A est :", "perpendiculaire au rayon [OA]", "parallèle au rayon [OA]", "confondue avec le rayon", "passant par le centre",
@@ -325,6 +332,7 @@ nom="Propriété de Pythagore",
 fiche="""## Le triangle rectangle
 Il a un angle droit. Le côté opposé à l'angle droit est l'hypoténuse : c'est le plus long côté.
 
+[[schema:pythagore|Triangle rectangle et hypoténuse]]
 ## La propriété de Pythagore
 Si le triangle ABC est rectangle en A, alors BC² = AB² + AC².
 (Le carré de l'hypoténuse est égal à la somme des carrés des deux autres côtés.)
@@ -343,6 +351,8 @@ Si l'égalité est fausse, le triangle n'est pas rectangle.
 Diagonale d'un rectangle, hauteur d'une échelle contre un mur, distance sur un terrain.
 Diagonale d'un carré de côté c : c√2.""",
 questions=[
+(2, "Sur le schéma, a = 3 cm et b = 4 cm. L'hypoténuse c mesure :", '5 cm', '7 cm', '25 cm', '12 cm',
+ 'c² = 9 + 16 = 25.', 'pythagore'),
 (1, "Dans un triangle rectangle, l'hypoténuse est :", "le côté opposé à l'angle droit", "le plus petit côté", "un côté de l'angle droit", "la hauteur",
  "C'est le plus long côté."),
 (2, "ABC est rectangle en A, AB = 3 et AC = 4. BC mesure :", "5", "7", "25", "12",
@@ -415,6 +425,7 @@ nom="Perspective cavalière",
 fiche="""## Le principe
 Représenter un solide (cube, pavé, prisme) sur une feuille plane en donnant une impression de relief.
 
+[[schema:perspective-cube|Cube en perspective cavalière]]
 ## Les règles
 • La face avant (de face) est dessinée en vraie grandeur (ou à l'échelle), sans déformation.
 • Les arêtes « fuyantes » (qui partent vers l'arrière) sont parallèles entre elles, inclinées d'un angle α (souvent 30° ou 45°) et réduites par un coefficient c (souvent 0,5).
@@ -430,6 +441,8 @@ Un cube de 4 cm avec c = 0,5 et α = 45° : face avant = carré de 4 cm ; arête
 • Les milieux.
 Les angles droits des faces latérales ne sont pas conservés (avec α = 45°, ils apparaissent comme des angles de 45° ou 135°).""",
 questions=[
+(2, 'Sur le schéma, les arêtes en pointillés représentent :', 'les arêtes cachées', 'les arêtes plus longues', 'les diagonales', 'les arêtes de la face avant',
+ 'On ne les verrait pas en regardant le solide.', 'perspective-cube'),
 (1, "En perspective cavalière, les arêtes cachées sont dessinées :", "en pointillés", "en rouge", "en trait épais", "elles ne sont pas dessinées",
  "Convention à respecter."),
 (2, "La face avant d'un cube en perspective cavalière est dessinée :", "en vraie grandeur, sans déformation", "réduite de moitié", "comme un losange", "en pointillés",

@@ -59,6 +59,7 @@ km — hm — dam — m — dm — cm — mm : chaque unité vaut 10 fois l'unit
 Placer le zéro de la règle à l'une des extrémités de l'objet, l'œil perpendiculaire à la règle, lire la graduation à l'autre extrémité.
 Si le zéro est abîmé, on part de la graduation 1 cm et on retranche 1 cm.
 
+[[schema:regle-mesure|Mesurer avec une règle]]
 ## Mesurer une longueur courbe
 On place un fil le long de la courbe, puis on mesure le fil tendu sur une règle.
 
@@ -141,6 +142,7 @@ L ; dL ; cL ; mL : 1 L = 10 dL = 100 cL = 1 000 mL.
 ## Mesurer le volume d'un liquide
 Avec une éprouvette graduée (ou un verre doseur) posée sur une table horizontale. La surface du liquide forme un ménisque : on lit au bas du ménisque, l'œil à sa hauteur.
 
+[[schema:eprouvette-menisque|Lecture d'une éprouvette graduée]]
 ## Volume d'un solide
 • Forme régulière (pavé) : longueur × largeur × hauteur. 10 cm × 5 cm × 2 cm = 100 cm³.
 • Forme quelconque : on le plonge dans l'eau d'une éprouvette ; le volume du solide est la différence des deux niveaux.
@@ -148,6 +150,8 @@ Avec une éprouvette graduée (ou un verre doseur) posée sur une table horizont
 ## Exemples
 Une bouteille d'eau minérale : 1,5 L ; une canette : 33 cL ; un seau : environ 10 L.""",
 questions=[
+(2, "D'après le schéma, le volume de liquide dans l'éprouvette est :", '60 mL', '75 mL', '50 mL', '100 mL',
+ 'On lit au bas du ménisque.', 'eprouvette-menisque'),
 (1, "L'unité SI de volume est :", "le mètre cube", "le mètre carré", "le kilogramme", "le mètre",
  "Symbole m³."),
 (1, "Le volume d'un liquide se mesure avec :", "une éprouvette graduée", "une règle", "une balance", "un chronomètre",
@@ -181,6 +185,7 @@ t (tonne) — kg — hg — dag — g — dg — cg — mg : 1 t = 1 000 kg ; 1 
 • Balance de Roberval (à plateaux) : l'équilibre est atteint quand les masses marquées compensent l'objet.
 • Pèse-personne, bascule du marché, peson.
 
+[[schema:balance-roberval|Balance de Roberval à l'équilibre]]
 ## Mesurer la masse d'un liquide
 On pèse le récipient vide (ou on fait la tare), puis le récipient plein ; la masse du liquide est la différence.
 Récipient vide 150 g, plein 400 g → 250 g de liquide.
@@ -191,6 +196,8 @@ Quand on découpe une feuille ou qu'on dissout du sucre, la masse totale ne chan
 ## Ordres de grandeur
 Un sac de riz : 25 kg ou 50 kg ; un cahier : environ 100 g ; un élève de 6ème : environ 35 kg ; un camion : plusieurs tonnes.""",
 questions=[
+(3, "Sur le schéma, la balance est à l'équilibre. La masse de l'objet est :", '270 g', '200 g', '250 g', '70 g',
+ '200 + 50 + 20 = 270 g.', 'balance-roberval'),
 (1, "La masse se mesure avec :", "une balance", "une règle", "une éprouvette", "un thermomètre",
  "L'unité SI est le kilogramme."),
 (1, "1 kg est égal à :", "1 000 g", "100 g", "10 g", "10 000 g",
@@ -272,12 +279,15 @@ L'unité SI est le kelvin (K) : 0 °C correspond à environ 273 K.
 • Thermomètre électronique (affichage numérique).
 • Thermomètre médical : la température normale du corps humain est d'environ 37 °C ; au-dessus de 38 °C, on a de la fièvre.
 
+[[schema:thermometre|Lecture d'un thermomètre]]
 ## Bien mesurer
 Plonger le réservoir dans le liquide sans toucher le fond ni les parois, attendre la stabilisation, lire l'œil en face du niveau.
 
 ## Repères
 Abidjan : environ 25 à 32 °C toute l'année. L'harmattan, dans le nord, provoque des nuits plus fraîches.""",
 questions=[
+(2, 'Le thermomètre du schéma indique :', '37 °C', '40 °C', '30 °C', '50 °C',
+ 'On lit en face du haut de la colonne.', 'thermometre'),
 (1, "La température se mesure avec :", "un thermomètre", "une balance", "un baromètre", "une règle",
  "Le toucher ne suffit pas."),
 (1, "La glace fond à :", "0 °C", "100 °C", "37 °C", "−10 °C",

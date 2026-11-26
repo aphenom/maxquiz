@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 290" width="460" height="290" font-family="DejaVu Sans">
+<rect x="1" y="1" width="458" height="288" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<circle cx="90.0" cy="160.0" r="42.0" stroke="#221A12" stroke-width="2" fill="#FFFFFF"/>
+<path d="M52,178 A42,42 0 0,0 128,178 Z" stroke="none" stroke-width="0" fill="#BFDDF5" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="90.0" y1="118.0" x2="90.0" y2="80.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<line x1="90.0" y1="80.0" x2="300.0" y2="150.0" stroke="#DCE8F6" stroke-width="10" stroke-linecap="round"/>
+<line x1="90.0" y1="80.0" x2="300.0" y2="150.0" stroke="#221A12" stroke-width="2" stroke-linecap="round"/>
+<text x="250.0" y="100.0" font-family="DejaVu Sans" font-size="12" fill="#2F6FB5" text-anchor="start" font-weight="bold">réfrigérant (eau froide)</text>
+<line x1="250.0" y1="150.0" x2="270.0" y2="128.0" stroke="#2F6FB5" stroke-width="1.5" stroke-linecap="round"/>
+<polygon points="270.0,128.0 268.0,133.7 264.6,130.5" stroke="#2F6FB5" stroke-width="1" fill="#2F6FB5" stroke-linejoin="round"/>
+<path d="M300,150 L310,170" stroke="#221A12" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M285,190 L285,250 L345,250 L345,190" stroke="#221A12" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="287.0" y="225.0" width="56.0" height="23.0" rx="0" stroke="none" stroke-width="0" fill="#BFDDF5"/>
+<text x="315.0" y="274.0" font-family="DejaVu Sans" font-size="12" fill="#2F6FB5" text-anchor="middle" font-weight="bold">distillat</text>
+<path d="M70,230 q5,-12 0,-22 q-5,-10 0,-20" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M90,230 q5,-12 0,-22 q-5,-10 0,-20" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M110,230 q5,-12 0,-22 q-5,-10 0,-20" stroke="#F2790F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="90.0" y="252.0" font-family="DejaVu Sans" font-size="12" fill="#F2790F" text-anchor="middle" font-weight="bold">chauffage</text>
+<text x="90.0" y="138.0" font-family="DejaVu Sans" font-size="11" fill="#6E6152" text-anchor="middle">mélange</text>
+<text x="360.0" y="40.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle">La vapeur se liquéfie</text>
+<text x="360.0" y="56.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle">dans le réfrigérant</text>
+</svg>

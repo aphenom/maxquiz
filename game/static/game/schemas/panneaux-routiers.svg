@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 210" width="500" height="210" font-family="DejaVu Sans">
+<rect x="1" y="1" width="498" height="208" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<circle cx="60.0" cy="80.0" r="38.0" stroke="#D23B2F" stroke-width="9" fill="#FFFFFF"/>
+<text x="60.0" y="89.0" font-family="DejaVu Sans" font-size="24" fill="#221A12" text-anchor="middle" font-weight="bold">50</text>
+<circle cx="160.0" cy="80.0" r="40.0" stroke="#2F6FB5" stroke-width="0" fill="#2F6FB5"/>
+<line x1="140.0" y1="80.0" x2="182.0" y2="80.0" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+<polygon points="182.0,80.0 167.3,86.2 167.3,73.8" stroke="#FFFFFF" stroke-width="1" fill="#FFFFFF" stroke-linejoin="round"/>
+<polygon points="260.0,38.0 305.0,118.0 215.0,118.0" stroke="#D23B2F" stroke-width="8" fill="#FFFFFF" stroke-linejoin="round"/>
+<text x="260.0" y="108.0" font-family="DejaVu Sans" font-size="34" fill="#221A12" text-anchor="middle" font-weight="bold">!</text>
+<polygon points="392.0,95.3 370.3,117.0 339.7,117.0 318.0,95.3 318.0,64.7 339.7,43.0 370.3,43.0 392.0,64.7" stroke="#FFFFFF" stroke-width="3" fill="#D23B2F" stroke-linejoin="round"/>
+<text x="355.0" y="88.0" font-family="DejaVu Sans" font-size="17" fill="#FFFFFF" text-anchor="middle" font-weight="bold">STOP</text>
+<rect x="433.0" y="42.0" width="46.0" height="76.0" rx="6" stroke="none" stroke-width="0" fill="#2F6FB5"/>
+<text x="456.0" y="96.0" font-family="DejaVu Sans" font-size="34" fill="#FFFFFF" text-anchor="middle" font-weight="bold">P</text>
+<text x="60.0" y="150.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">interdiction</text>
+<text x="160.0" y="150.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">obligation</text>
+<text x="260.0" y="150.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">danger</text>
+<text x="355.0" y="150.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">arrêt absolu</text>
+<text x="456.0" y="150.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle" font-weight="bold">indication</text>
+<text x="250.0" y="190.0" font-family="DejaVu Sans" font-size="12" fill="#221A12" text-anchor="middle">Rond rouge : interdit · rond bleu : obligatoire · triangle : danger</text>
+</svg>

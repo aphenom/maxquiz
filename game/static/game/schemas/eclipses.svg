@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="DejaVu Sans">
+<rect x="1" y="1" width="438" height="248" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<text x="220.0" y="30.0" font-family="DejaVu Sans" font-size="13" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Éclipse de Soleil (nouvelle lune)</text>
+<circle cx="50.0" cy="70.0" r="30.0" stroke="#F2790F" stroke-width="2" fill="#F5C431"/>
+<circle cx="230.0" cy="70.0" r="9.0" stroke="#221A12" stroke-width="1.2" fill="#9A8F84"/>
+<text x="230.0" y="95.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle">Lune</text>
+<circle cx="370.0" cy="70.0" r="20.0" stroke="#221A12" stroke-width="1.2" fill="#2F6FB5"/>
+<text x="370.0" y="106.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle">Terre</text>
+<text x="50.0" y="116.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle">Soleil</text>
+<polygon points="230.0,61.0 350.0,67.0 350.0,73.0 230.0,79.0" stroke="none" stroke-width="0" fill="#55504A" stroke-linejoin="round"/>
+<text x="220.0" y="145.0" font-family="DejaVu Sans" font-size="13" fill="#0B9A5C" text-anchor="middle" font-weight="bold">Éclipse de Lune (pleine lune)</text>
+<circle cx="50.0" cy="185.0" r="30.0" stroke="#F2790F" stroke-width="2" fill="#F5C431"/>
+<circle cx="230.0" cy="185.0" r="20.0" stroke="#221A12" stroke-width="1.2" fill="#2F6FB5"/>
+<text x="230.0" y="221.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle">Terre</text>
+<circle cx="370.0" cy="185.0" r="9.0" stroke="#221A12" stroke-width="1.2" fill="#9A8F84"/>
+<text x="370.0" y="210.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle">Lune</text>
+<text x="50.0" y="231.0" font-family="DejaVu Sans" font-size="12" fill="#6E6152" text-anchor="middle">Soleil</text>
+<polygon points="230.0,165.0 350.0,182.0 350.0,188.0 230.0,205.0" stroke="none" stroke-width="0" fill="#55504A" stroke-linejoin="round"/>
+</svg>

@@ -1,7 +1,8 @@
 """Import en masse d'une banque de questions depuis un .xlsx, ou un .csv (UTF-8 ou
 Windows-1252, séparateur « ; » ou « , »).
 
-Colonnes : niveau;matiere;thematique;difficulte;question;a;b;c;d;bonne;explication
+Colonnes : niveau;matiere;thematique;difficulte;question;a;b;c;d;bonne;explication[;schema]
+  - schema (facultatif) : nom d'un schéma MaxQuiz ou adresse https d'une image
   - bonne : A, B, C ou D ; difficulte : 1 à 4
 Deux cibles :
   --space <slug>   questions propres à un établissement, rattachées à sa
@@ -79,7 +80,8 @@ class Command(BaseCommand):
             diff = int(r["difficulte"]) if r.get("difficulte", "").isdigit() else 1
             q = Question(kind="quiz", category="ec", difficulty=min(max(diff, 1), 4), text=text,
                          option_a=r["a"][:200], option_b=r["b"][:200], option_c=r["c"][:200],
-                         option_d=r["d"][:200], correct=LETTERS[good], explanation=r.get("explication", ""))
+                         option_d=r["d"][:200], correct=LETTERS[good], explanation=r.get("explication", ""),
+                         illustration=r.get("schema", "")[:300])
             key = None
             if shared:
                 if not (niveau and matiere and chap):
@@ -92,7 +94,10 @@ class Command(BaseCommand):
                         shared_subject_name__iexact=matiere, name__iexact=chap).first()
                 qz = quizzes[key]
                 if qz and Question.objects.filter(quiz=qz, text=text).exists():
-                    continue           # doublon : ré-import sans risque
+                    if not dry_run:    # doublon : ré-import sans risque, le schéma suit la source
+                        Question.objects.filter(quiz=qz, text=text).exclude(
+                            illustration=q.illustration).update(illustration=q.illustration)
+                    continue
             else:
                 sub = SubCategory.objects.filter(category__space=sp, category__name__iexact=niveau,
                                                  name__iexact=matiere).first()

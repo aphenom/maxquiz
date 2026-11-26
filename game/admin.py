@@ -233,6 +233,13 @@ class QuestionAdmin(admin.ModelAdmin):
     list_filter = ("space", "quiz", "kind", "category", "sub_category", "difficulty", "active")
     list_editable = ("difficulty", "active")
     search_fields = ("text",)
+    readonly_fields = ("apercu_illustration",)
+
+    @admin.display(description="Aperçu du schéma")
+    def apercu_illustration(self, obj):
+        from django.utils.html import format_html
+        url = obj.illustration_url() if obj and obj.pk else ""
+        return format_html('<img src="{}" style="max-width:320px;background:#fff">', url) if url else "—"
 
 
 @admin.register(AdCampaign)

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 250" width="420" height="250" font-family="DejaVu Sans">
+<rect x="1" y="1" width="418" height="248" rx="14" fill="#FFFFFF" stroke="#EADFCE" stroke-width="2"/>
+<polygon points="150.0,210.0 270.0,210.0 245.0,170.0 175.0,170.0" stroke="#6E6152" stroke-width="2" fill="#EADFCE" stroke-linejoin="round"/>
+<line x1="210.0" y1="170.0" x2="210.0" y2="110.0" stroke="#221A12" stroke-width="4" stroke-linecap="round"/>
+<line x1="90.0" y1="110.0" x2="330.0" y2="110.0" stroke="#221A12" stroke-width="5" stroke-linecap="round"/>
+<polygon points="204.0,104.0 216.0,104.0 210.0,60.0" stroke="#F2790F" stroke-width="2" fill="#F2790F" stroke-linejoin="round"/>
+<line x1="90.0" y1="110.0" x2="90.0" y2="130.0" stroke="#221A12" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="90.0" cy="135.0" rx="58.0" ry="9.0" stroke="#221A12" stroke-width="2" fill="#D9D9D9"/>
+<line x1="330.0" y1="110.0" x2="330.0" y2="130.0" stroke="#221A12" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="330.0" cy="135.0" rx="58.0" ry="9.0" stroke="#221A12" stroke-width="2" fill="#D9D9D9"/>
+<rect x="60.0" y="95.0" width="60.0" height="32.0" rx="6" stroke="#0B9A5C" stroke-width="2" fill="#E2F4EB"/>
+<text x="90.0" y="116.0" font-family="DejaVu Sans" font-size="12" fill="#0B9A5C" text-anchor="middle" font-weight="bold">objet</text>
+<rect x="281.0" y="97.0" width="26.0" height="30.0" rx="3" stroke="#6E6152" stroke-width="1.5" fill="#C9A86A"/>
+<text x="294.0" y="91.0" font-family="DejaVu Sans" font-size="10" fill="#6E6152" text-anchor="middle">200 g</text>
+<rect x="311.0" y="105.0" width="18.0" height="22.0" rx="3" stroke="#6E6152" stroke-width="1.5" fill="#C9A86A"/>
+<text x="320.0" y="160.0" font-family="DejaVu Sans" font-size="10" fill="#6E6152" text-anchor="middle">50 g</text>
+<rect x="339.0" y="109.0" width="14.0" height="18.0" rx="3" stroke="#6E6152" stroke-width="1.5" fill="#C9A86A"/>
+<text x="346.0" y="103.0" font-family="DejaVu Sans" font-size="10" fill="#6E6152" text-anchor="middle">20 g</text>
+<text x="210.0" y="238.0" font-family="DejaVu Sans" font-size="12.5" fill="#221A12" text-anchor="middle" font-weight="bold">Équilibre : masse de l'objet = 200 + 50 + 20 = 270 g</text>
+</svg>
