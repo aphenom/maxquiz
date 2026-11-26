@@ -77,11 +77,16 @@ class ContenuTests(TestCase):
     def test_contenu_3eme_complet(self):
         self.assertEqual(self._contenu_complet("3eme"), {"3ème"})
 
+    def _college(self, dossier, niveau, matieres):
+        self.assertEqual(self._contenu_complet(dossier), {niveau})
+        libres = Lesson.objects.filter(space__isnull=True, shared_level_name=niveau, free_preview=True)
+        self.assertEqual(sorted(libres.values_list("shared_subject_name", flat=True)), matieres)
+
     def test_contenu_4eme_complet(self):
-        self.assertEqual(self._contenu_complet("4eme"), {"4ème"})
-        libres = Lesson.objects.filter(space__isnull=True, shared_level_name="4ème", free_preview=True)
-        self.assertEqual(sorted(libres.values_list("shared_subject_name", flat=True)),
-                         ["EDHC", "Mathématiques", "Physique-Chimie"])
+        self._college("4eme", "4ème", ["EDHC", "Mathématiques", "Physique-Chimie"])
+
+    def test_contenu_5eme_complet(self):
+        self._college("5eme", "5ème", ["EDHC", "Mathématiques", "Physique-Chimie"])
 
     def test_contenu_terminale_complet(self):
         self.assertEqual(self._contenu_complet("terminale"), {"Tle A", "Tle C", "Tle D"})

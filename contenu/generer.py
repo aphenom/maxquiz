@@ -25,7 +25,7 @@ from reportlab.platypus import (KeepTogether, Paragraph, SimpleDocTemplate, Spac
 
 rl_config.invariant = 1                                  # PDF identiques d'une génération à l'autre
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Usage : python contenu/generer.py [3eme|4eme|terminale] [dossier de sortie]
+# Usage : python contenu/generer.py [3eme|4eme|5eme|terminale] [dossier de sortie]
 NIVEAU_CIBLE = sys.argv[1] if len(sys.argv) > 1 and not os.sep in sys.argv[1] else "3eme"
 OUT = sys.argv[2] if len(sys.argv) > 2 else (sys.argv[1] if len(sys.argv) > 1 and os.sep in sys.argv[1]
                                              else os.path.join(HERE, NIVEAU_CIBLE))
@@ -35,6 +35,7 @@ SETS = {
     "terminale": ["maths_tle_cd.py", "maths_tle_a.py", "pc_tle.py", "svt_tle.py", "hg_tle.py",
                   "philo_tle.py", "anglais_tle.py", "francais_tle.py"],
     "4eme": ["maths4.py", "pc4.py", "edhc4.py"],
+    "5eme": ["maths5.py", "pc5.py", "edhc5.py"],
 }
 SOURCES = SETS[NIVEAU_CIBLE]
 FREE = {"Calcul littéral", "Lentilles minces", "Les micro-organismes et les maladies infectieuses",

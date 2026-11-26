@@ -73,6 +73,44 @@ PROGRESSION = {
         ("Révision BEPC", 5),
     ],
 
+    # ------------------------------------------------------------------ 5ème
+    ("5ème", "Mathématiques"): [
+        ("Nombres décimaux relatifs", 10),
+        ("Symétrie centrale", 10),
+        ("Les fractions", 11),
+        ("Les angles", 11),
+        ("Le parallélogramme", 12),
+        ("Expressions littérales", 1),
+        ("Les triangles", 1),
+        ("Proportionnalité et pourcentages", 2),
+        ("Repérage dans le plan", 3),
+        ("Statistique", 3),
+        ("Prisme droit et cylindre", 4),
+        ("Révision de l'année", 5),
+    ],
+    ("5ème", "Physique-Chimie"): [
+        ("Les états physiques de la matière", 10),
+        ("Les changements d'état de l'eau", 10),
+        ("Mélanges et corps purs", 11),
+        ("Séparer les constituants d'un mélange", 12),
+        ("Les solutions aqueuses", 1),
+        ("L'air et la pression atmosphérique", 2),
+        ("Les combustions", 3),
+        ("Masse, volume et masse volumique", 4),
+        ("Révision de l'année", 5),
+    ],
+    ("5ème", "EDHC"): [
+        ("Les droits de l'enfant", 10),
+        ("Le travail et l'exploitation des enfants", 11),
+        ("La famille et ses responsabilités", 12),
+        ("La tolérance et le vivre-ensemble", 1),
+        ("La paix et la gestion des conflits", 1),
+        ("L'égalité entre filles et garçons", 2),
+        ("L'hygiène et la santé", 3),
+        ("La protection civile et les catastrophes", 4),
+        ("Révision de l'année", 5),
+    ],
+
     # ------------------------------------------------------------------ 4ème
     ("4ème", "Mathématiques"): [
         ("Nombres décimaux relatifs et puissances de 10", 10),
